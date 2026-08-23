@@ -1,0 +1,18 @@
+﻿=== REFS DIR ===
+bioinfo_70_domains.md
+bioinfo_drawing_tools.md
+bioinfo_toolmap.md
+checklist.md
+export-specs.md
+journal-specs.md
+kdense-skills.md
+REPO_DRAWING_FULL.md
+REPO_LINKS.md
+typography.md
+=== GIT STATUS ===
+ M SKILL.md
+?? references/bioinfo_70_domains.md
+?? references/bioinfo_toolmap.md
+=== LAST 5 COMMITS ===
+1ce6baf docs: 鏁村悎鐢熶俊100+缁樺浘宸ュ叿娣卞害璋冪爺(45棰嗗煙)+鏇存柊鍙傝€冪储寮?34bc5e1 feat: 鍗囩骇绉戠爺缁樺浘瓒呯骇skill - 鏁村悎120+浠撳簱+K-Dense鎶€鑳借矾鐢?cartoon-mechanism瀛愭妧鑳?4b93c29 feat: 鏁村悎绉戠爺缁樺浘Skill
+44fced8 Initial commit:鏁村悎 academic-figure-skill, academic-figure-generator, nature-skills

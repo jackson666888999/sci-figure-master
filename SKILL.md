@@ -37,7 +37,19 @@ description: >-
 - 领域绘图：scanpy/anndata（单细胞）、rdkit/deepchem（分子）、pyCirclize（和弦图）、ComplexHeatmap（热图）
 
 ### C. 120+ 科研绘图 GitHub 仓库索引（按需 clone / 参考）
-完整清单见 `references/REPO_DRAWING_FULL.md`（按 16 类）与 `references/bioinfo_drawing_tools.md`（生信 100+ 工具深度调研，45 领域，含顶刊组合与肠脑轴工具链）。
+完整清单见 `references/REPO_DRAWING_FULL.md`（按 16 类）、`references/bioinfo_drawing_tools.md`（生信 100+ 工具深度调研，45 领域）、`references/bioinfo_70_domains.md`（**70 领域 × 完整研究过程 × 5–10 核心工具 × 画图工具**总表，含顶刊主图可视化工具速查表）与 `references/bioinfo_70_domains_full.md`（**完整 15 字段版**：一级领域/二级任务/推荐等级A·B·C/工具名/GitHub/官方文档/代表论文/输入/输出/主图工具/补图工具/是否适合主图/是否适合临床机制/是否适合单细胞多组学网络药理知识图谱/注意事项，覆盖全部 70 领域，不加精炼）。
+
+### 领域→画图工具路由（速查）
+当用户说某领域（如"单细胞"、"ChIP-seq"、"网络药理学"、"癌症基因组"），先查 `bioinfo_70_domains.md` 对应领域条目，取"画图工具"列直接调用：
+- 单细胞/轨迹/通讯 → Seurat/Scanpy/Monocle3/scVelo/CellChat + circlize
+- 基因组浏览/表观 → IGV/JBrowse2/pyGenomeTracks/Gviz + deepTools
+- 富集/通路 → clusterProfiler/enrichplot/pathview
+- 网络/药理学 → Cytoscape/ggraph/igraph + PyMOL(对接)
+- 蛋白结构 → PyMOL/ChimeraX/Mol*
+- 系统发育 → ggtree/ETE
+- 宏基因组 → phyloseq/vegan/anvi'o
+- 生存/预后 → survminer/pROC
+- 跨领域基础设施（任何图都可调用）：ggplot2, ComplexHeatmap, matplotlib, seaborn, SHAP, UMAP
 
 ---
 
@@ -120,6 +132,8 @@ sci-figure-master/
 └── references/
     ├── REPO_DRAWING_FULL.md      # 120+仓库全量索引
     ├── bioinfo_drawing_tools.md   # 生信100+工具深度调研(45领域)
+    ├── bioinfo_70_domains.md      # 70领域×完整研究过程×工具×画图工具总表(精简版)
+    ├── bioinfo_70_domains_full.md  # 70领域×15字段完整版(不加精炼，齐全)
     ├── kdense-skills.md           # K-Dense绘图技能路由
     └── checklist.md              # QA清单
 ```
