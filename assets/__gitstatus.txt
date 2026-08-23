@@ -1,5 +1,0 @@
-﻿hint: Disable this message with "git config set advice.addEmbeddedRepo false"
-warning: adding embedded git repository: assets/gw-gw
-warning: adding embedded git repository: assets/kcleal
-warning: adding embedded git repository: assets/plosc2
-
