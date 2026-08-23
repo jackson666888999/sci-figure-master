@@ -3,6 +3,7 @@
 > 来源：用户深度调研（2026-08-23，去重精炼）。按 0–18 共 19 大类，含通用基础 + 各领域核心工具 + 画图工具 + A 级顶刊优先级。
 > 筛选：顶刊/高影响常见、社区活跃、可复现流程常用、GitHub/开源优先。
 > 用途：sci-figure-master 领域路由 + 选题/工具选型速查。
+> 完整仓库 URL 索引（对话提及的全部 GitHub 仓库去重全量）见 `references/REPO_DRAWING_FULL.md` 附录。
 
 ## 0. 全领域通用基础
 - 工作流/可复现：Nextflow, nf-core, Snakemake, CWL, WDL, Galaxy, Bioconda, Docker, Apptainer, MultiQC, Quarto, R Markdown, DVC, MLflow
