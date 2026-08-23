@@ -37,7 +37,7 @@ description: >-
 - 领域绘图：scanpy/anndata（单细胞）、rdkit/deepchem（分子）、pyCirclize（和弦图）、ComplexHeatmap（热图）
 
 ### C. 120+ 科研绘图 GitHub 仓库索引（按需 clone / 参考）
-完整清单见 `references/REPO_DRAWING_FULL.md`（按 16 类：综合平台、神经网络、单细胞、基因组、表观、蛋白、微生物、系统生物、癌症、进化、R库、Python库、AI配图、图标素材、3D动画、其他）。
+完整清单见 `references/REPO_DRAWING_FULL.md`（按 16 类）与 `references/bioinfo_drawing_tools.md`（生信 100+ 工具深度调研，45 领域，含顶刊组合与肠脑轴工具链）。
 
 ---
 
@@ -119,6 +119,7 @@ sci-figure-master/
 ├── assets/color-palettes/        # 共享配色
 └── references/
     ├── REPO_DRAWING_FULL.md      # 120+仓库全量索引
+    ├── bioinfo_drawing_tools.md   # 生信100+工具深度调研(45领域)
     ├── kdense-skills.md           # K-Dense绘图技能路由
     └── checklist.md              # QA清单
 ```
