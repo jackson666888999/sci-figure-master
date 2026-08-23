@@ -27,6 +27,41 @@ description: >-
 | PaperBanana | dwzhu-pku/PaperBanana | 多智能体学术配图自动生成 |
 | PlotNeuralNet | HarisIqbal88/PlotNeuralNet | LaTeX神经网络架构图 |
 
+### B. 2025-2026 顶刊绘图代码（assets/ 本地克隆）
+**从 Cell/Nature/Science 顶刊论文中克隆的公开绘图代码和工具**：
+
+| 仓库 | GitHub | 年份 | 期刊覆盖 | 核心能力 | 本地路径 |
+|------|--------|------|----------|----------|----------|
+| cnsplots | faridrashidi/cnsplots | 2026 | Cell/Nature/Science | 25+图表类型、像素控制、统计检验、SVG导出 | `assets/cnsplots/` |
+| figures4papers | ChenLiu-1996/figures4papers | 2025-2026 | Nature MI/ICML/NeurIPS | Nature Machine Intelligence 论文绘图脚本、LLM skill框架 | `assets/figures4papers/` |
+| SciencePlots | garrettj403/SciencePlots | 2025-2026 | Nature/IEEE | matplotlib样式库、多语言支持、色盲友好配色 | `assets/SciencePlots/` |
+| journal-figure-studio | Muhtasim-Munif-Fahim/journal-figure-studio | 2026 | 多期刊 | 可复现出版包生成、版本化配置、自动验证 | `assets/journal-figure-studio/` |
+| Awesome-Scientific-Charts | petemeng/Awesome-Scientific-Charts | 2025-2026 | Nature系列 | R语言复现顶级期刊图表、中文注释 | `assets/Awesome-Scientific-Charts/` |
+| SciVizKit | Yang1Bai/SciVizKit | 2026 | 多期刊 | 80+图表类型、Web UI交互、智能推荐决策树 | `assets/SciVizKit/` |
+| PubPlotLib | pier-astro/PubPlotLib | 2025-2026 | A&A/ApJ | 天体物理学专用样式、自动列宽处理 | `assets/PubPlotLib/` |
+
+**详细集成说明**: 见 `assets/INTEGRATION.md`
+
+**快速使用示例**:
+```python
+# 方式1: cnsplots（推荐）
+import cnsplots as cns
+cns.figure(width=200, height=150, color_cycle="Nature")
+cns.boxplot(data=df, x="group", y="value", pairs=[("A", "B")])
+cns.savefig("figure.svg")
+
+# 方式2: SciencePlots
+import matplotlib.pyplot as plt
+import scienceplots
+plt.style.use(['science', 'nature'])
+fig, ax = plt.subplots(figsize=(3.5, 2.5))
+ax.plot(x, y)
+plt.savefig('figure.pdf')
+
+# 方式3: figures4papers skill
+# 见 assets/figures4papers/scientific-figure-making/SKILL.md
+```
+
 ### B. K-Dense 163 技能中的绘图/可视化/插图模块（按需调用）
 本 skill 运行时可直接调用已安装的 K-Dense 技能（见 `references/kdense-skills.md`）：
 - 可视化：`scientific-visualization`、`matplotlib`、`seaborn`
@@ -129,7 +164,16 @@ sci-figure-master/
 │   ├── nature-figure/            # Nature投稿流程
 │   ├── neural-network/           # 神经网络图
 │   └── cartoon-mechanism/        # ★科研卡通机制图(核心差异化)
-├── assets/color-palettes/        # 共享配色
+├── assets/
+│   ├── cnsplots/                 # ★2026: Cell/Nature/Science出版级绘图库(25+图表)
+│   ├── figures4papers/           # ★2025-2026: Nature MI/ICML论文绘图脚本
+│   ├── SciencePlots/             # ★matplotlib样式库(Nature/IEEE)
+│   ├── journal-figure-studio/    # ★2026: 可复现出版包生成器
+│   ├── Awesome-Scientific-Charts/# ★2025-2026: R语言顶刊图表复现
+│   ├── SciVizKit/                # ★2026: 80+图表类型Web交互工具
+│   ├── PubPlotLib/               # ★2025-2026: 天体物理专用样式
+│   ├── color-palettes/           # 共享配色
+│   └── INTEGRATION.md            # 集成指南和使用说明
 └── references/
     ├── REPO_DRAWING_FULL.md      # 120+仓库全量索引 + 212个对话提及仓库附录
     ├── bioinfo_drawing_tools.md   # 生信100+工具深度调研(45领域)
