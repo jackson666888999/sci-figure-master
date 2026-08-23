@@ -37,10 +37,11 @@ description: >-
 - 领域绘图：scanpy/anndata（单细胞）、rdkit/deepchem（分子）、pyCirclize（和弦图）、ComplexHeatmap（热图）
 
 ### C. 120+ 科研绘图 GitHub 仓库索引（按需 clone / 参考）
-完整清单见 `references/REPO_DRAWING_FULL.md`（按 16 类 + **附录：对话提及的全部 GitHub 仓库去重全量 212 个**，确保不遗漏）、`references/bioinfo_drawing_tools.md`（生信 100+ 工具深度调研，45 领域）、`references/bioinfo_70_domains.md`（**70 领域 × 完整研究过程 × 5–10 核心工具 × 画图工具**总表，含顶刊主图可视化工具速查表）与 `references/bioinfo_70_domains_full.md`（**完整 15 字段版**：一级领域/二级任务/推荐等级A·B·C/工具名/GitHub/官方文档/代表论文/输入/输出/主图工具/补图工具/是否适合主图/是否适合临床机制/是否适合单细胞多组学网络药理知识图谱/注意事项，覆盖全部 70 领域，不加精炼，GitHub/文档链接已全补全）。
+完整清单见 `references/REPO_DRAWING_FULL.md`（按 16 类 + **附录：对话提及的全部 GitHub 仓库去重全量 212 个**，确保不遗漏）、`references/bioinfo_drawing_tools.md`（生信 100+ 工具深度调研，45 领域）、`references/bioinfo_70_domains.md`（**70 领域 × 完整研究过程 × 5–10 核心工具 × 画图工具**总表，含顶刊主图可视化工具速查表）、`references/bioinfo_70_domains_process.md`（**70 领域完整版**：每领域研究过程/核心工具/画图工具全量，含顶刊主图优先可视化工具总表 + 投稿/项目使用建议，不加精炼）与 `references/bioinfo_70_domains_full.md`（**完整 15 字段版**：一级领域/二级任务/推荐等级A·B·C/工具名/GitHub/官方文档/代表论文/输入/输出/主图工具/补图工具/是否适合主图/是否适合临床机制/是否适合单细胞多组学网络药理知识图谱/注意事项，覆盖全部 70 领域，不加精炼，GitHub/文档链接已全补全）。
 
 ### 领域→画图工具路由（速查）
-当用户说某领域（如"单细胞"、"ChIP-seq"、"网络药理学"、"癌症基因组"），先查 `bioinfo_70_domains.md` 对应领域条目，取"画图工具"列直接调用：
+- 领域→画图工具路由：先查 `bioinfo_70_domains_process.md` 取"画图工具"列（权威完整版）；如需快速速查看 `bioinfo_70_domains.md`。
+当用户说某领域（如"单细胞"、"ChIP-seq"、"网络药理学"、"癌症基因组"），取"画图工具"列直接调用：
 - 单细胞/轨迹/通讯 → Seurat/Scanpy/Monocle3/scVelo/CellChat + circlize
 - 基因组浏览/表观 → IGV/JBrowse2/pyGenomeTracks/Gviz + deepTools
 - 富集/通路 → clusterProfiler/enrichplot/pathview
@@ -130,9 +131,10 @@ sci-figure-master/
 │   └── cartoon-mechanism/        # ★科研卡通机制图(核心差异化)
 ├── assets/color-palettes/        # 共享配色
 └── references/
-    ├── REPO_DRAWING_FULL.md      # 120+仓库全量索引
+    ├── REPO_DRAWING_FULL.md      # 120+仓库全量索引 + 212个对话提及仓库附录
     ├── bioinfo_drawing_tools.md   # 生信100+工具深度调研(45领域)
     ├── bioinfo_70_domains.md      # 70领域×完整研究过程×工具×画图工具总表(精简版)
+    ├── bioinfo_70_domains_process.md  # 70领域×完整研究过程×核心工具×画图工具(权威完整版，含投稿建议)
     ├── bioinfo_70_domains_full.md  # 70领域×15字段完整版(不加精炼，齐全)
     ├── kdense-skills.md           # K-Dense绘图技能路由
     └── checklist.md              # QA清单
