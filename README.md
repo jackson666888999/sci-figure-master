@@ -1,12 +1,20 @@
-# Sci Figure Master — 科研绘图整合 Skill
+# Sci Figure Master — 科研绘图超级整合 Skill
 
-本 skill 整合了三个顶级科研绘图开源仓库的核心能力：
+> 目标：超越 BioRender / EZFigure / PaperBanana 的科研绘图能力层。
+> 差异化：中文提示词优先 + 强制证据分级 + 反AI感控制 + 矢量可编辑输出。
+
+本 skill 整合了 5 个核心仓库 + 120+ GitHub 科研绘图工具索引 + K-Dense 163 技能中的绘图模块：
 
 | 来源 | 仓库 | 核心能力 |
 |------|------|----------|
 | academic-figure-skill | TingxiYu/academic-figure-skill | 数据驱动的出版级科学图表生成 |
 | academic-figure-generator | LigphiDonk/academic-figure-generator | AI 学术论文配图提示词生成 |
 | nature-skills | Yuan1z0825/nature-skills | Nature 家族期刊图表演示与完整论文工作流 |
+| PaperBanana | dwzhu-pku/PaperBanana | 多智能体学术配图自动生成 |
+| PlotNeuralNet | HarisIqbal88/plotneuralnet | LaTeX 神经网络架构图 |
+| K-Dense scientific-agent-skills | K-Dense-AI/scientific-agent-skills | 163 技能（含绘图/可视化/插图模块，MIT） |
+
+**核心子技能**：`cartoon-mechanism/`（科研卡通机制图，专攻代码画不了的图）
 
 ## 整合后的 Skill 结构
 
