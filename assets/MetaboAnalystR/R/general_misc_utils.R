@@ -1,0 +1,1872 @@
+### Perform miscellaneous tasks
+### Perform misc tasks
+### Jeff Xia\email{jeff.xia@mcgill.ca}
+### McGill University, Canada
+### License: GNU GPL (>= 2)
+
+# Lazily load a compiled (.Rc) or source (.R) script into the global env on demand.
+# Resolves the file against the loader globals (loadPath/rpath/loadPathOMS) set in
+# _script_loader.R, falling back from .Rc to .R when no compiled copy exists.
+.load.scripts.on.demand <- function(fileName=""){
+  candidates <- unique(c(
+    fileName,
+    if (exists("rpath")) paste0(rpath, "rscripts/MetaboAnalystR/R/", fileName) else character(0),
+    if (exists("rpath")) paste0(rpath, "rscripts/XiaLabPro/R/", fileName) else character(0),
+    if (exists("loadPath")) paste0(loadPath, fileName) else character(0),
+    if (exists("loadPathOMS")) paste0(loadPathOMS, fileName) else character(0)
+  ));
+
+  script.path <- candidates[file.exists(candidates)][1];
+
+  if (is.na(script.path) || is.null(script.path)) {
+    r.candidates <- sub("\\.Rc$", ".R", candidates);
+    script.path <- r.candidates[file.exists(r.candidates)][1];
+  }
+
+  if (is.na(script.path) || is.null(script.path)) {
+    stop(paste("Script not found:", fileName, "(.Rc or .R)"));
+  }
+
+  source(sub("\\.Rc$", ".R", script.path), local = FALSE);
+
+  invisible(1);
+}
+
+# Limit of detection (1/5 of min for each var)
+.replace.by.lod <- function(x){
+    lod <- min(x[x>0], na.rm=T)/5;
+    x[x==0|is.na(x)] <- lod;
+    return(x);
+}
+
+ReplaceMissingByLoD <- function(int.mat){
+    int.mat <- as.matrix(int.mat);
+
+    rowNms <- rownames(int.mat);
+    colNms <- colnames(int.mat);
+    int.mat <- apply(int.mat, 2, .replace.by.lod);
+    rownames(int.mat) <- rowNms;
+    colnames(int.mat) <- colNms;
+    return (int.mat);
+}
+
+#'Given a data with duplicates, remove duplicates
+#'@description Dups is the one with duplicates
+#'@param data Input data to remove duplicates
+#'@param lvlOpt Set options, default is mean
+#'@param quiet Set to quiet, logical, default is T
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+#'
+RemoveDuplicates <- function(data, lvlOpt="mean", quiet=T){
+  
+  all.nms <- rownames(data); # duplicate feature names
+  colnms <- colnames(data);
+  dup.inx <- duplicated(all.nms);
+  dim.orig  <- dim(data);
+  data <- apply(data, 2, as.numeric); # force to be all numeric
+  dim(data) <- dim.orig; # keep dimension (will lost when only one item) 
+  rownames(data) <- all.nms;
+  colnames(data) <- colnms;
+  if(sum(dup.inx) > 0){
+    uniq.nms <- all.nms[!dup.inx];
+    uniq.data <- data[!dup.inx,,drop=F];
+    
+    dup.nms <- all.nms[dup.inx];
+    uniq.dupnms <- unique(dup.nms);
+    uniq.duplen <- length(uniq.dupnms);
+    
+    for(i in 1:uniq.duplen){
+      nm <- uniq.dupnms[i];
+      hit.inx.all <- which(all.nms == nm);
+      hit.inx.uniq <- which(uniq.nms == nm);
+      
+      # average the whole sub matrix 
+      if(lvlOpt == "mean"){
+        uniq.data[hit.inx.uniq, ]<- apply(data[hit.inx.all,,drop=F], 2, mean, na.rm=T);
+      }else if(lvlOpt == "median"){
+        uniq.data[hit.inx.uniq, ]<- apply(data[hit.inx.all,,drop=F], 2, median, na.rm=T);
+      }else if(lvlOpt == "max"){
+        uniq.data[hit.inx.uniq, ]<- apply(data[hit.inx.all,,drop=F], 2, max, na.rm=T);
+      }else if(lvlOpt == "sum"){ 
+        uniq.data[hit.inx.uniq, ]<- apply(data[hit.inx.all,,drop=F], 2, sum, na.rm=T);
+      }else{ 
+         # nothing
+      }
+    }
+    AddMsg(paste("A total of ", sum(dup.inx), " of duplicates were replaced by their ", lvlOpt, ".", sep=""));
+    return(uniq.data);
+  }else{
+    AddMsg("All IDs are unique.");
+    return(data);
+  }
+} 
+
+# =============================================================================
+# qs read/save/exists wrappers (master session)
+# =============================================================================
+# Master-session counterparts of the helpers injected into Rserve subprocesses
+# below. Two consumption contexts, both supported:
+#   1. Installed MetaboAnalystR package — these live in the package namespace
+#      and are resolvable from any sibling function. Kept unexported (internal
+#      plumbing), matching the convention used for run_func_via_rsclient.
+#   2. Public web — _script_loader.R loadcmp's the .R/.Rc files into
+#      .GlobalEnv, so these top-level defs become globally visible regardless
+#      of NAMESPACE.
+
+ov_qs_read <- function(file, ...) {
+  if (file.exists(file)) {
+    r <- try(qs2::qs_read(file, ...), silent = TRUE)
+    if (!inherits(r, "try-error")) return(r)
+    return(qs::qread(file, ...))
+  }
+  if (endsWith(tolower(file), ".qs")) {
+    v2 <- paste0(substr(file, 1, nchar(file) - 3L), ".qs2")
+    if (file.exists(v2)) { r <- try(qs2::qs_read(v2, ...), silent = TRUE); if (!inherits(r, "try-error")) return(r); return(qs::qread(v2, ...)) }
+  } else if (endsWith(tolower(file), ".qs2")) {
+    v1 <- paste0(substr(file, 1, nchar(file) - 4L), ".qs")
+    if (file.exists(v1)) { r <- try(qs2::qs_read(v1, ...), silent = TRUE); if (!inherits(r, "try-error")) return(r); return(qs::qread(v1, ...)) }
+  }
+  stop("ov_qs_read: neither .qs2 nor .qs found for: ", file, call. = FALSE)
+}
+
+ov_qs_save <- function(obj, file, ...) {
+  # Self-heal a reaped target dir: long-lived Rserve sessions can have their
+  # tempdir() removed by the OS /tmp cleaner, after which every write to a
+  # bridge_*.qs / arrow export under it fails with "Failed to open for
+  # writing. Does the directory exist?" and cascades into NULL results
+  # (PCA/SAM/etc.). Recreate the parent dir before writing.
+  .d <- dirname(file)
+  if (!dir.exists(.d)) dir.create(.d, recursive = TRUE, showWarnings = FALSE)
+  .args <- list(...)
+  for (.k in c("preset", "nthreads", "check_hash")) .args[[.k]] <- NULL
+  do.call(qs2::qs_save, c(list(object = obj, file = file), .args))
+  invisible(file)
+}
+
+ov_qs_exists <- function(file) {
+  if (file.exists(file)) return(TRUE)
+  if (endsWith(tolower(file), ".qs"))  return(file.exists(paste0(substr(file, 1, nchar(file) - 3L), ".qs2")))
+  if (endsWith(tolower(file), ".qs2")) return(file.exists(paste0(substr(file, 1, nchar(file) - 4L), ".qs")))
+  FALSE
+}
+
+# =============================================================================
+# RSclient subprocess execution (Rserve fork — shared by Public and Pro)
+# =============================================================================
+
+# Backward-compatible alias: external/community callers of the old name still resolve.
+run_func_via_rc_microservice <- function(...) run_func_via_microservice(...)
+
+run_func_via_microservice <- function(func, args = list(), timeout_sec = 60) {
+  # RSclient has been retired — always run in a fresh callr subprocess (falling
+  # back to in-process below); never dispatch to the nested RSclient fork.
+  # Run the closure in a fresh, short-lived R process (a microservice), which then exits and reclaims
+  # all memory it used plus any packages it attached. Replaces the old nested Rserve-client path, which
+  # reliably crashed the worker with "Fatal error: unable to initialize the JIT" (Rserve error 127) —
+  # the failure that left count normalization (logcount/RLE/TMM/MORlog) throwing and downstream DE
+  # running on raw counts. Falls back to in-process if callr is unavailable or the child errors, so a
+  # caller never breaks. `func` is a self-contained closure that exchanges data via ov_qs_* bridge
+  # files, so the child only needs those helpers defined; the result travels back through the files.
+  if (requireNamespace("callr", quietly = TRUE)) {
+    child_failed <- FALSE
+    res <- tryCatch(
+      callr::r(
+        func = function(func, args) {
+          ov_qs_read <- function(file, ...) {
+            if (file.exists(file)) { r <- try(qs2::qs_read(file, ...), silent = TRUE); if (!inherits(r, "try-error")) return(r); return(qs::qread(file, ...)) }
+            if (endsWith(tolower(file), ".qs")) { v2 <- paste0(substr(file, 1, nchar(file) - 3L), ".qs2"); if (file.exists(v2)) { r <- try(qs2::qs_read(v2, ...), silent = TRUE); if (!inherits(r, "try-error")) return(r); return(qs::qread(v2, ...)) } }
+            else if (endsWith(tolower(file), ".qs2")) { v1 <- paste0(substr(file, 1, nchar(file) - 4L), ".qs"); if (file.exists(v1)) { r <- try(qs2::qs_read(v1, ...), silent = TRUE); if (!inherits(r, "try-error")) return(r); return(qs::qread(v1, ...)) } }
+            stop("ov_qs_read: neither .qs2 nor .qs found for: ", file, call. = FALSE)
+          }
+          ov_qs_save <- function(obj, file, ...) { .a <- list(...); for (.k in c("preset", "nthreads", "check_hash")) .a[[.k]] <- NULL; do.call(qs2::qs_save, c(list(object = obj, file = file), .a)); invisible(file) }
+          ov_qs_exists <- function(file) { if (file.exists(file)) return(TRUE); if (endsWith(tolower(file), ".qs")) return(file.exists(paste0(substr(file, 1, nchar(file) - 3L), ".qs2"))); if (endsWith(tolower(file), ".qs2")) return(file.exists(paste0(substr(file, 1, nchar(file) - 4L), ".qs"))); FALSE }
+          assign("ov_qs_read", ov_qs_read, globalenv()); assign("ov_qs_save", ov_qs_save, globalenv()); assign("ov_qs_exists", ov_qs_exists, globalenv())
+          do.call(func, args)
+        },
+        args = list(func = func, args = args), timeout = timeout_sec, show = FALSE
+      ),
+      error = function(e) { message("[rc_microservice] child failed (", conditionMessage(e), "); running in-process"); child_failed <<- TRUE; NULL })
+    if (!child_failed) return(res)
+  }
+  # Fallback: run in-process (correct result; no separate-process memory reclaim).
+  setTimeLimit(elapsed = timeout_sec, transient = TRUE)
+  on.exit(setTimeLimit(elapsed = Inf), add = TRUE)
+  invisible(do.call(func, args))
+}
+
+
+SetScatterOptions <- function(scaleMode="independent", confLevel=0.95, confMethod="chisq") {
+  scatter.opts <<- list(
+    scaleMode = scaleMode,
+    confLevel = confLevel,
+    confMethod = confMethod
+  );
+  invisible(1);
+}
+
+
+#' Read data table
+#' @description Function to read in a data table. First, it will try to use fread, however, it has issues with 
+#' some windows 10 files. In such case, use the slower read.table method.
+#' @param fileName Input filename
+#' @author Jeff Xia\email{jeff.xia@mcgill.ca}
+#' McGill University, Canada
+#' License: GNU GPL (>= 2)
+#' @importFrom data.table fread
+#' @export
+
+.readDataTable <- function(fileName, save.copy=TRUE){
+
+    # Capture the original parser diagnostic so we can surface it to the
+    # user when both readers fail. Without this, the only thing the UI sees
+    # is a cryptic "missing value where TRUE/FALSE needed" downstream.
+    parser.diag <- NULL;
+
+    dat <- tryCatch(
+            {
+                data.table::fread(fileName, header=TRUE, check.names=FALSE,
+                                  blank.lines.skip=TRUE, data.table=FALSE, integer64 = "numeric");
+            }, error=function(e){
+                parser.diag <<- conditionMessage(e);
+                print(e);
+                return(.my.slowreaders(fileName));
+            }, warning=function(w){
+                parser.diag <<- conditionMessage(w);
+                print(w);
+                return(.my.slowreaders(fileName));
+            });
+
+    # If the slow reader threw (try-error) or fread returned an empty frame,
+    # bail out NOW with an informative message — do not fall through to the
+    # column-cleanup line below, which mutates a try-error object into
+    # something whose class is no longer "try-error" but whose ncol() is NA,
+    # producing the silent "missing value where TRUE/FALSE needed" failure.
+    bad.read <- inherits(dat, "try-error") ||
+                is.null(dat) ||
+                !is.data.frame(dat) ||
+                any(dim(dat) == 0);
+
+    if (bad.read && !inherits(dat, "try-error")) {
+        # Fast reader returned an empty frame — try slow reader once.
+        dat <- .my.slowreaders(fileName);
+        bad.read <- inherits(dat, "try-error") ||
+                    is.null(dat) ||
+                    !is.data.frame(dat) ||
+                    any(dim(dat) == 0);
+    }
+
+    if (bad.read) {
+        if (inherits(dat, "try-error")) {
+            parser.diag <- attr(dat, "condition")$message;
+        }
+        AddErrMsg("Failed to read the uploaded data file.");
+        if (!is.null(parser.diag) && nzchar(parser.diag)) {
+            AddErrMsg(paste("Parser said:", parser.diag));
+        }
+        AddErrMsg("Common causes:");
+        AddErrMsg("- A row has more or fewer columns than the header (look at the line number in the parser message).");
+        AddErrMsg("- Wrong delimiter for the extension (TSV saved as .csv, or vice versa).");
+        AddErrMsg("- Embedded newlines or unescaped commas/tabs inside a cell.");
+        AddErrMsg("- Non-UTF-8 characters or a BOM marker at the start of the file.");
+        AddErrMsg("- Duplicate sample or feature names.");
+        return(0);
+    }
+
+    # need to remove potential empty columns !! NOTE the single |, not || which is for atomic operation
+    # `[.data.frame` silently uniquifies duplicate column names (.1/.2 suffixes);
+    # keep the file's real names so duplicate-feature handling downstream can see them
+    .keep.inx <- !sapply(dat, function(x) all(x == "" | is.na(x)));
+    .orig.col.nms <- colnames(dat)[.keep.inx];
+    dat <- dat[.keep.inx];
+    colnames(dat) <- .orig.col.nms;
+
+    if (save.copy) {
+        if (ncol(dat) == 1) {
+            if (colnames(dat)[1] == "m.z" || colnames(dat)[1] == "mz") {
+                # legitimate single-column m/z input — not an error
+            } else {
+                AddErrMsg("Data parsed to a single column — likely the wrong delimiter.");
+                AddErrMsg("Save tab-separated files with extension .txt; comma-separated with .csv.");
+                # save the first 100 lines for the user to inspect
+                tryCatch({
+                    fileConn <- file(fileName, encoding = "UTF-8");
+                    text <- readLines(fileConn, n = 100);
+                    write.csv(text, file = "raw_dataview.csv");
+                    close(fileConn);
+                }, error = function(e) NULL);
+                return(0);
+            }
+        }
+
+        # save a table output at the earliest time for viewing
+        row.num <- min(nrow(dat), 100);
+        col.num <- min(ncol(dat), 10);
+        write.csv(dat[1:row.num, 1:col.num], file = "raw_dataview.csv");
+    }
+    return(dat);
+}
+
+.my.slowreaders <- function(fileName){
+  print("Using slower file reader ...");
+  formatStr <- substr(fileName, nchar(fileName)-2, nchar(fileName))
+  if(formatStr == "txt"){
+    dat <- try(read.table(fileName, header=TRUE, comment.char = "", check.names=F, as.is=T));
+  }else{ # note, read.csv is more than read.table with sep=","
+    dat <- try(read.csv(fileName, header=TRUE, comment.char = "", check.names=F, as.is=T));
+  }  
+  return(dat);
+}
+
+.get.sqlite.con <- function(sqlite.path){
+    load_rsqlite();
+    #print(paste("DEBUG: Attempting to connect to SQLite database at:", sqlite.path));
+    #print(paste("DEBUG: File exists:", file.exists(sqlite.path)));
+    if(file.exists(sqlite.path)){
+        file_info <- file.info(sqlite.path);
+        #print(paste("DEBUG: File size:", file_info$size, "bytes"));
+        #print(paste("DEBUG: File permissions:", file_info$mode));
+    }
+    return(dbConnect(SQLite(), sqlite.path, synchronous = NULL));
+}
+
+#'Transform two column text to data matrix
+#'@description Transform two column input text to data matrix (single column data frame)
+#'@param txtInput Input text
+#'@param sep.type Indicate the seperator type for input text. Default set to "space"
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+#'
+getDataFromTextArea <- function(txtInput, sep.type="space"){
+  
+  lines <- unlist(strsplit(txtInput, "\r|\n|\r\n")[1]);
+  if(substring(lines[1],1,1)=="#"){
+    lines <- lines[-1];
+  }
+  
+  # separated by tab 
+  if(sep.type=="tab"){
+    my.lists <- strsplit(lines, "\\t");
+  }else{ # from any space
+    my.lists <- strsplit(lines, "\\s+");
+  }
+  my.mat <- do.call(rbind, my.lists);
+  
+  if(dim(my.mat)[2] == 1){ # add 0
+    my.mat <- cbind(my.mat, rep(0, nrow(my.mat)));
+  }else if(dim(my.mat)[2] > 2){
+    my.mat <- my.mat[,1:2];
+    msg <- "More than two columns found in the list. Only first two columns will be used."
+    AddErrMsg(msg);
+  }
+  rownames(my.mat) <- data.matrix(my.mat[,1]);
+  my.mat <- my.mat[,-1, drop=F];
+  return(my.mat);
+}
+
+#'Permutation
+#'@description Perform permutation, options to change number of cores used
+#'@param perm.num Numeric, input the number of permutations to perform
+#'@param fun Dummy function
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@usage Perform.permutation(perm.num, fun)
+#'@export
+#'
+Perform.permutation <- function(perm.num, fun){
+ 
+  # perm.num is not always followed to make sure loop will not continue for very long time
+  # before the adventure, see how long it takes for 10 permutations
+  # if it is extremely slow (>60 sec) => max 20 (<0.05)
+  # if it is very slow (30-60 sec) => max 100 (<0.01)
+
+  start.num <- 1; 
+  perm.res <- NULL;
+  if(.on.public.web & perm.num > 20){
+    start.time <- Sys.time();
+    perm.res <- lapply(1:10, fun);
+    end.time <- Sys.time();
+
+    time.taken <- end.time - start.time;
+    print(paste("time taken for 10 permutations: ", time.taken));
+
+    if(time.taken > 60){
+        perm.num <- 20;
+    }else if(time.taken > 30){
+        perm.num <- 100;
+    }
+    start.num <- 11;
+  }
+  print(paste("performing", perm.num, "permutations ..."));
+  perm.res <- c(perm.res, lapply(start.num:perm.num, fun));
+  return(list(perm.res=perm.res, perm.num = perm.num));
+}
+
+#'Unzip .zip files
+#'@description Unzips uploaded .zip files, removes the uploaded file, checks for success
+#'@param inPath Input the path of the zipped files
+#'@param outPath Input the path to directory where the unzipped files will be deposited
+#'@param rmFile Logical, input whether or not to remove files. Default set to T
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+#'
+UnzipUploadedFile<-function(inPath, outPath, rmFile=T){
+  sys.cmd <- paste("unzip",  "-o", inPath, "-d", outPath);
+  #print(sys.cmd);
+  sys.res <- try(system(sys.cmd));
+  if(sys.res == 0){ # success code for system call
+     return (1);
+  }else{  # success code for system call
+     print(sys.res);
+     r.res <- unzip(inPath, exdir=outPath);
+     return(length(r.res)>0);
+  }
+}
+
+#'Perform data cleaning
+#'@description Cleans data and removes -Inf, Inf, NA, negative and 0s.
+#'@param bdata Input data to clean
+#'@param removeNA Logical, T to remove NAs, F to not. 
+#'@param removeNeg Logical, T to remove negative numbers, F to not. 
+#'@param removeConst Logical, T to remove samples/features with 0s, F to not. 
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'
+
+CleanData <-function(bdata, removeNA=T, removeNeg=T, removeConst=T){
+  
+  if(sum(bdata==Inf, na.rm=TRUE)>0){
+    inx <- bdata == Inf;
+    bdata[inx] <- NA;
+    bdata[inx] <- max(bdata, na.rm=T)*2
+  }
+  if(sum(bdata==-Inf, na.rm=TRUE)>0){
+    inx <- bdata == -Inf;
+    bdata[inx] <- NA;
+    bdata[inx] <- min(bdata, na.rm=T)/2
+  }
+  if(removeNA){
+    if(sum(is.na(bdata))>0){
+      bdata[is.na(bdata)] <- min(bdata, na.rm=T)/2
+    }
+  }
+  if(removeNeg){
+    if(sum(as.numeric(bdata<=0)) > 0){
+      inx <- bdata <= 0;
+      bdata[inx] <- NA;
+      bdata[inx] <- min(bdata, na.rm=T)/2
+    }
+  }
+  if(removeConst){
+    varCol <- apply(data.frame(bdata), 2, var, na.rm=T); # getting an error of dim(X) must have a positive length, fixed by data.frame
+    constCol <- (varCol == 0 | is.na(varCol));
+    constNum <- sum(constCol, na.rm=T);
+    if(constNum > 0){
+      bdata <- data.frame(bdata[,!constCol, drop=FALSE], check.names = F); # got an error of incorrect number of dimensions, added drop=FALSE to avoid vector conversion
+    }
+  }
+  bdata;
+}
+
+#'Replace infinite numbers
+#'@description Replace -Inf, Inf to 99999 and -99999
+#'@param bdata Input matrix to clean numbers
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'
+CleanNumber <-function(bdata){
+  if(sum(bdata==Inf, na.rm=TRUE)>0){
+    inx <- bdata == Inf;
+    bdata[inx] <- NA;
+    bdata[inx] <- 999999;
+  }
+  if(sum(bdata==-Inf, na.rm=TRUE)>0){
+    inx <- bdata == -Inf;
+    bdata[inx] <- NA;
+    bdata[inx] <- -999999;
+  }
+  bdata;
+}
+
+
+# replace space with underscore
+# only keep alphabets, numbers, "." "_", "-" and @
+CleanNames <- function(query){
+  query <- gsub(" +","_",query);
+  query <- gsub("[^[:alnum:].@_-]", "", query);
+  return(make.unique(query));
+}
+
+#'Remove spaces
+#'@description Remove from, within, leading and trailing spaces
+#'@param query Input the query to clear
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+
+ClearStrings<-function(query){
+  # kill multiple white space
+  query <- gsub(" +"," ",query);
+
+  # black slash escape sign could kill Rserve immediately
+  query <- gsub("\\\\", "-", query);
+
+  # remove leading and trailing space
+  query<- sub("^[[:space:]]*(.*?)[[:space:]]*$", "\\1", query, perl=TRUE);
+  return(query);
+}
+
+# Remove HTML tag
+PrepareLatex <- function(stringVec){
+  stringVec <- gsub("<(.|\n)*?>","",stringVec);
+  stringVec <- gsub("%", "\\\\%", stringVec);
+  stringVec;
+}
+
+#'Determine value label for plotting
+#'@description Concentration or intensity data type
+#'@param data.type Input concentration or intensity data
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+#'
+GetAbundanceLabel<-function(data.type){
+  if(data.type=="conc"){
+    return("Concentration");
+  }else {
+    return("Intensity");
+  }
+}
+
+#'Determine variable label for plotting
+#'@description Determine data type, binned spectra, nmr peak, or ms peak
+#'@param data.type Input the data type
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+#'
+GetVariableLabel<-function(data.type){
+  if(data.type=="conc"){
+    return("Compounds");
+  }else if(data.type=="specbin"){
+    return("Spectra Bins");
+  }else if(data.type=="nmrpeak"){
+    return("Peaks (ppm)");
+  }else if(data.type=="mspeak"){
+    return("Peaks (mass)");
+  }else{
+    return("Peaks(mz/rt)");
+  }
+}
+
+#'Create Latex table
+#'@description generate Latex table
+#'@param mat Input matrix
+#'@param method Input method to create table
+#'@param data.type Input the data type
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+
+GetSigTable<-function(mat, method, data.type){
+  if(!isEmptyMatrix(mat)){ # test if empty
+    cap<-"Important features identified by";
+    if(nrow(mat)>50){
+      smat<-as.matrix(mat[1:50,]); # only print top 50 if too many
+      colnames(smat)<-colnames(mat); # make sure column names are also copied
+      mat<-smat;
+      cap<-"Top 50 features identified by";
+    }
+    # change the rowname to first column
+    col1<-rownames(mat);
+    cname<-colnames(mat);
+    cname<-c(GetVariableLabel(data.type), cname);
+    mat<-cbind(col1, mat);
+    rownames(mat)<-NULL;
+    colnames(mat)<-cname;
+    print(xtable::xtable(mat, caption=paste(cap, method)), caption.placement="top", size="\\scriptsize");
+  }else{
+    print(paste("No significant features were found using the given threshold for", method));
+  }
+}
+
+#'Sig table matrix is empty
+#'@description Test if a sig table matrix is empty
+#'@param mat Matrix to test if empty
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+
+isEmptyMatrix <- function(mat){
+  if(is.null(mat) | length(mat)==0){
+    return(TRUE);
+  }
+  if(nrow(mat)==0 | ncol(mat)==0){
+    return(TRUE);
+  }
+  if(is.na(mat[1,1])){
+    return(TRUE);
+  }
+  return(FALSE);
+}
+
+# from color names or code 1, 2, 3 the rbg strings
+my.col2rgb <- function(cols){
+  rgbcols <- col2rgb(cols);
+  return(apply(rgbcols, 2, function(x){paste("rgb(", paste(x, collapse=","), ")", sep="")}));
+}
+
+my.col2rgba <- function(cols, alpha){
+  rgbcols <- col2rgb(cols);
+  rgbcols <- rbind(rgbcols, alpha);
+  return(as.vector(apply(rgbcols, 2, function(x){paste("rgba(", paste(x, collapse=","), ")", sep="")})));
+}
+
+# #FFFFFF to rgb(1, 0, 0)
+hex2rgba <- function(cols, alpha=0.8){
+  my.cols <- apply(sapply(cols, col2rgb), 2, function(x){paste("rgba(", x[1], ",", x[2], ",", x[3], ",",  alpha, ")", sep="")});
+  return(as.vector(my.cols));
+}
+
+hex2rgb <- function(cols){
+  return(apply(sapply(cols, col2rgb), 2, function(x){paste("rgb(", x[1], ",", x[2], ",", x[3], ")", sep="")}));
+}
+
+# List of objects
+# Improved list of objects
+# Jeff Xia\email{jeff.xia@mcgill.ca}
+# McGill University, Canada
+# License: GNU GPL (>= 2)
+
+.ls.objects <- function (pos = 1, pattern, order.by,
+                         decreasing=FALSE, head=FALSE, n=5) {
+  napply <- function(names, fn) sapply(names, function(x)
+    fn(get(x, pos = pos)))
+  names <- ls(pos = pos, pattern = pattern)
+  obj.class <- napply(names, function(x) as.character(class(x))[1])
+  obj.mode <- napply(names, mode)
+  obj.type <- ifelse(is.na(obj.class), obj.mode, obj.class)
+  obj.prettysize <- napply(names, function(x) {
+    capture.output(format(utils::object.size(x), units = "auto")) })
+  obj.size <- napply(names, object.size)
+  obj.dim <- t(napply(names, function(x)
+    as.numeric(dim(x))[1:2]))
+  vec <- is.na(obj.dim)[, 1] & (obj.type != "function")
+  obj.dim[vec, 1] <- napply(names, length)[vec]
+  mSetObj <- .get.mSet(mSetObj);
+  print(lapply(mSetObj$dataSet, object.size));
+  print(lapply(mSetObj$analSet, object.size));
+
+  out <- data.frame(obj.type, obj.size, obj.prettysize, obj.dim)
+  names(out) <- c("Type", "Size", "PrettySize", "Rows", "Columns")
+  if (!missing(order.by))
+    out <- out[order(out[[order.by]], decreasing=decreasing), ]
+  if (head)
+    out <- head(out, n)
+  out
+}
+
+#'Extend axis
+#'@description Extends the axis range to both ends
+#'vec is the values for that axis
+#'unit is the width to extend, 10 will increase by 1/10 of the range
+#'@param vec Input the vector
+#'@param unit Numeric
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+GetExtendRange<-function(vec, unit=10){
+  var.max <- max(vec, na.rm=T);
+  var.min <- min(vec, na.rm=T);
+  exts <- (var.max - var.min)/unit;
+  c(var.min-exts, var.max+exts);
+}
+
+getVennCounts <- function(x, include="both") {
+  x <- as.matrix(x)
+  include <- match.arg(include,c("both","up","down"))
+  x <- sign(switch(include,
+                   both = abs(x),
+                   up = x > 0,
+                   down = x < 0
+  ))
+  nprobes <- nrow(x)
+  ncontrasts <- ncol(x)
+  names <- colnames(x)
+  if(is.null(names)) names <- paste("Group",1:ncontrasts)
+  noutcomes <- 2^ncontrasts
+  outcomes <- matrix(0,noutcomes,ncontrasts)
+  colnames(outcomes) <- names
+  for (j in 1:ncontrasts)
+    outcomes[,j] <- rep(0:1,times=2^(j-1),each=2^(ncontrasts-j))
+  xlist <- list()
+  for (i in 1:ncontrasts) xlist[[i]] <- factor(x[,ncontrasts-i+1],levels=c(0,1))
+  counts <- as.vector(table(xlist))
+  structure(cbind(outcomes,Counts=counts),class="VennCounts")
+}
+
+# Perform utilities for MetPa
+# borrowed from Hmisc
+# Jeff Xia\email{jeff.xia@mcgill.ca}
+# McGill University, Canada
+# License: GNU GPL (>= 2)
+#' @exportS3Method
+all.numeric <- function (x, what = c("test", "vector"), extras = c(".", "NA")){
+  what <- match.arg(what)
+  old <- options(warn = -1)
+  on.exit(options(old));
+  x <- sub("[[:space:]]+$", "", x);
+  x <- sub("^[[:space:]]+", "", x);
+  inx <- x %in% c("", extras);
+  xs <- x[!inx];
+  isnum <- !any(is.na(as.numeric(xs)))
+  if (what == "test") 
+    isnum
+  else if (isnum) 
+    as.numeric(x)
+  else x
+}
+
+ClearNumerics <-function(dat.mat){
+  dat.mat[is.na(dat.mat)] <- -777;
+  dat.mat[dat.mat == Inf] <- -999;
+  dat.mat[dat.mat == -Inf] <- -111;
+  dat.mat;
+}
+
+#'Calculate Pairwise Differences
+#'@description Mat are log normalized, diff will be ratio. Used in higher functions. 
+#'@param mat Input matrix of data to calculate pair-wise differences.
+#'@author Jeff Xia \email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'
+CalculatePairwiseDiff <- function(mat){
+  f <- function(i, mat) {
+    z <- mat[, i-1] - mat[, i:ncol(mat), drop = FALSE]
+    colnames(z) <- paste(colnames(mat)[i-1], colnames(z), sep = "/")
+    z
+  }
+  res <- do.call("cbind", sapply(2:ncol(mat), f, mat));
+  round(res,5);
+}
+
+extractTopFeatures <- function(mat, topN = 1000, ratioFilOpt = "sum"){
+  if(ratioFilOpt == "sum"){
+    
+    sum_vals <- apply(mat, 2, sum)
+    order_idx <- order(sum_vals, decreasing = TRUE)
+    matx <- mat[, order_idx]
+    return(matx[,1:topN])
+    
+  } else {
+    cv_cal <- function(x){
+      sd(x,na.rm = TRUE)/mean(x, na.rm = TRUE)
+    }
+    cv_vals <- apply(mat, 2, cv_cal)
+    order_idx <- order(cv_vals, decreasing = TRUE)
+    matx <- mat[, order_idx]
+    return(matx[,1:topN])
+  }
+
+}
+
+
+##############################################
+##############################################
+########## Utilities for web-server ##########
+##############################################
+##############################################
+
+#'Update graph settings
+#'@description Function to update the graph settings.
+#'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+#'@param colVec colVec
+#'@param shapeVec shapeVec
+#'@export
+# col.vec should already been created
+UpdateGraphSettings <- function(mSetObj=NA, colVec, shapeVec){
+
+    mSetObj <- .get.mSet(mSetObj);
+    grpnms <- levels(current.cls);
+
+    # default styles
+    grp.num <- length(grpnms);
+    if(grp.num <= 18){ 
+       cols <- pal_18[1:grp.num];
+    }else{
+       cols <- colorRampPalette(pal_18)(grp.num);
+    }
+
+    # make sure the NA
+    colVec <- gsub("##", "#", colVec)
+    na.inx <- colVec == "#NA";
+    colVec[na.inx] <- cols[na.inx];
+
+    names(colVec) <- grpnms;
+
+    colVec <<- colVec;
+    if(all(shapeVec == 0, na.rm = TRUE)){
+
+    }else{
+        shapeVec[shapeVec == 0] <- 21;
+        names(shapeVec) <- grpnms;
+        shapeVec <<- shapeVec;
+    }
+    return(.set.mSet(mSetObj));
+}
+
+GetShapeSchema <- function(my.cls, show.name=0, grey.scale=0){
+
+  lvs <- levels(my.cls); 
+  grp.num <- length(lvs);
+
+  if(exists("shapeVec") && all(shapeVec >= 0)){
+    # double check in case user excluded some groups
+    shapes <- shapeVec[names(colVec) %in% levels(my.cls)];
+
+    if(all(shapeVec == 0)){
+       shapes <- rep(21, grp.num);
+    }
+  }else{
+      if(show.name | grey.scale){
+      shapes <- 1:grp.num;
+    }else{
+      shapes <- rep(21, grp.num);
+    }
+  }
+  names(shapes) <- lvs;
+  return(shapes);
+}
+
+# from grouped assigned to each sample
+ExpandSchema<-function(my.cls, schema){
+    my.vec <- rep(0, length=length(my.cls));
+    clsVec <- as.character(my.cls)
+    grpnms <- levels(my.cls);
+    for(i in 1:length(grpnms)){
+      nm <- grpnms[i];
+      my.vec[clsVec == nm] <- schema[nm];
+    }
+
+    return(my.vec);
+}
+
+pal_18 <- c("#e6194B", "#3cb44b", "#4363d8", "#42d4f4", "#f032e6", "#ffe119", "#911eb4", "#f58231", "#bfef45",
+                  "#fabebe", "#469990", "#e6beff", "#9A6324", "#800000", "#aaffc3", "#808000", "#ffd8b1", "#000075");
+cb_pal_18 <- c("#E69F00", "#b12c6f", "#56B4E9", "#009E73", "#F0E442", "#004488", 
+                     "#D55E00", "#EE6677", "#CCBB44", "#A95AA1", "#DCB69F", "#661100", 
+                     "#63ACBE", "#332288", "#EE7733", "#EE3377", "#0072B2", "#999933");
+
+# return a gradient color vec based on value 
+GetRGBColorGradient <- function(vals){
+    library(RColorBrewer);
+    #seed.cols <- brewer.pal(3, "YlOrRd");
+    #seed.cols <- brewer.pal(9, "Oranges")[c(2,5,7)]
+    seed.cols <- c("#FCF5DF", "#FFEDA0", "#F03B20")
+    cols <- colorRampPalette(seed.cols)(length(vals));
+
+    # set alpha for 
+    my.alpha <- signif(seq(from=0.3, to=0.8, length.out=length(vals)),2);
+    rgb.cols <- my.col2rgba(cols, alpha=my.alpha);
+
+    # now need make sure values and colors are matched using names
+    nms.orig <- names(vals);
+    names(rgb.cols) <- names(sort(vals));
+    ord.cols <- rgb.cols[nms.orig];
+    return(as.vector(ord.cols)); # note remove names
+}
+
+
+GetSizeGradient <- function(vals){
+
+    my.sizes <- round(seq(from=4, to=6, length.out=length(vals)));
+
+    # now need make sure values and colors are matched using names
+    nms.orig <- names(vals);
+    names(my.sizes) <- names(sort(vals));
+    ord.sizes <- my.sizes[nms.orig];
+    return(as.vector(ord.sizes)); # note remove names
+}
+
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+GetColorSchema <- function(my.cls, grayscale=F){
+  
+   lvs <- levels(my.cls); 
+   grp.num <- length(lvs);
+   if(grayscale){
+      dist.cols <- colorRampPalette(c("grey90", "grey30"))(grp.num);
+      names(dist.cols) <- lvs;
+   }else if(exists("colVec") && length(colVec) >0 && !any(colVec =="#NA")){
+
+      # make sure to sync with cls in case user exclude some groups
+      dist.cols <- colVec[names(colVec) %in% levels(my.cls)];
+
+   }else{             
+      if(grp.num <= 18){ # update color and respect default
+          dist.cols <- pal_18[1:grp.num];
+      }else{
+          dist.cols <- colorRampPalette(pal_18)(grp.num);
+      }
+      names(dist.cols) <- lvs;
+   }
+
+   return (dist.cols);
+}
+
+#'Remove folder
+#'@description Remove folder
+#'@param folderName Input name of folder to remove
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'
+RemoveFolder<-function(folderName){
+  a<-system(paste("rm",  "-r", folderName), intern=T);
+  if(!length(a)>0){
+    AddErrMsg(paste("Could not remove file -", folderName));
+    return (0);
+  }
+  return(1);
+}
+
+#'Remove file
+#'@description Remove file
+#'@param fileName Input name of file to remove
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+RemoveFile<-function(fileName){
+  if(file.exists(fileName)){
+    file.remove(fileName);
+  }
+}
+
+# do memory cleaning after removing many objects
+cleanMem <- function() { 
+    gc(); 
+}
+
+# Memory functions
+ShowMemoryUse <- function(..., n=40) {
+    if(requireNamespace("pryr", quietly = TRUE)){
+        library(pryr);
+        sink(); # make sure print to screen
+        print(mem_used());
+        print(sessionInfo());
+        print(.ls.objects(..., order.by="Size", decreasing=TRUE, head=TRUE, n=n));    
+    }
+    print(warnings());
+}
+
+#'Perform utilities for cropping images
+#'@description Obtain the full path to convert (from imagemagik)
+#'for cropping images
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+GetConvertFullPath<-function(){
+  path <- system("which convert", intern=TRUE);
+  if((length(path) == 0) && (typeof(path) == "character")){
+    print("Could not find convert in the PATH!");
+    return("NA");
+  }
+  return(path);
+}
+
+# need to obtain the full path to convert (from imagemagik) for cropping images
+GetBashFullPath<-function(){
+  path <- system("which bash", intern=TRUE);
+  if((length(path) == 0) && (typeof(path) == "character")){
+    print("Could not find bash in the PATH!");
+    return("NA");
+  }
+  return(path);
+}
+
+#'Converts xset object from XCMS to mSet object for MetaboAnalyst
+#'@description This function converts processed raw LC/MS data from XCMS 
+#'to a usable data object (mSet) for MetaboAnalyst. The immediate next step following using this 
+#'function is to perform a SanityCheck, and then further data processing and analysis can continue.
+#'@param xset The name of the xcmsSet object created.
+#'@param dataType The type of data, either list (Compound lists), conc (Compound concentration data), 
+#'specbin (Binned spectra data), pktable (Peak intensity table), nmrpeak (NMR peak lists), mspeak (MS peak lists), 
+#'or msspec (MS spectra data).
+#'@param analType Indicate the analysis module to be performed: stat, pathora, pathqea, msetora, msetssp, msetqea, mf, 
+#'cmpdmap, smpmap, or pathinteg.
+#'@param paired Logical, is data paired (T) or not (F).
+#'@param format Specify if samples are paired and in rows (rowp), unpaired and in rows (rowu),
+#'in columns and paired (colp), or in columns and unpaired (colu).
+#'@param lbl.type Specify the data label type, either categorical (disc) or continuous (cont).
+#'@export
+
+XSet2MSet <- function(xset, dataType, analType, paired=F, format, lbl.type){
+  
+  # data <- xcms::groupval(xset, "medret", "into");
+  # data2 <- rbind(class= as.character(phenoData(xset)$class), data);
+  # rownames(data2) <- c("group", paste(round(groups(xset)[,"mzmed"], 3), round(groups(xset)[,"rtmed"]/60, 1), sep="/"));
+  # fast.write.csv(data2, file="PeakTable.csv");
+  # mSet <- InitDataObjects("dataType", "analType", paired)
+  # mSet <- Read.TextData(mSet, "PeakTable.csv", "format", "lbl.type")
+  # print("mSet successfully created...")
+  # return(.set.mSet(mSetObj));
+}
+
+#'Get fisher p-values
+#'@param numSigMembers Number of significant members
+#'@param numSigAll Number of all significant features
+#'@param numMembers Number of members
+#'@param numAllMembers Number of all members
+#'@export
+GetFisherPvalue <- function(numSigMembers, numSigAll, numMembers, numAllMembers){
+  z <- cbind(numSigMembers, numSigAll-numSigMembers, numMembers-numSigMembers, numAllMembers-numMembers-numSigAll+numSigMembers);
+  z <- lapply(split(z, 1:nrow(z)), matrix, ncol=2);
+  z <- lapply(z, fisher.test, alternative = 'greater');
+  p.values <- as.numeric(unlist(lapply(z, "[[", "p.value"), use.names=FALSE));
+  return(p.values);
+}
+
+saveNetworkInSIF <- function(network, name){
+  edges <- .graph.sif(network=network, file=name);
+  sif.nm <- paste(name, ".sif", sep="");
+  if(length(edge_attr_names(network))!=0){
+    edge.nms <- .graph.eda(network=network, file=name, edgelist.names=edges);
+    sif.nm <- c(sif.nm, edge.nms);
+  }
+  if(length(vertex_attr_names(network))!=0){
+    node.nms <- .graph.noa(network=network, file=name);
+    sif.nm <- c(sif.nm, node.nms);
+  }
+  # need to save all sif and associated attribute files into a zip file for download
+  zip(paste(name,"_sif",".zip", sep=""), sif.nm);
+}
+
+.graph.sif <- function(network, file){
+  edgelist.names <- igraph::as_edgelist(network, names=TRUE)
+  edgelist.names <- cbind(edgelist.names[,1], rep("pp", length(E(network))), edgelist.names[,2]);
+  write.table(edgelist.names, row.names=FALSE, col.names=FALSE, file=paste(file, ".sif", sep=""), sep="\t", quote=FALSE)
+  return(edgelist.names) 
+}
+
+# internal method to write cytoscape node attribute files
+.graph.noa <- function(network, file){
+  all.nms <- c();
+  attrib <- vertex_attr_names(network)
+  for(i in 1:length(attrib)){
+    if(is(vertex_attr(network, attrib[i]))[1] == "character")
+    {
+      type <- "String"
+    }
+    if(is(vertex_attr(network, attrib[i]))[1] == "integer")
+    {
+      type <- "Integer"
+    }
+    if(is(vertex_attr(network, attrib[i]))[1] == "numeric")
+    {
+      type <- "Double"
+    }
+    noa <- cbind(V(network)$name, rep("=", length(V(network))), vertex_attr(network, attrib[i]))
+    first.line <- paste(attrib[i], " (class=java.lang.", type, ")", sep="")
+    file.nm <- paste(file, "_", attrib[i], ".NA", sep="");
+    write(first.line, file=file.nm, ncolumns = 1, append=FALSE, sep=" ")
+    write.table(noa, row.names = FALSE, col.names = FALSE, file=file.nm, sep=" ", append=TRUE, quote=FALSE);
+    all.nms <- c(all.nms, file.nm);
+  }
+  return(all.nms);
+}
+
+# internal method to write cytoscape edge attribute files
+.graph.eda <- function(network, file, edgelist.names){
+  all.nms <- c();
+  attrib <- edge_attr_names(network)
+  for(i in 1:length(attrib)){
+    if(is(edge_attr(network, attrib[i]))[1] == "character")
+    {
+      type <- "String"
+    }
+    if(is(edge_attr(network, attrib[i]))[1] == "integer")
+    {
+      type <- "Integer"
+    }
+    if(is(edge_attr(network, attrib[i]))[1] == "numeric")
+    {
+      type <- "Double"
+    }
+    eda <- cbind(cbind(edgelist.names[,1], rep("(pp)", length(E(network))), edgelist.names[,3]), rep("=", length(E(network))), edge_attr(network, attrib[i]))
+    first.line <- paste(attrib[i], " (class=java.lang.", type, ")", sep="");
+    file.nm <- paste(file, "_", attrib[i], ".EA", sep="");
+    write(first.line, file=file.nm, ncolumns=1, append=FALSE, sep =" ")
+    write.table(eda, row.names = FALSE, col.names = FALSE, file=file.nm, sep=" ", append=TRUE, quote=FALSE);
+    all.nms <- c(all.nms, file.nm);
+  }
+  return(all.nms);
+}
+
+PlotLoadBoxplot <- function(mSetObj=NA, cmpd){
+
+  mSetObj <- .get.mSet(mSetObj);
+  
+  if(.on.public.web){
+    load_ggplot()
+  }
+
+  cls.lbls <- mSetObj$dataSet$cls;
+  y.label <- GetAbundanceLabel(mSetObj$dataSet$type);
+  cmpd.name = paste0("Met_", cmpd, ".png")
+  
+  w <- 240/72
+  h <- 400/72
+  Cairo::Cairo(file=cmpd.name, unit="in", width=w, height=h, bg = "transparent", type="png", dpi=default.dpi);
+  
+  col <- unique(GetColorSchema(cls.lbls))
+  df <- data.frame(conc = mSetObj$dataSet$norm[, cmpd], class = cls.lbls)
+  p <- ggplot2::ggplot(df, aes(x=class, y=conc, fill=class)) + geom_boxplot(notch=FALSE, outlier.shape = NA, outlier.colour=NA) + theme_bw() + geom_jitter(size=1)
+  p <- p + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), legend.position = "none")
+  p <- p + stat_summary(fun.y=mean, colour="yellow", geom="point", shape=18, size=3, show.legend = FALSE)
+  p <- p + theme(text = element_text(size=15), plot.margin = margin(t=0.45, r=0.25, b=1.5, l=0.25, "cm"))
+  p <- p + scale_fill_manual(values=col) + ggtitle(cmpd) + theme(axis.text.x = element_text(angle=90, hjust=1), axis.text = element_text(size=10))
+  p <- p + theme(plot.title = element_text(size = 14, hjust=0.5, face="bold", vjust=2))
+  print(p)
+  
+  dev.off()
+}
+
+#'Compute within group and between group sum of squares
+#'(BSS/WSS) for each row of a matrix which may have NA
+#'@description Columns have labels, x is a numeric vector,
+#'cl is consecutive integers
+#'@param x Numeric vector
+#'@param cl Columns
+#'@author Jeff Xia\email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+
+Get.bwss<-function(x, cl){
+  K <- max(cl) - min(cl) + 1
+  tvar <- var.na(x);
+  tn <- sum(!is.na(x));
+  wvar <- wn <- numeric(K);
+  
+  for(i in (1:K)) {
+    if(sum(cl == (i + min(cl) - 1)) == 1){
+      wvar[i] <- 0;
+      wn[i] <- 1;
+    }
+    
+    if(sum(cl == (i + min(cl) - 1)) > 1) {
+      wvar[i] <- var.na(x[cl == (i + min(cl) - 1)]);
+      wn[i] <- sum(!is.na(x[cl == (i + min(cl) - 1)]));
+    }
+  }
+  
+  WSS <- sum.na(wvar * (wn - 1));
+  TSS <- tvar * (tn - 1)
+  (TSS - WSS)/WSS;
+}
+
+# compute the distance to the centroid of the given data
+# note each col is a x,y,z
+# since this is centered, the centroid is origin
+GetDist3D <-function(mat, target=c(0,0,0)){
+    dist.vec <- apply(mat, 2, function(x) dist(rbind(x, target)));
+    return(dist.vec);
+}
+
+#' @export
+sum.na <- function(x,...){
+  res <- NA
+  tmp <- !(is.na(x) | is.infinite(x))
+  if(sum(tmp) > 0)
+    res <- sum(x[tmp])
+  res
+}
+
+var.na <- function(x){
+  res <- NA
+  tmp <- !(is.na(x) | is.infinite(x))
+  if(sum(tmp) > 1){
+    res <- var(as.numeric(x[tmp]))
+  }
+  res
+}
+
+#var.na <- function(x){
+#   return(substr(bigTxt, nchar(bigTxt)-nchar(endTxt)+1, nchar(bigTxt)) == endTxt);
+#}
+
+## fast T-tests/F-tests, and use cache to avoid redundant computing
+PerformFastUnivTests <- function(data, cls, var.equal=TRUE){
+    if(!exists("mem.univ")){
+        require("memoise");
+        mem.univ <<- memoise(.perform.fast.univ.tests);
+    }
+    return(mem.univ(data, cls, var.equal));
+}
+
+.perform.fast.univ.tests <- function(data, cls, var.equal=TRUE){
+
+    print("Performing fast univariate tests ....");
+    # note, feature in rows for gene expression
+    data <- t(as.matrix(data));
+    if(length(levels(cls)) > 2){
+        res <- try(rowcolFt(data, cls, var.equal = var.equal));
+    }else{
+        res <- try(rowcoltt(data, cls, FALSE, 1L, FALSE));
+    }
+
+    if(class(res) == "try-error") {
+        # Self-hosted fallback: the native two-group t-test routine used by
+        # rowcoltt() (XiaLabCppLib / .Call("rowcolttests")) is unavailable on
+        # this build, so rowcoltt() errors and 2-group comparisons would yield
+        # NA p-values. Compute a vectorized two-sample t-test in pure R so the
+        # p-values are still produced. >2-group uses pure-R rowcolFt above and
+        # never reaches here.
+        lev <- levels(cls);
+        if(length(lev) == 2){
+            g1 <- data[, cls == lev[1], drop=FALSE];
+            g2 <- data[, cls == lev[2], drop=FALSE];
+            n1 <- rowSums(!is.na(g1)); n2 <- rowSums(!is.na(g2));
+            m1 <- rowMeans(g1, na.rm=TRUE); m2 <- rowMeans(g2, na.rm=TRUE);
+            v1 <- rowSums((g1 - m1)^2, na.rm=TRUE)/(n1 - 1);
+            v2 <- rowSums((g2 - m2)^2, na.rm=TRUE)/(n2 - 1);
+            if(isTRUE(var.equal)){
+                sp2 <- ((n1 - 1)*v1 + (n2 - 1)*v2)/(n1 + n2 - 2);
+                se  <- sqrt(sp2*(1/n1 + 1/n2));
+                df  <- n1 + n2 - 2;
+            } else {
+                se  <- sqrt(v1/n1 + v2/n2);
+                df  <- (v1/n1 + v2/n2)^2 / ((v1/n1)^2/(n1 - 1) + (v2/n2)^2/(n2 - 1));
+            }
+            tstat <- (m1 - m2)/se;
+            pval  <- 2*pt(abs(tstat), df, lower.tail=FALSE);
+            res <- data.frame(statistic = tstat, p.value = pval, row.names = rownames(data));
+        } else {
+            res <- cbind(NA, NA);
+        }
+    }else{
+        # res <- cbind(res$statistic, res$p.value);
+        # make sure row names are kept
+        res <- res[, c("statistic", "p.value")];
+    }
+
+    return(res);
+}
+
+GetCurrentPathForScheduler <- function(){
+    path <-getwd();
+    path <- gsub(basename(path), "", path)
+    return(path)
+}
+
+# Round numerics on CSV export. A double carries ~15 significant digits; for normalized
+# intensities, log-CPM and p-values that is roughly ten digits of arithmetic noise, and it
+# dominates the file: a 16354 x 134 normalized matrix wrote 37.6 MB, 58% of which was
+# trailing digits. Applied per COLUMN, never to a whole data.frame -- signif() over a
+# character column errors -- and only to doubles, so integer counts and IDs stay exact.
+# Digits come from an option so the precision can be tuned without editing every package:
+#   options(ov.csv.signif = 8)   # more precision
+#   options(ov.csv.signif = 0)   # disable, write full precision
+# Any failure returns the input untouched: rounding must never be able to break a write.
+.ov_signif_cols <- function(dat, digits = getOption("ov.csv.signif", 6)) {
+    tryCatch({
+        if (is.null(dat)) return(dat);
+        if (is.null(digits) || !is.numeric(digits) || length(digits) != 1 ||
+            is.na(digits) || digits <= 0) return(dat);
+        if (is.matrix(dat)) {
+            if (is.double(dat)) dat <- signif(dat, digits);
+            return(dat);
+        }
+        if (is.data.frame(dat)) {
+            for (.j in seq_along(dat)) {
+                if (is.double(dat[[.j]])) dat[[.j]] <- signif(dat[[.j]], digits);
+            }
+        }
+        dat;
+    }, error = function(e) dat);
+}
+
+fast.write.csv <- function(dat, file, row.names=TRUE){
+    dat <- .ov_signif_cols(dat);
+    tryCatch(
+        {
+           if(is.data.frame(dat)){
+                # there is a rare bug in data.table (R 3.6) which kill the R process in some cases 
+                data.table::fwrite(dat, file, row.names=row.names);
+           }else{
+                write.csv(dat, file, row.names=row.names);  
+           }
+        }, error=function(e){
+            print(e);
+            write.csv(dat, file, row.names=row.names);   
+        }, warning=function(w){
+            print(w);
+            write.csv(dat, file, row.names=row.names); 
+        });
+}
+
+rowcolFt =  function(x, fac, var.equal, which = 1L) {
+  
+  if(!(which %in% c(1L, 2L)))
+    stop(sQuote("which"), " must be 1L or 2L.")
+  
+  if(which==2L)
+    x = t(x)
+
+  if (typeof(x) == "integer")
+      x[] <- as.numeric(x)
+
+  sqr = function(x) x*x
+  
+  stopifnot(length(fac)==ncol(x), is.factor(fac), is.matrix(x))
+  x   <- x[,!is.na(fac), drop=FALSE]
+  fac <- fac[!is.na(fac)]
+
+  ## Number of levels (groups)
+  k <- nlevels(fac)
+
+  ## xm: a nrow(x) x nlevels(fac) matrix with the means of each factor
+  ## level
+  xm <- matrix(
+     sapply(levels(fac), function(fl) rowMeans(x[,which(fac==fl), drop=FALSE])),
+     nrow = nrow(x),
+     ncol = nlevels(fac))
+
+  ## x1: a matrix of group means, with as many rows as x, columns correspond to groups 
+  x1 <- xm[,fac, drop=FALSE]
+
+  ## degree of freedom 1
+  dff    <- k - 1
+
+  if(var.equal){
+    ## x0: a matrix of same size as x with overall means
+    x0 <- matrix(rowMeans(x), ncol=ncol(x), nrow=nrow(x))
+  
+    ## degree of freedom 2
+    dfr    <- ncol(x) - dff - 1
+
+    ## mean sum of squares
+    mssf   <- rowSums(sqr(x1 - x0)) / dff
+    mssr   <- rowSums(sqr( x - x1)) / dfr
+
+    ## F statistic
+    fstat  <- mssf/mssr
+
+  } else{
+
+    ## a nrow(x) x nlevels(fac) matrix with the group size  of each factor
+    ## level
+    ni <- t(matrix(tapply(fac,fac,length),ncol=nrow(x),nrow=k))
+
+    ## wi: a nrow(x) x nlevels(fac) matrix with the variance * group size of each factor
+    ## level
+    sss <- sqr(x-x1)
+    x5 <- matrix(
+       sapply(levels(fac), function(fl) rowSums(sss[,which(fac==fl), drop=FALSE])),
+       nrow = nrow(sss),
+       ncol = nlevels(fac))          
+    wi <- ni*(ni-1) /x5
+
+    ## u : Sum of wi
+    u  <- rowSums(wi)
+
+    ## F statistic
+    MR <- rowSums(sqr((1 - wi/u)) * 1/(ni-1))*1/(sqr(k)-1)
+    fsno <- 1/dff * rowSums(sqr(xm - rowSums(wi*xm)/u) * wi)
+    fsdeno <- 1+ 2* (k-2)*MR
+    fstat <- fsno/fsdeno
+
+    ## degree of freedom 2: Vector with length nrow(x)
+    dfr <- 1/(3 * MR)
+  
+  }
+  
+  res = data.frame(statistic = fstat,
+                   p.value   = pf(fstat, dff, dfr, lower.tail=FALSE),
+                   row.names = rownames(x))
+
+  attr(res, "df") = c(dff=dff, dfr=dfr)
+  return(res)
+}
+
+rowcoltt =  function(x, fac, tstatOnly, which, na.rm) {
+    
+  #if(.on.public.web){
+  #  dyn.load(.getDynLoadPath());
+  #}
+
+  if (!missing(tstatOnly) && (!is.logical(tstatOnly) || is.na(tstatOnly)))
+      stop(sQuote("tstatOnly"), " must be TRUE or FALSE.")
+  
+  f = checkfac(fac)
+  if ((f$nrgrp > 2) || (f$nrgrp <= 0))
+    stop("Number of groups is ", f$nrgrp, ", but must be >0 and <=2 for 'rowttests'.")
+
+  if (typeof(x) == "integer")
+      x[] <- as.numeric(x)
+
+  if(.on.public.web){
+      require("XiaLabCppLib")
+      cc = XiaLabCppLib::rowcolttestsR(x, f$fac, f$nrgrp, which-1L, na.rm)
+  } else {
+      cc = .Call("rowcolttests", x, f$fac, f$nrgrp, which-1L, na.rm, PACKAGE="MetaboAnalystR")
+  }
+  res = data.frame(statistic = cc$statistic,
+                   dm        = cc$dm,
+                   row.names = dimnames(x)[[which]])
+
+  if (!tstatOnly)
+    res = cbind(res, p.value = 2*pt(abs(res$statistic), cc$df, lower.tail=FALSE))
+
+  attr(res, "df") = cc$df    
+  return(res)
+}
+
+checkfac = function(fac) {
+
+  if(is.numeric(fac)) {
+    nrgrp = as.integer(max(fac, na.rm=TRUE)+1)
+    fac   = as.integer(fac)
+  }
+  ## this must precede the factor test
+  if(is.character(fac))
+    fac = factor(fac)
+
+  if (is.factor(fac)) {
+    nrgrp = nlevels(fac)
+    fac   = as.integer(as.integer(fac)-1)
+  } 
+  if(!is.integer(fac))
+    stop("'fac' must be factor, character, numeric, or integer.")
+  
+  if(any(fac<0, na.rm=TRUE))
+    stop("'fac' must not be negative.")
+    
+  return(list(fac=fac, nrgrp=nrgrp))
+}
+
+# to convert all rds files to qs file for faster access
+convert.rds2qs <- function(){
+ rds.files <- list.files(".", pattern=".rds$");
+ for(rds in rds.files){
+    lib.rds <- readRDS(rds);
+    nm <- substr(rds, 1, nchar(rds)-4);
+    ov_qs_save(lib.rds,paste0(nm, ".qs"));
+ }
+}
+
+# to convert all rda files to qs file for faster access
+convert.rda2qs <- function(){
+ rda.files <- list.files(".", pattern=".rda$");
+ for(rda in rda.files){
+    nm <- substr(rda, 1, nchar(rda)-4);
+    lib.rda <- load(rda);
+    # here the name is inmexpa (jointpa)
+    # ov_qs_save(inmexpa,paste0(nm, ".qs"));
+    # here the name is metpa (metpa)
+    ov_qs_save(metpa,paste0(nm, ".qs"));
+    # here the name is current.msetlib (msets)
+    #ov_qs_save(current.msetlib,paste0(nm, ".qs"));
+ }
+}
+
+overlap_ratio <- function(x, y) {
+  x <- unlist(x)
+  y <- unlist(y)
+  length(intersect(x, y))/length(unique(c(x,y)))
+}
+
+# a utility function to get pheatmap image size (before saving to PNG)
+# https://stackoverflow.com/questions/61874876/get-size-of-plot-in-pixels-in-r
+get_pheatmap_dims <- function(dat, annotation, view.type, width, cellheight = 15, cellwidth = 15){
+  png("NUL", type = "cairo"); # trick to avoid open device in server 
+  heat_map <- pheatmap::pheatmap(dat, annotation=annotation, cellheight = cellheight, cellwidth = cellwidth);
+  h <- sum(sapply(heat_map$gtable$heights, grid::convertHeight, "in"));
+  w  <- sum(sapply(heat_map$gtable$widths, grid::convertWidth, "in"));
+  dev.off();
+
+  # further refine 
+  myW <- ncol(dat)*20 + 200;  
+  if(myW < 650){
+      myW <- 650;
+  }   
+  myW <- round(myW/72,2);
+  if(w < myW){
+    w <- myW;
+  }
+
+  if(view.type == "overview"){
+    if(is.na(width)){
+      # Use the label-aware natural size; cap only to bound very large sets. The
+      # old hard 9-in cap + square-forcing crammed row/column labels for datasets
+      # with many samples/features, so tall/wide data keeps its own aspect here.
+      w <- min(w, 24);
+      h <- min(h, 30);
+    }else{
+      if(width == 0){
+        if(w > 7.2){
+          w <- 7.2;
+        }
+      }else{
+        w <- 7.2;
+      }
+      if(h > w){
+        h <- w;
+      }
+    }
+  }
+
+  return(list(height = h, width = w));
+}
+
+PerformFeatureFilter <- function(int.mat, filter, filter.cutoff, anal.type){
+
+    nm <- msg <- NULL;
+
+    # first compute rank based on filter selected
+    if (filter == "rsd"){
+      sds <- apply(int.mat, 2, sd, na.rm=T);
+      mns <- apply(int.mat, 2, mean, na.rm=T);
+      filter.val <- abs(sds/mns);
+      nm <- "Relative standard deviation";
+    }else if (filter == "nrsd" ){
+      mads <- apply(int.mat, 2, mad, na.rm=T);
+      meds <- apply(int.mat, 2, median, na.rm=T);
+      filter.val <- abs(mads/meds);
+      nm <- "Non-paramatric relative standard deviation";
+    }else if (filter == "mean"){
+      filter.val <- apply(int.mat, 2, mean, na.rm=T);
+      nm <- "mean";
+    }else if (filter == "sd"){
+      filter.val <- apply(int.mat, 2, sd, na.rm=T);
+      nm <- "standard deviation";
+    }else if (filter == "mad"){
+      filter.val <- apply(int.mat, 2, mad, na.rm=T);
+      nm <- "Median absolute deviation";
+    }else if (filter == "median"){
+      filter.val <- apply(int.mat, 2, median, na.rm=T);
+      nm <- "median";
+    }else{ # iqr
+      filter.val <- apply(int.mat, 2, IQR, na.rm=T);
+      nm <- "Interquantile Range";
+  }
+
+    # get the rank of the filtered variables
+    rk <- rank(-filter.val, ties.method='random');
+
+    remain.num <- ncol(int.mat)*(1-(filter.cutoff/100));
+    remain <- rk <= remain.num;
+    msg <- paste(msg, "Feature filtering based on ```", nm, "``` - removed <b>", sum(!remain), "</b>based on the cutoff.");
+
+    # note, primary.user is a global variable set from web, TRUE for registered users or local MetaboAnalystR user
+    if(!primary.user){
+        max.allow <- .get.max.allow(anal.type);  
+        if(sum(remain) > max.allow){
+            remain <- rk <= max.allow;
+            msg <- paste(msg, paste("Further reduced to <b>", max.allow, "</b> features based on ```", nm, "```."));   
+    }
+  }
+    # save a copy for user 
+    fast.write.csv(cbind(filter=filter.val, t(int.mat)), file=paste0("data_prefilter_", filter, ".csv"));
+
+    #print(msg);
+    return(list(data=int.mat[, remain], msg=msg));
+}
+
+
+# do default filtering based on data size
+.computeEmpiricalFilterCutoff <- function(feat.num, anal.type){
+
+    filter.cutoff <- 0;
+    if(feat.num < 250){ 
+        filter.cutoff <- 5;
+    }else if(feat.num < 500){ # reduce 10%
+        filter.cutoff <- 10;
+    }else if(feat.num < 1000){ # reduce 25%
+        filter.cutoff <- 25;
+    }else{ # reduce 40%, 
+        filter.cutoff <- 40;
+
+        max.allow <- .get.max.allow (anal.type);      
+        if(feat.num*0.6 > max.allow){
+            filter.cutoff <- round(100*(feat.num - max.allow) / feat.num);
+        }
+    }
+
+    return(filter.cutoff);
+}
+
+# general default control for datasize 
+.get.max.allow <- function(anal.type){
+
+    if(anal.type == "mummichog" || anal.type == "dose" ){
+        max.allow <- 10000;
+    }else if(anal.type == "power"){
+        max.allow <- 2500;
+    }else{
+        max.allow <- 10000;
+    }
+    return(max.allow);
+}
+
+# make data and metadata share the same samples and in same order    
+.sync.data.metadata <- function(my.data, my.metadata){
+
+     if(!identical(rownames(my.data), rownames(my.metadata))){
+
+        # now get the overlap, using first as anchor
+        smpl.nms <- rownames(my.data);
+        shared.inx <- smpl.nms %in% rownames(my.metadata);
+
+        # ── Rescue QC_*/BLANK_* samples missing from metadata ───────────
+        # Peak intensity tables routinely include process-control samples
+        # named `QC_*` (relative-standard-deviation filtering) and
+        # `BLANK_*` (blank-subtraction baseline). The metadata table
+        # typically only lists biological samples, so a naive intersect
+        # would drop the controls before they could be used by
+        # FilterVariable / blank subtraction. Detect them by name prefix
+        # (the same fallback FilterVariable uses at general_proc_utils.R
+        # line 649: `grepl("^qc", rownames(int.mat))`) and synthesize
+        # metadata rows so the first column carries `"QC"` / `"BLANK"`
+        # — that also lights up the class-label detector at
+        # general_proc_utils.R line 289.
+        qb.inx     <- grepl("^(QC|BLANK)([_.\\-]|[0-9]|$)", smpl.nms, ignore.case=TRUE);
+        rescue.inx <- qb.inx & !shared.inx;
+        if (any(rescue.inx) && ncol(my.metadata) > 0) {
+            rescue.nms <- smpl.nms[rescue.inx];
+            # Extend levels of any factor column so the new "QC"/"BLANK"
+            # values land cleanly rather than as NA.
+            if (is.factor(my.metadata[[1]])) {
+                cur.lvls <- levels(my.metadata[[1]]);
+                levels(my.metadata[[1]]) <- unique(c(cur.lvls, "QC", "BLANK"));
+            }
+            extra <- as.data.frame(matrix(NA, nrow=length(rescue.nms),
+                                          ncol=ncol(my.metadata)),
+                                   stringsAsFactors=FALSE);
+            colnames(extra) <- colnames(my.metadata);
+            rownames(extra) <- rescue.nms;
+            extra[[1]] <- ifelse(grepl("^QC", rescue.nms, ignore.case=TRUE),
+                                 "QC", "BLANK");
+            my.metadata <- rbind(my.metadata, extra);
+            shared.inx <- smpl.nms %in% rownames(my.metadata);
+            print(paste("Rescued", length(rescue.nms),
+                        "QC/BLANK process-control sample(s) absent from metadata:",
+                        paste(rescue.nms, collapse="; ")));
+        }
+
+        shared.nms <- smpl.nms[shared.inx];
+
+        if(sum(!shared.inx)>0){
+            print(paste("Those samples are removed from data: ", paste(smpl.nms[!shared.inx], collapse="; "), collapse=" "));
+        }
+
+        # update both
+        my.data <- my.data[shared.nms,,drop=FALSE];
+        my.metadata <- my.metadata[shared.nms,,drop=FALSE];
+
+        # drop levels for factor column in case the whole group is gone
+        for(i in 1:ncol(my.metadata)){
+            if(class(my.metadata[,i]) == "factor"){
+                my.metadata[,i] <- droplevels(my.metadata[,i]);
+            }
+        }
+
+        print(paste("Successfully performed synchronization: a total of", length(shared.nms), "samples that are shared between the two tables are left.", collapse=" "));
+      }
+
+      # ── Class-label normalization for QC/BLANK-named samples ─────────
+      # Runs unconditionally (whether or not alignment was needed) because
+      # users may upload metadata with rows for QC_*/BLANK_* samples but
+      # leave the class column empty / NA. Without normalization those
+      # samples pass through to downstream class-based filters
+      # (FilterVariable's QC RSD at general_proc_utils.R line 645,
+      # .test.missing.sig line 363) with NA class, which makes the
+      # `grepl("^qc$", cls)` mask unpredictable. Force class = "QC" or
+      # "BLANK" so all class-based logic recognizes them consistently
+      # — and so the post-processing removal that the user expects
+      # ("They should be removed after sanity check and processing")
+      # fires cleanly via the class-label keep mask. Idempotent: rows
+      # already labeled QC/BLANK by the user (or by the rescue block
+      # above) are left untouched.
+      if (ncol(my.metadata) > 0) {
+          mn.nms      <- rownames(my.metadata);
+          qc.name.inx <- grepl("^QC([_.\\-]|[0-9]|$)",    mn.nms, ignore.case=TRUE);
+          bl.name.inx <- grepl("^BLANK([_.\\-]|[0-9]|$)", mn.nms, ignore.case=TRUE);
+          cls.col     <- my.metadata[[1]];
+          cls.empty   <- is.na(cls.col) | trimws(as.character(cls.col)) == "";
+          qc.fix      <- qc.name.inx & cls.empty;
+          bl.fix      <- bl.name.inx & cls.empty;
+          if (any(qc.fix) || any(bl.fix)) {
+              if (is.factor(my.metadata[[1]])) {
+                  levels(my.metadata[[1]]) <- unique(c(levels(my.metadata[[1]]), "QC", "BLANK"));
+              }
+              if (any(qc.fix)) my.metadata[qc.fix, 1] <- "QC";
+              if (any(bl.fix)) my.metadata[bl.fix, 1] <- "BLANK";
+              print(paste("Normalized class for",
+                          sum(qc.fix) + sum(bl.fix),
+                          "QC/BLANK-named sample(s) with empty class column:",
+                          paste(mn.nms[qc.fix | bl.fix], collapse="; ")));
+          }
+      }
+
+      return(list(data=my.data, metadata=my.metadata));
+}
+
+
+GetPrimaryType <- function(analysis.var){
+    mSetObj <- .get.mSet(mSetObj);
+    primary.type <- unname(mSetObj$dataSet$meta.types[analysis.var]);
+    return(primary.type);
+}
+
+PrepareEnrichNet<-function(mSetObj, netNm, overlapType="mixed", type="mummichog", edgeMode="overview"){
+
+    if(!exists("my.enrich.net")){ 
+        source(paste0(rpath ,"rscripts/MetaboAnalystR/R/utils_enrichnet.R"), local = FALSE);
+    }
+    return(my.enrich.net(mSetObj, netNm, overlapType, type, edgeMode ));
+}
+
+  #'Plot PCA Pair Summary with Metadata
+  #'@description Generate PCA pairwise summary plots with metadata overlays.
+  #'@usage PlotPCAPairSummaryMeta(mSetObj=NA, imgName, format="png", dpi=default.dpi, width=NA, pc.num, meta, metaShape=NULL)
+  #'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+  #'@param imgName Base name of the output image file
+  #'@param format Output image format, default is "png"
+  #'@param dpi Image resolution in dots per inch, default is default.dpi
+  #'@param width Image width in inches; use NA for automatic sizing
+  #'@param pc.num Number of principal components to include
+  #'@param meta Metadata column name used for coloring
+  #'@param metaShape Optional metadata column name used for point shape
+  #'@author Jeff Xia \email{jeff.xia@mcgill.ca}
+  #'McGill University, Canada
+  #'License: GNU GPL (>= 2)
+  #'@export
+PlotPCAPairSummaryMeta <- function(mSetObj = NA,
+                                   imgName,
+                                   format = "png",
+                                   dpi    = default.dpi,
+                                   width  = NA,
+                                   pc.num,
+                                   meta,
+                                   metaShape = NULL){
+    if(!exists(".plot.pca.pair.meta")){ 
+        source(paste0(rpath ,"rscripts/MetaboAnalystR/R/util_pcapair.R"), local = FALSE);
+    }
+    return(.plot.pca.pair.meta(mSetObj,
+                                   imgName,
+                                   format,
+                                   dpi,
+                                   width,
+                                   pc.num,
+                                   meta,
+                                   metaShape));
+}
+
+
+
+generate_breaks = function(x, n, center = F){
+  if(center){
+    m = max(abs(c(min(x, na.rm = T), max(x, na.rm = T))))
+    res = seq(-m, m, length.out = n + 1)
+  }
+  else{
+    res = seq(min(x, na.rm = T), max(x, na.rm = T), length.out = n + 1)
+  }
+  return(res)
+}
+
+ComputeColorGradient <- function(nd.vec, background="black", centered){
+  color <- GetColorGradient(background, centered);
+  breaks <- generate_breaks(nd.vec, length(color), center = centered);
+  return(scale_vec_colours(nd.vec, col = color, breaks = breaks));
+}
+
+GetColorGradient <- function(background, center){
+  if(background == "black"){
+    if(center){
+      return(c(colorRampPalette(c("#31A231", "#5BC85B", "#90EE90", "#C1FFC1"))(50), colorRampPalette(c("#FF9DA6", "#FF7783", "#E32636", "#BD0313"))(50)));
+    }else{
+      return(colorRampPalette(c("#FFA500",  # orange
+                          "#FF4500",  # orange-red
+                          "#B22222"   # fire-brick red
+                          ))(100));
+    }
+  }else{ # white background
+    if(center){
+      return(c(colorRampPalette(c("#137B13", "#31A231", "#5BC85B", "#90EE90"))(50), colorRampPalette(c("#FF7783", "#E32636", "#BD0313", "#96000D"))(50)));
+    }else{
+      # return(colorRampPalette(c("grey", "orange", "red", "darkred"))(100));
+      # return(colorRampPalette(c("#80d0f0", rainbow(8, start=0.8, end=1)))(100));
+      return(colorRampPalette(hsv(h = seq(0.72, 1, 0.035), s = 0.72, v = 1))(100));
+    }
+  }
+}
+
+scale_vec_colours = function(x, col = rainbow(10), breaks = NA){
+  breaks <- sort(unique(breaks));
+  return(col[as.numeric(cut(x, breaks = breaks, include.lowest = T))])
+}
+
+# new range [a, b]
+rescale2NewRange <- function(qvec, a, b){
+  q.min <- min(qvec);
+  q.max <- max(qvec);
+  if(length(qvec) < 50){
+    a <- a*2;
+  }
+  if(q.max == q.min){
+    new.vec <- rep(8, length(qvec));
+  }else{
+    coef.a <- (b-a)/(q.max-q.min);
+    const.b <- b - coef.a*q.max;
+    new.vec <- coef.a*qvec + const.b;
+  }
+  return(new.vec);
+}
+
+SaveMsetObject <- function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  ov_qs_save(mSetObj, "mSetObj_after_sanity.qs");
+  return(1);
+}
+
+GetSampleNum <- function(){
+  if(file.exists("mSetObj_after_sanity.qs")){
+    mSetObj <- ov_qs_read("mSetObj_after_sanity.qs");
+    nrow(mSetObj$dataSet$meta.info);
+  } else {
+    return(0)
+  }
+}
+
+#' Limma-based fold change and p-values
+#' @description Compute moderated logFC, t, P.Value, adj.P.Val using limma.
+#'   Data should be on the appropriate scale before calling (log2 for logFC interpretation).
+#' @param data Data matrix (samples x features)
+#' @param cls Factor with two levels (group labels)
+#' @return Data frame with columns: logFC, t, P.Value, adj.P.Val (rows = features)
+#' @export
+GetLimmaFCandP <- function(data, cls) {
+  require(limma)
+  design <- model.matrix(~cls)
+  fit <- lmFit(t(as.matrix(data)), design)
+  fit <- eBayes(fit)
+  tt <- topTable(fit, coef = 2, number = Inf, sort.by = "none")
+  return(tt[, c("logFC", "t", "P.Value", "adj.P.Val")])
+}

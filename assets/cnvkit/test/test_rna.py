@@ -1,0 +1,1189 @@
+#!/usr/bin/env python
+"""Unit tests for RNA import functionality (cnvlib.rna)."""
+
+import ast
+import contextlib
+import inspect
+import io
+import logging
+import os
+import shutil
+import sys
+import tempfile
+import unittest
+import warnings
+from unittest import mock
+
+import numpy as np
+import pandas as pd
+
+from cnvlib import commands, import_rna, rna
+from cnvlib.cli import cnv_gene_info
+from cnvlib.cnary import CopyNumArray
+from skgenome import tabio
+
+logging.basicConfig(level=logging.ERROR, format="%(message)s")
+
+
+class RNAImportTests(unittest.TestCase):
+    """Tests for RNA import and processing functions."""
+
+    def setUp(self):
+        """Create sample test data."""
+        # Sample gene counts DataFrame (genes x samples)
+        self.sample_counts = pd.DataFrame(
+            {
+                "sample1": [100, 200, 50, 0, 150],
+                "sample2": [120, 180, 45, 0, 140],
+                "sample3": [90, 210, 55, 0, 160],
+            },
+            index=[
+                "ENSG00000001",
+                "ENSG00000002",
+                "ENSG00000003",
+                "ENSG00000004",
+                "ENSG00000005",
+            ],
+        )
+
+        # Gene info DataFrame
+        self.gene_info = pd.DataFrame(
+            {
+                "chromosome": ["chr1", "chr1", "chr2", "chr2", "chr3"],
+                "start": [1000, 5000, 10000, 15000, 20000],
+                "end": [2000, 6000, 11000, 16000, 21000],
+                "gene": ["GENE1", "GENE2", "GENE3", "GENE4", "GENE5"],
+                "gc": [0.5, 0.6, 0.4, 0.55, 0.45],
+                "tx_length": [1000, 1200, 800, 1100, 900],
+            },
+            index=[
+                "ENSG00000001",
+                "ENSG00000002",
+                "ENSG00000003",
+                "ENSG00000004",
+                "ENSG00000005",
+            ],
+        )
+
+        # Transcript lengths Series
+        self.tx_lengths = pd.Series(
+            [1000, 1200, 800, 1100, 900],
+            index=[
+                "ENSG00000001",
+                "ENSG00000002",
+                "ENSG00000003",
+                "ENSG00000004",
+                "ENSG00000005",
+            ],
+        )
+
+    def test_align_gene_info_empty_intersection(self):
+        """Test error when no genes match between sample data and gene resource."""
+        # Create gene_info with completely different gene IDs
+        mismatched_gene_info = self.gene_info.copy()
+        mismatched_gene_info.index = [
+            "ENSG99990001",
+            "ENSG99990002",
+            "ENSG99990003",
+            "ENSG99990004",
+            "ENSG99990005",
+        ]
+
+        with self.assertRaises(ValueError) as cm:
+            rna.align_gene_info_to_samples(
+                mismatched_gene_info, self.sample_counts, self.tx_lengths, []
+            )
+
+        error_msg = str(cm.exception)
+        self.assertIn("No genes in common", error_msg)
+        self.assertIn("Sample data has 5 genes", error_msg)
+        self.assertIn("gene resource has 5 genes", error_msg)
+        self.assertIn("ENSG00000001", error_msg)  # Sample gene ID
+        self.assertIn("ENSG99990001", error_msg)  # Gene resource ID
+
+    def test_align_gene_info_invalid_tx_lengths(self):
+        """Test filtering of genes with invalid transcript lengths."""
+        # Create gene_info with some invalid tx_lengths
+        # Pass tx_lengths=None so gene_info values are used
+        invalid_gene_info = self.gene_info.copy()
+        invalid_gene_info.loc["ENSG00000003", "tx_length"] = 0
+        invalid_gene_info.loc["ENSG00000004", "tx_length"] = -100
+
+        result_gi, _result_sc, _result_log2 = rna.align_gene_info_to_samples(
+            invalid_gene_info, self.sample_counts, tx_lengths=None, normal_ids=[]
+        )
+
+        # Should have filtered out 2 genes with invalid tx_length
+        self.assertEqual(len(result_gi), 3)
+        self.assertNotIn("ENSG00000003", result_gi.index)
+        self.assertNotIn("ENSG00000004", result_gi.index)
+        # Valid genes should remain
+        self.assertIn("ENSG00000001", result_gi.index)
+        self.assertIn("ENSG00000002", result_gi.index)
+        self.assertIn("ENSG00000005", result_gi.index)
+
+    def test_align_gene_info_all_invalid_tx_lengths(self):
+        """Test error when all genes have invalid transcript lengths."""
+        # Create gene_info with all invalid tx_lengths
+        # Pass tx_lengths=None so gene_info values are used
+        invalid_gene_info = self.gene_info.copy()
+        invalid_gene_info["tx_length"] = 0
+
+        with self.assertRaises(ValueError) as cm:
+            rna.align_gene_info_to_samples(
+                invalid_gene_info, self.sample_counts, tx_lengths=None, normal_ids=[]
+            )
+
+        error_msg = str(cm.exception)
+        self.assertIn("All genes have invalid transcript lengths", error_msg)
+
+    def test_align_gene_info_zero_spread_cohort(self):
+        """Degenerate cohort (uniform counts across samples) yields uniform weights without a RuntimeWarning.
+
+        Regression for the divide-by-zero at ``weight / weight.max()``: when every
+        sample has identical counts, ``gene_spreads = std(axis=1)`` collapses to
+        zero, so ``gmean(weights)`` is all-zero and ``weight.max() == 0`` would
+        produce ``0 / 0`` → NaN with ``RuntimeWarning: invalid value encountered
+        in divide``. The guard must short-circuit to uniform 1.0 weights.
+        """
+        uniform_counts = pd.DataFrame(
+            {
+                "sample1": [100, 200, 50, 150, 75],
+                "sample2": [100, 200, 50, 150, 75],
+                "sample3": [100, 200, 50, 150, 75],
+            },
+            index=[
+                "ENSG00000001",
+                "ENSG00000002",
+                "ENSG00000003",
+                "ENSG00000004",
+                "ENSG00000005",
+            ],
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            result_gi, _result_sc, _result_log2 = rna.align_gene_info_to_samples(
+                self.gene_info, uniform_counts, self.tx_lengths, normal_ids=[]
+            )
+
+        # No NaN weights, and the degenerate case falls back to uniform 1.0.
+        self.assertFalse(result_gi["weight"].isna().any())
+        self.assertTrue(np.isfinite(result_gi["weight"]).all())
+        self.assertTrue((result_gi["weight"] == 1.0).all())
+
+    def test_normalize_read_depths_empty(self):
+        """Test error when sample depths are empty."""
+        empty_depths = pd.DataFrame()
+
+        with self.assertRaises(ValueError) as cm:
+            rna.normalize_read_depths(empty_depths, [])
+
+        error_msg = str(cm.exception)
+        self.assertIn("Sample read depths sum to zero or less", error_msg)
+        self.assertIn("Input shape:", error_msg)
+
+    def test_normalize_read_depths_all_zeros(self):
+        """Test error when all sample depths are zero."""
+        zero_depths = pd.DataFrame(
+            {
+                "sample1": [0, 0, 0],
+                "sample2": [0, 0, 0],
+            },
+            index=["gene1", "gene2", "gene3"],
+        )
+
+        with self.assertRaises(ValueError) as cm:
+            rna.normalize_read_depths(zero_depths, [])
+
+        error_msg = str(cm.exception)
+        self.assertIn("Sample read depths sum to zero or less", error_msg)
+        self.assertIn("all values zero: True", error_msg)
+
+    def test_normalize_read_depths_valid(self):
+        """Test successful normalization with valid data."""
+        valid_depths = pd.DataFrame(
+            {
+                "sample1": [10.0, 20.0, 30.0],
+                "sample2": [15.0, 25.0, 35.0],
+            },
+            index=["gene1", "gene2", "gene3"],
+        )
+
+        result = rna.normalize_read_depths(valid_depths, [])
+
+        # Should return normalized log2 values
+        self.assertEqual(result.shape, valid_depths.shape)
+        self.assertFalse(result.isna().any().any())
+        # Values should be in reasonable log2 range
+        self.assertTrue((result > -10).all().all())
+        self.assertTrue((result < 10).all().all())
+
+    def test_attach_gene_info_nan_handling(self):
+        """Test that NaN values in gene_minima are properly handled."""
+        # Create sample data with all NaN for one gene
+        sample_data_log2 = pd.DataFrame(
+            {
+                "sample1": [1.0, np.nan, 2.0],
+                "sample2": [1.5, np.nan, 2.5],
+                "sample3": [0.5, np.nan, 1.5],
+            },
+            index=["gene1", "gene2", "gene3"],
+        )
+
+        sample_counts = pd.DataFrame(
+            {
+                "sample1": [100, 0, 200],
+                "sample2": [120, 0, 180],
+                "sample3": [80, 0, 220],
+            },
+            index=["gene1", "gene2", "gene3"],
+        )
+
+        gene_info = pd.DataFrame(
+            {
+                "chromosome": ["chr1", "chr1", "chr2"],
+                "start": [1000, 5000, 10000],
+                "end": [2000, 6000, 11000],
+                "gene": ["GENE1", "GENE2", "GENE3"],
+                "gc": [0.5, 0.6, 0.4],
+                "tx_length": [1000, 1200, 800],
+                "weight": [1.0, 1.0, 1.0],
+            },
+            index=["gene1", "gene2", "gene3"],
+        )
+
+        # Should not raise an assertion error
+        cnrs = list(
+            rna.attach_gene_info_to_cnr(sample_counts, sample_data_log2, gene_info)
+        )
+
+        # Should have one CNR per sample
+        self.assertEqual(len(cnrs), 3)
+
+        # Check that gene2 (all NaN) has been filled with NULL_LOG2_COVERAGE
+        for cnr in cnrs:
+            gene2_log2 = cnr.data[cnr.data["gene"] == "GENE2"]["log2"].to_numpy()[0]
+            self.assertEqual(gene2_log2, rna.NULL_LOG2_COVERAGE)
+
+    def test_safe_log2_zero_handling(self):
+        """Test that safe_log2 handles zeros correctly."""
+        values = np.array([0, 1, 10, 100])
+        min_log2 = -5
+
+        result = rna.safe_log2(values, min_log2)
+
+        # Zero should be converted to approximately min_log2
+        self.assertAlmostEqual(result[0], min_log2, places=2)
+        # Other values should be reasonable
+        self.assertTrue(result[1] > min_log2)
+        self.assertTrue(result[2] > result[1])
+        self.assertTrue(result[3] > result[2])
+
+
+class FilterProbesTests(unittest.TestCase):
+    """``filter_probes`` keeps a gene when enough samples express it.
+
+    The filter is a quantile threshold, not a literal sample count: a gene is
+    retained when the ``(1 - min_sample_fraction)`` quantile of its per-sample
+    counts is >= 1. At the default ``min_sample_fraction=0.5`` this is exactly
+    the legacy ``median(counts) >= 1`` rule, preserved bit-exact (#448).
+    """
+
+    @staticmethod
+    def _counts_expressed_in(n_expressed, n_samples=10, level=100):
+        """A 3-gene matrix; the middle gene is expressed in exactly N samples.
+
+        The flanking genes are expressed everywhere / nowhere so the frame is
+        never empty and the assertions isolate the middle gene's fate.
+        """
+        rows = {
+            "gene_all": [level] * n_samples,  # always kept
+            "gene_mid": [level] * n_expressed + [0] * (n_samples - n_expressed),
+            "gene_none": [0] * n_samples,  # always dropped
+        }
+        return pd.DataFrame.from_dict(
+            rows, orient="index", columns=[f"s{i}" for i in range(n_samples)]
+        )
+
+    def test_default_matches_legacy_median_rule(self):
+        """Default fraction reproduces the historical ``median >= 1`` filter bit-exact."""
+        rng = np.random.default_rng(0)
+        counts = pd.DataFrame(
+            rng.poisson(2, size=(500, 7)),
+            index=[f"g{i}" for i in range(500)],
+        )
+        legacy = counts[counts.median(axis=1) >= 1.0]
+        new = rna.filter_probes(counts)
+        self.assertTrue(new.equals(legacy))
+
+    def test_retained_iff_fraction_meets_threshold(self):
+        """Gene kept iff (N expressed / M samples) >= min_sample_fraction."""
+        m = 10
+        for n in range(m + 1):
+            counts = self._counts_expressed_in(n, n_samples=m)
+            for f in (0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0):
+                kept = (
+                    "gene_mid" in rna.filter_probes(counts, min_sample_fraction=f).index
+                )
+                expected = (n / m) >= f
+                self.assertEqual(
+                    kept,
+                    expected,
+                    f"N={n}/{m} (fraction {n / m}) with min_sample_fraction={f}: "
+                    f"expected kept={expected}, got {kept}",
+                )
+
+    def test_lower_fraction_is_more_permissive(self):
+        """Lowering the threshold never drops a gene the stricter run kept."""
+        counts = self._counts_expressed_in(3, n_samples=10)
+        strict = set(rna.filter_probes(counts, min_sample_fraction=0.5).index)
+        loose = set(rna.filter_probes(counts, min_sample_fraction=0.2).index)
+        self.assertTrue(strict.issubset(loose))
+        # The single-cell-style low threshold rescues the sparsely-expressed gene.
+        self.assertNotIn("gene_mid", strict)
+        self.assertIn("gene_mid", loose)
+
+    def test_invalid_fraction_raises(self):
+        counts = self._counts_expressed_in(5)
+        for bad in (-0.1, 1.5, 2.0):
+            with self.assertRaises(ValueError):
+                rna.filter_probes(counts, min_sample_fraction=bad)
+
+    def test_empty_input_returns_empty(self):
+        """Empty frame passes through unchanged (quantile(axis=1) raises on empty).
+
+        Regression guard: the legacy ``median(axis=1)`` path returned an empty
+        result on an empty frame, whereas ``quantile(axis=1)`` raises
+        ``ValueError: no types given``.
+        """
+        empty = pd.DataFrame()
+        self.assertEqual(rna.filter_probes(empty).shape, (0, 0))
+        self.assertEqual(
+            rna.filter_probes(empty, min_sample_fraction=0.2).shape, (0, 0)
+        )
+
+    def test_single_sample_uses_that_sample(self):
+        """With one sample, the quantile collapses to that sample's count."""
+        counts = pd.DataFrame({"s0": [0, 5, 1]}, index=["a", "b", "c"])
+        self.assertEqual(list(rna.filter_probes(counts).index), ["b", "c"])
+
+
+def _ast_calls_to(source_obj, attr, value_id):
+    """Collect ``value_id.attr(...)`` call nodes in ``source_obj``'s AST.
+
+    Shared by the kwarg-plumbing guards below, which assert a specific keyword
+    survives a CLI -> dispatcher -> leaf call chain without paying any fixture
+    cost.
+    """
+    tree = ast.parse(inspect.getsource(source_obj))
+    return [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == attr
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == value_id
+    ]
+
+
+class FilterProbesPlumbingTests(unittest.TestCase):
+    """``min_sample_fraction`` is threaded CLI -> do_import_rna -> filter_probes.
+
+    AST-level guards (cheap, no fixtures) so a dropped kwarg fails at collection
+    rather than silently reverting single-cell cohorts to the 0.5 default.
+    """
+
+    def test_do_import_rna_passes_fraction_to_filter_probes(self):
+        calls = _ast_calls_to(import_rna.do_import_rna, "filter_probes", "rna")
+        self.assertGreater(len(calls), 0)
+        for call in calls:
+            self.assertIn(
+                "min_sample_fraction",
+                {kw.arg for kw in call.keywords},
+                "do_import_rna must forward min_sample_fraction to rna.filter_probes",
+            )
+
+    def test_cmd_import_rna_passes_fraction_to_do_import_rna(self):
+        calls = _ast_calls_to(commands._cmd_import_rna, "do_import_rna", "import_rna")
+        self.assertGreater(len(calls), 0)
+        for call in calls:
+            self.assertIn(
+                "min_sample_fraction",
+                {kw.arg for kw in call.keywords},
+                "_cmd_import_rna must forward args.min_sample_fraction to "
+                "do_import_rna",
+            )
+
+    def test_signatures_default_to_one_half(self):
+        """Default preserved at both layers so existing behavior is unchanged."""
+        self.assertEqual(
+            inspect.signature(rna.filter_probes)
+            .parameters["min_sample_fraction"]
+            .default,
+            0.5,
+        )
+        self.assertEqual(
+            inspect.signature(import_rna.do_import_rna)
+            .parameters["min_sample_fraction"]
+            .default,
+            0.5,
+        )
+
+
+class GeneResourceCoordinateTests(unittest.TestCase):
+    """A reversed row in the gene resource cannot reach the emitted .cnr.
+
+    The gene resource is a user-supplied export and does not pass through
+    `skgenome.tabio.read`, so before `load_gene_info` repaired it,
+    `import-rna` could write a .cnr that every later command refused --
+    blaming a squashing bug in CNVkit for coordinates CNVkit never wrote.
+    """
+
+    def _reversed_resource(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir)
+        dst = os.path.join(tmpdir, "reversed.tsv")
+        with open("formats/rna-gene-resource.tsv") as src, open(dst, "w") as out:
+            for i, line in enumerate(src):
+                fields = line.rstrip("\n").split("\t")
+                if i == 2:  # first data row; line 0 is a comment, line 1 the header
+                    fields[3], fields[4] = fields[4], fields[3]
+                out.write("\t".join(fields) + "\n")
+        return dst
+
+    def test_load_gene_info_repairs_reversed_rows(self):
+        resource = self._reversed_resource()
+        with self.assertLogs(level="WARNING") as cm:
+            info = rna.load_gene_info(resource, None)
+        self.assertIn("1:101500-100000", " ".join(cm.output))
+        self.assertTrue((info["end"] >= info["start"]).all())
+
+    def test_import_rna_emits_a_readable_cnr(self):
+        resource = self._reversed_resource()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            _, cnrs = import_rna.do_import_rna(
+                ["formats/rna-sample-A.counts.txt"], "counts", resource
+            )
+            cnr = next(iter(cnrs))
+        self.assertTrue((cnr.data["end"] >= cnr.data["start"]).all())
+        # What it writes, CNVkit must be able to read back
+        out = os.path.join(tempfile.mkdtemp(), "A.cnr")
+        self.addCleanup(shutil.rmtree, os.path.dirname(out))
+        tabio.write(cnr, out)
+        self.assertEqual(len(tabio.read(out, "tab")), len(cnr))
+
+
+class DiploidParxPlumbingTests(unittest.TestCase):
+    """``diploid_parx_genome`` is threaded CLI -> do_import_rna -> correct_cnr.
+
+    The CLI layer was the missing link: ``_cmd_import_rna`` never
+    forwarded ``args.diploid_parx_genome``, so PAR-aware centering was
+    unreachable from ``cnvkit import-rna``. AST guard so a dropped kwarg fails
+    at collection rather than silently disabling the flag again.
+    """
+
+    def test_cmd_import_rna_forwards_parx_to_do_import_rna(self):
+        calls = _ast_calls_to(commands._cmd_import_rna, "do_import_rna", "import_rna")
+        self.assertGreater(len(calls), 0)
+        for call in calls:
+            self.assertIn(
+                "diploid_parx_genome",
+                {kw.arg for kw in call.keywords},
+                "_cmd_import_rna must forward args.diploid_parx_genome to "
+                "do_import_rna",
+            )
+
+    def test_cli_registers_diploid_parx_genome_flag(self):
+        """The CLI parser exposes --diploid-parx-genome for import-rna."""
+        opt_strings = {
+            opt
+            for action in commands.P_import_rna._actions
+            for opt in action.option_strings
+        }
+        self.assertIn("--diploid-parx-genome", opt_strings)
+
+    def test_do_import_rna_signature_parx_default_none(self):
+        self.assertIsNone(
+            inspect.signature(import_rna.do_import_rna)
+            .parameters["diploid_parx_genome"]
+            .default,
+        )
+
+
+def _make_rna_cnr(seed, *, include_par):
+    """Build an hg38-style CopyNumArray for PAR-centering tests.
+
+    Autosomes (chr1) at log2 ~ 0, non-PAR chrX bins at log2 ~ -1, and -- when
+    ``include_par`` -- chrX bins inside grch38 PAR1X (10000-2781479) at a
+    distinctly higher log2 ~ +1, so reclassifying them as autosomal visibly
+    moves the centering value. ``gc`` is a fraction in [0, 1] to match the real
+    ``import-rna`` pipeline. Calling with the same ``seed`` yields identical
+    data, which ``correct_cnr`` mutates in place.
+    """
+    rng = np.random.default_rng(seed)
+    rows = []
+    for i in range(20):
+        s = 100000 * (i + 1)
+        rows.append(("1", s, s + 1500, f"A{i}", rng.normal(0, 0.05), 100, 0.5, 1500))
+    if include_par:
+        for i in range(8):
+            s = 20000 + 100000 * i
+            rows.append(
+                (
+                    "X",
+                    s,
+                    s + 1500,
+                    f"PARX{i}",
+                    1.0 + rng.normal(0, 0.05),
+                    100,
+                    0.5,
+                    1500,
+                )
+            )
+    for i in range(8):  # chrX outside grch38 PAR1/PAR2
+        s = 5_000_000 + 100000 * i
+        rows.append(
+            ("X", s, s + 1500, f"X{i}", -1.0 + rng.normal(0, 0.05), 100, 0.5, 1500)
+        )
+    df = pd.DataFrame(
+        rows,
+        columns=[
+            "chromosome",
+            "start",
+            "end",
+            "gene",
+            "log2",
+            "depth",
+            "gc",
+            "tx_length",
+        ],
+    )
+    return CopyNumArray(df, {"sample_id": "s"})
+
+
+class DiploidParxCenteringTests(unittest.TestCase):
+    """PAR-aware centering must actually shift output in the default path.
+
+    Regression guard: ``correct_cnr`` applies GC/transcript-
+    length bias correction (on by default), which is invariant to a uniform
+    pre-shift. So unless the *second* ``center_all`` also carries
+    ``diploid_parx_genome``, the flag is silently neutralized whenever GC/txlen
+    correction runs. Build an hg38-style cohort with PAR-X bins and assert the
+    flag changes chrX/PAR log2 -- while confirming it touches only PAR bins, so
+    the ``None`` default (``center_all(None)`` == the prior code path) is
+    unchanged by construction.
+    """
+
+    def test_flag_shifts_par_centering_under_default_corrections(self):
+        """With GC/txlen correction on (the default), grch38 != None output."""
+        without = rna.correct_cnr(
+            _make_rna_cnr(0, include_par=True), True, True, 3, None
+        )
+        with_parx = rna.correct_cnr(
+            _make_rna_cnr(0, include_par=True), True, True, 3, "grch38"
+        )
+        max_diff = np.abs(
+            without["log2"].to_numpy() - with_parx["log2"].to_numpy()
+        ).max()
+        self.assertGreater(
+            max_diff,
+            1e-3,
+            "diploid_parx_genome must change centering even when GC/txlen "
+            "correction runs (second center_all must carry the flag)",
+        )
+
+    def test_none_path_unaffected_when_no_par_bins(self):
+        """No PAR-X bins -> the flag is inert, confirming it touches only PAR."""
+        none_out = rna.correct_cnr(
+            _make_rna_cnr(1, include_par=False), True, True, 3, None
+        )
+        parx_out = rna.correct_cnr(
+            _make_rna_cnr(1, include_par=False), True, True, 3, "grch38"
+        )
+        np.testing.assert_array_equal(
+            none_out["log2"].to_numpy(), parx_out["log2"].to_numpy()
+        )
+
+
+class ImportRnaIntegrationTests(unittest.TestCase):
+    """End-to-end `import-rna` from count files + gene resource to .cnr."""
+
+    COUNT_FILES = (
+        "formats/rna-sample-A.counts.txt",
+        "formats/rna-sample-B.counts.txt",
+        "formats/rna-sample-C.counts.txt",
+    )
+    GENE_RESOURCE = "formats/rna-gene-resource.tsv"
+
+    def test_do_import_rna_counts_to_cnr(self):
+        """do_import_rna turns per-gene counts into one finite-log2 .cnr/sample."""
+        all_data, cnrs = import_rna.do_import_rna(
+            self.COUNT_FILES, "counts", self.GENE_RESOURCE
+        )
+        cnrs = list(cnrs)
+        self.assertEqual(len(cnrs), len(self.COUNT_FILES))
+        for cnr in cnrs:
+            # Valid CopyNumArray: expected columns, finite log2, valid coords
+            for col in ("chromosome", "start", "end", "gene", "log2", "depth"):
+                self.assertIn(col, cnr.data.columns)
+            self.assertGreater(len(cnr), 0)
+            self.assertTrue(np.isfinite(cnr["log2"]).all())
+            self.assertTrue((cnr.start < cnr.end).all())
+            self.assertEqual(list(cnr.chromosome.unique()), ["1"])
+        # Summary table has one row per retained gene
+        self.assertEqual(len(all_data), len(cnrs[0]))
+        self.assertEqual(cnrs[0].sample_id, "rna-sample-A")
+
+    def test_do_import_rna_unknown_format_raises(self):
+        with self.assertRaises(RuntimeError) as cm:
+            import_rna.do_import_rna(self.COUNT_FILES[:1], "bogus", self.GENE_RESOURCE)
+        # The offending format name is interpolated into the message (not literal).
+        self.assertIn("bogus", str(cm.exception))
+
+
+class NormalizeReadDepthsNormalAnchorTests(unittest.TestCase):
+    """Pin the current --normal anchoring invariants.
+
+    These tests document what ``normalize_read_depths`` does *today* with
+    ``normal_ids`` set, as a regression baseline for any future redesign.
+    They exercise the suspected bug from #352
+    and confirm it does not reproduce at the unit level: the issue lies in
+    the design (small-normal-cohort information loss) rather than a numerical
+    error in the implementation.
+    """
+
+    @staticmethod
+    def _make_cohort(
+        n_tumor, n_normal, n_genes, altered_mask, tumor_alt_factor=2.0, seed=0
+    ):
+        rng = np.random.default_rng(seed)
+        baseline = rng.lognormal(mean=4.0, sigma=1.0, size=n_genes)
+        cols = {}
+        normal_ids = []
+        for i in range(n_normal):
+            sid = f"normal{i}"
+            normal_ids.append(sid)
+            cols[sid] = baseline * rng.lognormal(0, 0.05, n_genes)
+        for i in range(n_tumor):
+            v = baseline.copy()
+            v[altered_mask] *= tumor_alt_factor
+            cols[f"tumor{i}"] = v * rng.lognormal(0, 0.05, n_genes)
+        return (pd.DataFrame(cols, index=[f"g{i}" for i in range(n_genes)]), normal_ids)
+
+    def test_single_normal_is_self_divide(self):
+        """One normal => that normal's log2 is ~0 at every gene by construction.
+
+        With one normal sample, the per-gene "median of normals" reduces to
+        that single column, so the anchor divide is a self-divide. The normal
+        sample's resulting log2 row collapses to ``safe_log2(1.0)`` = a small
+        positive offset from the NULL_LOG2_COVERAGE shift, with vanishing
+        per-gene variance. This pins the polish's single-normal degeneracy as a
+        regression baseline.
+        """
+        n_genes = 200
+        altered = np.zeros(n_genes, dtype=bool)
+        altered[:50] = True
+        depths, normal_ids = self._make_cohort(10, 1, n_genes, altered, seed=1)
+        log2 = rna.normalize_read_depths(depths.copy(), normal_ids)
+
+        normal_log2 = log2[normal_ids[0]]
+        # All values are within numerical noise of the safe_log2 floor offset.
+        expected_offset = np.log2(1.0 + 2**rna.NULL_LOG2_COVERAGE)
+        self.assertLess(abs(normal_log2.median() - expected_offset), 1e-3)
+        self.assertLess(normal_log2.std(), 1e-3)
+        # And the chrX-altered region in tumors is recovered at ~+1.0 (2x gain)
+        tumor_cols = [c for c in log2.columns if c.startswith("tumor")]
+        tumor_alt_med = log2[tumor_cols].loc[altered].median().median()
+        self.assertGreater(tumor_alt_med, 0.8)
+        self.assertLess(tumor_alt_med, 1.2)
+
+    def test_multi_normal_carries_residual_qc_signal(self):
+        """With >= 3 normals, individual normals' .cnr files retain non-zero spread.
+
+        This documents the design rationale for the >=3-normals recommendation:
+        the median-of-normals anchor leaves each normal with residual deviation
+        from peer normals (interpretable as QC signal), rather than collapsing
+        to a tautological zero.
+        """
+        n_genes = 200
+        altered = np.zeros(n_genes, dtype=bool)
+        altered[:50] = True
+        depths, normal_ids = self._make_cohort(10, 3, n_genes, altered, seed=2)
+        log2 = rna.normalize_read_depths(depths.copy(), normal_ids)
+
+        # Each normal retains a non-degenerate spread across genes; not flat-zero.
+        for nid in normal_ids:
+            self.assertGreater(log2[nid].std(), 1e-3)
+
+    def test_import_rna_warns_for_few_normals(self):
+        """do_import_rna emits a warning for 0 < n_normals < 3."""
+        with tempfile.TemporaryDirectory() as tmp:
+            gene_res = os.path.join(tmp, "genes.tsv")
+            rng = np.random.default_rng(7)
+            n_genes = 80
+            gene_ids = [f"ENSG{i:05d}.1" for i in range(n_genes)]
+            with open(gene_res, "w") as fh:
+                fh.write("# fixture\n")
+                fh.write(
+                    "Gene stable ID\tGC\tChr\tStart\tEnd\tName\tNCBI\tTxLen\tTSL\n"
+                )
+                for i, g in enumerate(gene_ids):
+                    fh.write(
+                        f"{g}\t{int(rng.integers(30, 65))}\t1\t"
+                        f"{100000 + i * 5000}\t{102000 + i * 5000}\t"
+                        f"G{i}\t{1000 + i}\t1500\ttsl1\n"
+                    )
+            baseline = rng.lognormal(mean=5.0, sigma=1.0, size=n_genes)
+            fnames = []
+            normal_fnames = []
+            # 1 normal + 5 tumors -> should warn
+            for tag, is_normal in [("normal-0", True)] + [
+                (f"tumor-{i}", False) for i in range(5)
+            ]:
+                vals = baseline * rng.lognormal(0, 0.1, n_genes)
+                f = os.path.join(tmp, f"{tag}.counts.txt")
+                with open(f, "w") as fh:
+                    for g, v in zip(gene_ids, vals, strict=True):
+                        fh.write(f"{g}\t{int(v)}\n")
+                fnames.append(f)
+                if is_normal:
+                    normal_fnames.append(f)
+
+            with self.assertLogs(level="WARNING") as cm:
+                _, cnrs = import_rna.do_import_rna(
+                    fnames,
+                    "counts",
+                    gene_res,
+                    normal_fnames=normal_fnames,
+                )
+                list(cnrs)  # exhaust generator so all logging fires
+            joined = "\n".join(cm.output)
+            self.assertIn("import-rna --normal", joined)
+            self.assertIn("3 normals", joined)
+
+
+class SizeFactorNormalizeTests(unittest.TestCase):
+    """``--normalize-method size-factors`` behavior.
+
+    DESeq2-style median-of-ratios size factors from the control set only, with
+    leave-one-out anchoring for the normals. The headline property is
+    independence from cohort composition, which the polish lacks.
+    """
+
+    @staticmethod
+    def _cohort(
+        n_normal,
+        n_tumor,
+        n_genes=300,
+        alt_frac=0.2,
+        tumor_alt=2.0,
+        contaminate=False,
+        seed=0,
+    ):
+        rng = np.random.default_rng(seed)
+        baseline = rng.lognormal(4.0, 1.0, n_genes)
+        altered = np.zeros(n_genes, dtype=bool)
+        altered[: int(n_genes * alt_frac)] = True
+        cols, normal_ids = {}, []
+        for i in range(n_normal):
+            lib = rng.lognormal(0, 0.4)  # per-sample library-depth difference
+            v = baseline.copy()
+            if contaminate:
+                v[altered] *= tumor_alt
+            cols[f"normal{i}"] = v * rng.lognormal(0, 0.05, n_genes) * lib
+            normal_ids.append(f"normal{i}")
+        for i in range(n_tumor):
+            lib = rng.lognormal(0, 0.4)
+            v = baseline.copy()
+            v[altered] *= tumor_alt
+            cols[f"tumor{i}"] = v * rng.lognormal(0, 0.05, n_genes) * lib
+        df = pd.DataFrame(cols, index=[f"g{i}" for i in range(n_genes)])
+        return df, normal_ids, altered
+
+    @staticmethod
+    def _separation(log2, altered):
+        """Median (altered - neutral) log2 over tumor columns; the recovered gain.
+
+        Taken as a difference so it is invariant to any constant per-sample
+        offset (which downstream ``correct_cnr`` centering removes anyway).
+        """
+        tcols = [c for c in log2.columns if c.startswith("tumor")]
+        gain = log2[tcols].loc[altered].median().median()
+        neutral = log2[tcols].loc[~altered].median().median()
+        return gain - neutral
+
+    def test_recovers_tumor_gain(self):
+        """A 2x tumor gain becomes ~+1 log2 after normal anchoring.
+
+        This pins the per-gene anchoring/ratio step: the gain is read as a
+        within-tumor altered-minus-neutral difference, which is invariant to the
+        per-sample size factor. Size-factor *estimation* is exercised separately
+        by ``test_invariant_to_library_depth`` and
+        ``test_invariant_to_cohort_composition``.
+        """
+        depths, nids, altered = self._cohort(5, 10, seed=1)
+        log2 = rna.normalize_read_depths(depths, nids, normalize_method="size-factors")
+        sep = self._separation(log2, altered)
+        self.assertGreater(sep, 0.8)
+        self.assertLess(sep, 1.2)
+
+    def test_multi_normal_loo_carries_qc_signal(self):
+        """With >=3 normals, leave-one-out leaves each normal a non-flat .cnr."""
+        depths, nids, _altered = self._cohort(3, 8, seed=2)
+        log2 = rna.normalize_read_depths(depths, nids, normalize_method="size-factors")
+        for nid in nids:
+            self.assertGreater(log2[nid].std(), 1e-3)
+
+    def test_single_normal_self_divides_but_tumors_recover(self):
+        """One normal => its own .cnr collapses (self-divide); tumors still gain."""
+        depths, nids, altered = self._cohort(1, 10, seed=3)
+        log2 = rna.normalize_read_depths(depths, nids, normalize_method="size-factors")
+        self.assertLess(log2[nids[0]].std(), 1e-3)
+        self.assertGreater(self._separation(log2, altered), 0.8)
+
+    def test_invariant_to_cohort_composition(self):
+        """The defining property: a tumor's log2 does not depend on which *other*
+        tumors are in the cohort, because the reference is the normals alone.
+
+        Contrast with the polish, whose cohort-wide median centering shifts when
+        the cohort composition changes.
+        """
+        rng = np.random.default_rng(7)
+        n_genes = 300
+        baseline = rng.lognormal(4.0, 1.0, n_genes)
+        alt_bulk = np.zeros(n_genes, dtype=bool)
+        alt_bulk[150:280] = True  # a large alteration shared by the bulk tumors
+
+        def col(v):
+            return v * rng.lognormal(0, 0.05, n_genes) * rng.lognormal(0, 0.4)
+
+        normals = {f"normal{i}": col(baseline.copy()) for i in range(5)}
+        probe = baseline.copy()
+        probe[:60] *= 2.0
+        probe_col = col(probe)
+        nids = list(normals)
+
+        def build(n_bulk):
+            cols = dict(normals)
+            cols["tumorP"] = probe_col.copy()
+            for j in range(n_bulk):
+                v = baseline.copy()
+                v[alt_bulk] *= 3.0
+                cols[f"bulk{j}"] = col(v)
+            return pd.DataFrame(cols, index=[f"g{i}" for i in range(n_genes)])
+
+        small = rna.normalize_read_depths(
+            build(3), nids, normalize_method="size-factors"
+        )
+        large = rna.normalize_read_depths(
+            build(40), nids, normalize_method="size-factors"
+        )
+        self.assertLess((small["tumorP"] - large["tumorP"]).abs().max(), 1e-9)
+
+    def test_invariant_to_library_depth(self):
+        """A pure per-sample depth rescaling is absorbed by the size factor."""
+        depths, nids, _altered = self._cohort(4, 6, seed=5)
+        base = rna.normalize_read_depths(depths, nids, normalize_method="size-factors")
+        scaled = depths.copy()
+        scaled["tumor0"] = scaled["tumor0"] * 7.5  # deeper library, same biology
+        rescaled = rna.normalize_read_depths(
+            scaled, nids, normalize_method="size-factors"
+        )
+        self.assertLess((base["tumor0"] - rescaled["tumor0"]).abs().max(), 1e-9)
+
+    def test_invalid_method_raises(self):
+        depths, nids, _altered = self._cohort(3, 3, seed=6)
+        with self.assertRaises(ValueError) as cm:
+            rna.normalize_read_depths(depths, nids, normalize_method="bogus")
+        self.assertIn("bogus", str(cm.exception))
+
+    def test_warns_when_size_factors_degenerate(self):
+        """No gene detected in every control => warn and fall back to no scaling.
+
+        Every gene is zeroed in at least one control (round-robin), so no gene is
+        positive across all controls; the median-of-ratios is then undefined and
+        size factors fall back to 1.0. That degradation must be surfaced, not
+        silent, for a clinical-output path.
+        """
+        depths, nids, _altered = self._cohort(4, 4, n_genes=120, seed=8)
+        normal_locs = [depths.columns.get_loc(nid) for nid in nids]
+        for g in range(len(depths)):
+            depths.iloc[g, normal_locs[g % len(nids)]] = 0.0
+        with self.assertLogs(level="WARNING") as cm:
+            log2 = rna.normalize_read_depths(
+                depths, nids, normalize_method="size-factors"
+            )
+        self.assertIn("size factor", "\n".join(cm.output))
+        # Still returns a usable, fully finite result for every sample.
+        self.assertEqual(log2.shape, depths.shape)
+        self.assertFalse(log2.isna().all(axis=0).any())
+
+
+class NormalizeMethodPlumbingTests(unittest.TestCase):
+    """``normalize_method`` is threaded CLI -> do_import_rna -> align -> normalize.
+
+    AST-level guards (no fixtures) so a dropped kwarg fails at collection rather
+    than silently reverting size-factors runs to the polish default.
+    """
+
+    def test_cmd_passes_method_to_do_import_rna(self):
+        calls = _ast_calls_to(commands._cmd_import_rna, "do_import_rna", "import_rna")
+        self.assertGreater(len(calls), 0)
+        for call in calls:
+            self.assertIn(
+                "normalize_method",
+                {kw.arg for kw in call.keywords},
+                "_cmd_import_rna must forward args.normalize_method to do_import_rna",
+            )
+
+    def test_do_import_rna_passes_method_to_align(self):
+        calls = _ast_calls_to(
+            import_rna.do_import_rna, "align_gene_info_to_samples", "rna"
+        )
+        self.assertGreater(len(calls), 0)
+        for call in calls:
+            self.assertIn(
+                "normalize_method",
+                {kw.arg for kw in call.keywords},
+                "do_import_rna must forward normalize_method to "
+                "rna.align_gene_info_to_samples",
+            )
+
+    def test_align_passes_method_to_normalize(self):
+        tree = ast.parse(inspect.getsource(rna.align_gene_info_to_samples))
+        calls = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "normalize_read_depths"
+        ]
+        self.assertGreater(len(calls), 0)
+        for call in calls:
+            self.assertIn(
+                "normalize_method",
+                {kw.arg for kw in call.keywords},
+                "align_gene_info_to_samples must forward normalize_method to "
+                "normalize_read_depths",
+            )
+
+    def test_signatures_default_to_polish(self):
+        """Default preserved at every layer so existing output is unchanged."""
+        for func, param in (
+            (rna.normalize_read_depths, "normalize_method"),
+            (rna.align_gene_info_to_samples, "normalize_method"),
+            (import_rna.do_import_rna, "normalize_method"),
+        ):
+            self.assertEqual(
+                inspect.signature(func).parameters[param].default, "polish"
+            )
+
+
+class _TempTsvTest(unittest.TestCase):
+    """Base class providing a temp-TSV writer with automatic cleanup."""
+
+    def _write(self, text):
+        fd, path = tempfile.mkstemp(suffix=".tsv")
+        os.close(fd)
+        with open(path, "w") as fh:
+            fh.write(text)
+        self.addCleanup(os.remove, path)
+        return path
+
+
+class BuildGeneInfoTests(_TempTsvTest):
+    """``cnv_gene_info`` normalizes a BioMart export into CNVkit gene-info format."""
+
+    # Raw BioMart-style export: columns reordered, standard display names, one
+    # gene missing its NCBI ID, no TSL column at all, and one row with an
+    # invalid (negative) transcript length that must be dropped.
+    BIOMART = (
+        "Chromosome/scaffold name\tGene start (bp)\tGene end (bp)\tGene stable ID\t"
+        "Gene name\tNCBI gene ID\tGene % GC content\t"
+        "Transcript length (including UTRs and CDS)\n"
+        "1\t300000\t301800\tENSG00000003\tGENEC\t1003\t50.0\t1800\n"
+        "1\t100000\t101500\tENSG00000001.4\tGENEA\t1001\t40.5\t1500\n"
+        "MT\t577\t647\tENSG00000210049\tMT-TF\t\t40.85\t71\n"
+        "X\t500000\t502000\tENSG00000005\tGENEX\t1005\t48.2\t2000\n"
+        "1\t200000\t202000\tENSG00000002\tGENEB\t\t45.0\t-3\n"
+    )
+
+    def test_build_normalizes_columns_and_order(self):
+        df = cnv_gene_info.build_gene_info(self._write(self.BIOMART))
+        # Canonical short-key columns, in canonical order
+        self.assertEqual(list(df.columns), cnv_gene_info.CANONICAL_KEYS)
+        # Invalid-tx_length row (GENEB) dropped; the other four kept (version kept)
+        self.assertEqual(
+            set(df["gene_id"]),
+            {"ENSG00000003", "ENSG00000001.4", "ENSG00000210049", "ENSG00000005"},
+        )
+        # Missing optional column filled with its default
+        self.assertTrue((df["tx_support"] == "tslNA").all())
+        # Sorted by genomic position: chr1 (by start), then X, then MT (canonical)
+        self.assertEqual(list(df["chromosome"]), ["1", "1", "X", "MT"])
+        self.assertEqual(
+            list(df.loc[df["chromosome"] == "1", "gene_id"]),
+            ["ENSG00000001.4", "ENSG00000003"],
+        )
+
+    def test_output_roundtrips_through_load_gene_info(self):
+        out = self._write("")
+        df = cnv_gene_info.build_gene_info(self._write(self.BIOMART))
+        cnv_gene_info.write_gene_info(df, out, genome="hg19")
+        # Output starts with a provenance comment, then the BioMart header line.
+        with open(out) as fh:
+            first, second = fh.readline(), fh.readline()
+        self.assertTrue(first.startswith("# CNVkit gene info"))
+        self.assertEqual(second.split("\t")[0], "Gene stable ID")
+        # load_gene_info skips the leading "#" comment and reads the BioMart
+        # header as line 0, so no gene is lost: all four survive, version
+        # stripped, gc scaled, blank->0.
+        gi = rna.load_gene_info(out, None)
+        self.assertEqual(
+            set(gi.index),
+            {"ENSG00000001", "ENSG00000003", "ENSG00000210049", "ENSG00000005"},
+        )
+        self.assertAlmostEqual(gi.loc["ENSG00000001", "gc"], 0.405)
+        self.assertEqual(gi.loc["ENSG00000210049", "entrez_id"], 0)
+
+    def test_rename_maps_unrecognized_header(self):
+        text = (
+            "weird_id\tGene % GC content\tChromosome/scaffold name\tGene start (bp)\t"
+            "Gene end (bp)\tTranscript length (including UTRs and CDS)\n"
+            "ENSG9\t44\t7\t10\t99\t500\n"
+        )
+        path = self._write(text)
+        # Without the rename, the required gene_id column is unmappable.
+        with self.assertRaises(SystemExit):
+            cnv_gene_info.build_gene_info(path)
+        df = cnv_gene_info.build_gene_info(path, renames={"weird_id": "gene_id"})
+        self.assertEqual(list(df["gene_id"]), ["ENSG9"])
+
+    def test_missing_required_column_errors(self):
+        # No GC column at all -> SystemExit naming the missing key.
+        text = (
+            "Gene stable ID\tChromosome/scaffold name\tGene start (bp)\tGene end (bp)\t"
+            "Transcript length (including UTRs and CDS)\n"
+            "ENSG9\t7\t10\t99\t500\n"
+        )
+        with self.assertRaises(SystemExit) as cm:
+            cnv_gene_info.build_gene_info(self._write(text))
+        self.assertIn("gc", str(cm.exception))
+
+    def test_leading_comment_input_is_skipped(self):
+        # A CNVkit-format file (leading comment + canonical header) re-normalizes.
+        df = cnv_gene_info.build_gene_info("formats/rna-gene-resource.tsv")
+        self.assertEqual(list(df.columns), cnv_gene_info.CANONICAL_KEYS)
+        self.assertGreater(len(df), 0)
+
+    def test_chromosomes_filter_keeps_only_listed_contigs(self):
+        df = cnv_gene_info.build_gene_info(self._write(self.BIOMART), chromosomes=["1"])
+        self.assertEqual(set(df["chromosome"]), {"1"})
+        self.assertNotIn("ENSG00000005", set(df["gene_id"]))  # the X gene is gone
+
+    def test_drops_nonnumeric_and_warns_on_suspect_rows(self):
+        # One non-numeric GC (dropped), one out-of-range GC, one start>end, and a
+        # duplicate gene_id (all kept, each warned about).
+        text = (
+            "Gene stable ID\tGene % GC content\tChromosome/scaffold name\t"
+            "Gene start (bp)\tGene end (bp)\tGene name\tNCBI gene ID\t"
+            "Transcript length (including UTRs and CDS)\t"
+            "Transcript support level (TSL)\n"
+            "ENSGOK\t40\t1\t100\t200\tGOK\t1\t500\ttsl1\n"
+            "ENSGNUM\tabc\t1\t100\t200\tGNUM\t2\t500\ttsl1\n"
+            "ENSGGC\t150\t1\t300\t400\tGGC\t3\t600\ttsl1\n"
+            "ENSGREV\t40\t1\t900\t800\tGREV\t4\t700\ttsl1\n"
+            "ENSGOK\t41\t2\t100\t200\tGOKDUP\t5\t800\ttsl1\n"
+        )
+        with self.assertLogs(level="WARNING") as cm:
+            df = cnv_gene_info.build_gene_info(self._write(text))
+        self.assertNotIn("ENSGNUM", set(df["gene_id"]))  # non-numeric GC dropped
+        self.assertEqual(len(df), 4)  # the rest are kept despite warnings
+        joined = "\n".join(cm.output)
+        self.assertIn("non-numeric", joined)
+        self.assertIn("outside [0, 100]", joined)
+        self.assertIn("start > end", joined)
+        self.assertIn("duplicate gene IDs", joined)
+
+    def test_writes_to_stdout_when_no_output_path(self):
+        df = cnv_gene_info.build_gene_info(self._write(self.BIOMART))
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            cnv_gene_info.write_gene_info(df, None, genome="hg19")
+        text = buf.getvalue()
+        self.assertTrue(text.startswith("# CNVkit gene info"))
+        self.assertEqual(text.splitlines()[1].split("\t")[0], "Gene stable ID")
+
+
+class LoadGeneInfoHeaderTests(_TempTsvTest):
+    """``load_gene_info`` reads every gene regardless of an optional comment line.
+
+    Regression guard: a gene-info file whose first line is the column header
+    (the bundled ``ensembl-gene-info.hg38.tsv`` layout) previously lost its
+    first physical data row to a ``header=1`` off-by-one.
+    """
+
+    HEADER = (
+        "Gene stable ID\tGene % GC content\tChromosome/scaffold name\t"
+        "Gene start (bp)\tGene end (bp)\tGene name\tNCBI gene ID\t"
+        "Transcript length (including UTRs and CDS)\tTranscript support level (TSL)\n"
+    )
+    ROWS = (
+        "ENSGFIRST\t40\t1\t100\t200\tGFIRST\t1\t500\ttsl1\n"
+        "ENSGSECOND\t41\t1\t300\t400\tGSECOND\t2\t600\ttsl1\n"
+        "ENSGTHIRD\t42\t2\t100\t200\tGTHIRD\t3\t700\ttsl1\n"
+    )
+
+    def test_header_on_first_line_keeps_first_gene(self):
+        # Bundled-file layout: header on line 0, no leading comment.
+        gi = rna.load_gene_info(self._write(self.HEADER + self.ROWS), None)
+        self.assertEqual(set(gi.index), {"ENSGFIRST", "ENSGSECOND", "ENSGTHIRD"})
+
+    def test_optional_leading_comment_is_ignored(self):
+        # Generator layout: a leading "# ..." provenance comment before the header.
+        gi = rna.load_gene_info(
+            self._write("# provenance\n" + self.HEADER + self.ROWS), None
+        )
+        self.assertEqual(set(gi.index), {"ENSGFIRST", "ENSGSECOND", "ENSGTHIRD"})
+
+
+class CnvGeneInfoCliTests(_TempTsvTest):
+    """The ``cnv_gene_info.py`` command-line entry point and arg parsing."""
+
+    def test_main_end_to_end(self):
+        inp = self._write(BuildGeneInfoTests.BIOMART)
+        out = self._write("")
+        argv = ["cnv_gene_info.py", inp, "-o", out, "-g", "hg19", "--chromosomes", "1"]
+        with mock.patch.object(sys, "argv", argv):
+            cnv_gene_info.main()
+        with open(out) as fh:
+            lines = fh.read().splitlines()
+        # Provenance comment records the genome label and source basename.
+        self.assertTrue(lines[0].startswith("# CNVkit gene info"))
+        self.assertIn("genome=hg19", lines[0])
+        self.assertIn("source=", lines[0])
+        self.assertEqual(lines[1].split("\t")[0], "Gene stable ID")
+        # --chromosomes 1 kept only chr1 genes (column index 2 = chromosome).
+        self.assertTrue(all(row.split("\t")[2] == "1" for row in lines[2:]))
+
+    def test_parse_renames_valid(self):
+        self.assertEqual(
+            cnv_gene_info.parse_renames(["Weird Header=gene_id", "X=gc"]),
+            {"Weird Header": "gene_id", "X": "gc"},
+        )
+
+    def test_parse_renames_rejects_missing_equals(self):
+        with self.assertRaises(SystemExit):
+            cnv_gene_info.parse_renames(["nope"])
+
+    def test_parse_renames_rejects_unknown_key(self):
+        with self.assertRaises(SystemExit) as cm:
+            cnv_gene_info.parse_renames(["Header=bogus"])
+        self.assertIn("bogus", str(cm.exception))
+
+
+if __name__ == "__main__":
+    unittest.main()

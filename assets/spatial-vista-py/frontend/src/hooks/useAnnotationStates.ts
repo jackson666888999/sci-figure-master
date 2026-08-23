@@ -1,0 +1,187 @@
+import { useState, useCallback, useMemo, useEffect } from "react";
+import type {
+  AnnotationConfig,
+  CategoryColors,
+  ColorParams,
+  ColorRGB,
+  CustomColors,
+  HiddenCategoryIds,
+  SelectedCategories,
+} from "@/types";
+
+type AnnotationType = string;
+
+export interface UseAnnotationStatesReturn {
+  coloringAnnotation: AnnotationType | null;
+  selectedCategories: SelectedCategories;
+  hiddenCategoryIds: HiddenCategoryIds;
+  categoryColors: CategoryColors;
+  customColors: CustomColors;
+
+  setColoringAnnotation: (type: AnnotationType) => void;
+  setSelectedCategories: (categories: SelectedCategories) => void;
+  setHiddenCategoryIds: (hiddenIds: HiddenCategoryIds) => void;
+  setCategoryColors: (colors: CategoryColors) => void;
+  setCustomColors: (colors: CustomColors) => void;
+  setAnnotationForColoring: (type: AnnotationType) => void;
+
+  colorParams: ColorParams;
+}
+
+export const useAnnotationStates = (
+  // loadedData: LoadedData,
+  annotationConfig: AnnotationConfig | null,
+): UseAnnotationStatesReturn => {
+  /* ----------------------------
+   * 1. coloring annotation
+   * ---------------------------- */
+  const [coloringAnnotation, setColoringAnnotation] = useState<AnnotationType>(
+    "__UNINITIALIZED__" as AnnotationType,
+  );
+  useEffect(() => {
+    if (!annotationConfig) return;
+
+    const { DefaultAnnoType, AvailableAnnoTypes } = annotationConfig;
+
+    setColoringAnnotation(
+      AvailableAnnoTypes.includes(DefaultAnnoType)
+        ? DefaultAnnoType
+        : AvailableAnnoTypes[0],
+    );
+  }, [annotationConfig]);
+
+  /* ----------------------------
+   * 2. selectedCategories
+   * ---------------------------- */
+  const [selectedCategories, setSelectedCategories] =
+    useState<SelectedCategories>({});
+
+  useEffect(() => {
+    if (!annotationConfig) return;
+    const initial: SelectedCategories = {};
+    annotationConfig.AvailableAnnoTypes.forEach((t: string) => {
+      initial[t] = null;
+    });
+    setSelectedCategories(initial);
+  }, [annotationConfig]);
+
+  /* ----------------------------
+   * 3. hiddenCategoryIds
+   * ---------------------------- */
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState<HiddenCategoryIds>(
+    {},
+  );
+
+  useEffect(() => {
+    if (!annotationConfig) return;
+    const initial: HiddenCategoryIds = {};
+    annotationConfig.AvailableAnnoTypes.forEach((t: string) => {
+      initial[t] = new Set();
+    });
+    setHiddenCategoryIds(initial);
+  }, [annotationConfig]);
+
+  /* ----------------------------
+   * 4. categoryColors（来自 config）
+   * ---------------------------- */
+  const [categoryColors, setCategoryColors] = useState<CategoryColors>({});
+
+  // useEffect(() => {
+  //   if (!annotationConfig) return;
+
+  //   const colors: CategoryColors = {};
+  //   for (const anno of annotationConfig.AvailableAnnoTypes) {
+  //     const items = annotationConfig.AnnoMaps[anno]?.Items ?? [];
+  //     const cmap: Record<number, ColorRGB> = {};
+  //     for (const item of items) {
+  //       if (item.Color) {
+  //         cmap[item.Code] = item.Color;
+  //       }
+  //     }
+  //     colors[anno] = cmap;
+  //   }
+  //   setCategoryColors(colors);
+  // }, [annotationConfig]);
+
+  useEffect(() => {
+    if (!annotationConfig) return;
+    // if (!loadedData?.extData?.annotations) return;
+
+    const colors: CategoryColors = {};
+
+    for (const anno of annotationConfig.AvailableAnnoTypes) {
+      const items = annotationConfig.AnnoMaps?.[anno]?.Items ?? [];
+      const cmap: Record<number, ColorRGB> = {};
+
+      for (const it of items) {
+        if (it.Color) {
+          cmap[it.Code] = it.Color;
+        }
+      }
+
+      colors[anno] = cmap;
+    }
+
+    setCategoryColors(colors);
+  }, [annotationConfig]);
+
+  /* ----------------------------
+   * 5. customColors（用户覆盖）
+   * ---------------------------- */
+  const [customColors, setCustomColors] = useState<CustomColors>({});
+
+  useEffect(() => {
+    if (!annotationConfig) return;
+    const initial: CustomColors = {};
+    annotationConfig.AvailableAnnoTypes.forEach((t: string) => {
+      initial[t] = {};
+    });
+    setCustomColors(initial);
+  }, [annotationConfig]);
+
+  /* ----------------------------
+   * 6. 切换 annotation
+   * ---------------------------- */
+  const setAnnotationForColoring = useCallback((type: AnnotationType) => {
+    setColoringAnnotation(type);
+    setSelectedCategories((prev) => ({
+      ...prev,
+      [type]: null,
+    }));
+  }, []);
+
+  /* ----------------------------
+   * 7. colorParams（deck.gl）
+   * ---------------------------- */
+  const colorParams = useMemo(
+    () => ({
+      selectedCategories,
+      hiddenCategoryIds,
+      coloringAnnotation,
+      customColors,
+      categoryColors,
+    }),
+    [
+      selectedCategories,
+      hiddenCategoryIds,
+      coloringAnnotation,
+      customColors,
+      categoryColors,
+    ],
+  );
+
+  return {
+    coloringAnnotation,
+    selectedCategories,
+    hiddenCategoryIds,
+    categoryColors,
+    customColors,
+    setColoringAnnotation,
+    setSelectedCategories,
+    setHiddenCategoryIds,
+    setCategoryColors,
+    setCustomColors,
+    setAnnotationForColoring,
+    colorParams,
+  };
+};

@@ -1,0 +1,950 @@
+"""Base class for an array of annotated genomic regions."""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any, Self
+
+import bioframe
+import numpy as np
+import pandas as pd
+
+from .chromnames import (
+    infer_sex_chrom_labels,
+    is_alternative_contig,
+    is_autosome,
+    is_mitochondrial,
+)
+from .chromsort import sorter_chrom
+from .cut import cut
+from .intersect import (
+    Numeric,
+    by_ranges,
+    into_ranges,
+    iter_ranges,
+    iter_slices,
+    point_aware_ends,
+)
+from .merge import flatten, merge, squash
+from .rangelabel import to_label
+from .subdivide import subdivide
+from .subtract import subtract
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+
+    from numpy import ndarray
+
+    from cnvlib.cnary import CopyNumArray
+
+_BF_COLS = ("chromosome", "start", "end")
+
+
+class GenomicArray:
+    """An array of genomic intervals. Base class for genomic data structures.
+
+    Can represent most BED-like tabular formats with arbitrary additional
+    columns.
+    """
+
+    _required_columns = ("chromosome", "start", "end")
+    _required_dtypes = (str, int, int)
+
+    def __init__(
+        self,
+        data_table: Sequence | pd.DataFrame | None,
+        meta_dict: Mapping | None = None,
+    ) -> None:
+        # Validation
+        if (
+            data_table is None
+            or (isinstance(data_table, list | tuple) and not len(data_table))
+            or (isinstance(data_table, pd.DataFrame) and not len(data_table.columns))
+        ):
+            data_table = self._make_blank()
+        else:
+            if not isinstance(data_table, pd.DataFrame):
+                # Rarely if ever needed -- prefer from_rows, from_columns, etc.
+                data_table = pd.DataFrame(data_table)
+            assert isinstance(data_table, pd.DataFrame)
+            if not all(c in data_table.columns for c in self._required_columns):
+                raise ValueError(
+                    "data table must have at least columns "
+                    + f"{self._required_columns!r}; got {tuple(data_table.columns)!r}"
+                )
+            # Ensure columns are the right type
+            # (in case they've been automatically converted to the wrong type,
+            # e.g. chromosome names as integers; genome coordinates as floats)
+            if len(data_table):
+
+                def ok_dtype(col, dtype):
+                    return isinstance(data_table[col].iat[0], dtype)  # type: ignore[index]
+
+            else:
+
+                def ok_dtype(col, dtype):
+                    return data_table[col].dtype == np.dtype(dtype)  # type: ignore[index]
+
+            recast_cols = {
+                col: dtype
+                for col, dtype in zip(
+                    self._required_columns, self._required_dtypes, strict=True
+                )
+                if not ok_dtype(col, dtype)
+            }
+            if recast_cols:
+                data_table = data_table.astype(recast_cols)
+
+        assert isinstance(data_table, pd.DataFrame)
+        self.data: pd.DataFrame = data_table
+        self.meta = dict(meta_dict) if meta_dict is not None and len(meta_dict) else {}
+
+    @classmethod
+    def _make_blank(cls) -> pd.DataFrame:
+        """Create an empty dataframe with the columns required by this class."""
+        spec = list(zip(cls._required_columns, cls._required_dtypes, strict=True))
+        try:
+            arr = np.zeros(0, dtype=spec)
+            return pd.DataFrame(arr)
+        except TypeError as exc:
+            raise TypeError(r"{exc}: {spec}") from exc
+
+    @classmethod
+    def from_columns(
+        cls, columns: Mapping[str, Iterable], meta_dict: Mapping | None = None
+    ) -> GenomicArray:
+        """Create a new instance from column arrays, given as a dict."""
+        table = pd.DataFrame.from_dict(columns)
+        ary = cls(table, meta_dict)
+        ary.sort_columns()
+        return ary
+
+    @classmethod
+    def from_rows(
+        cls,
+        rows: Iterable,
+        columns: Sequence[str] | None = None,
+        meta_dict: Mapping | None = None,
+    ) -> GenomicArray | CopyNumArray:
+        """Create a new instance from a list of rows, as tuples or arrays."""
+        if columns is None:
+            columns = cls._required_columns
+        if isinstance(rows, pd.DataFrame):
+            table = rows[columns].reset_index(drop=True)
+        else:
+            table = pd.DataFrame.from_records(rows, columns=columns)
+        return cls(table, meta_dict)
+
+    def as_columns(self, **columns):
+        """Wrap the named columns in this instance's metadata."""
+        return self.__class__.from_columns(columns, self.meta)
+        # return self.__class__(self.data.loc[:, columns], self.meta.copy())
+
+    def as_dataframe(self, dframe: pd.DataFrame, reset_index: bool = False) -> Self:
+        """Wrap the given pandas DataFrame in this instance's metadata."""
+        if reset_index:
+            dframe = dframe.reset_index(drop=True)
+        return self.__class__(dframe, self.meta.copy())
+
+    def as_series(self, arraylike: Iterable) -> pd.Series:
+        """Coerce `arraylike` to a Series with this instance's index."""
+        return pd.Series(arraylike, index=self.data.index)
+
+    def as_rows(self, rows: Iterable) -> Self:
+        """Wrap the given rows in this instance's metadata."""
+        try:
+            out = self.from_rows(rows, columns=self.data.columns, meta_dict=self.meta)
+        except AssertionError as exc:
+            columns = self.data.columns.tolist()
+            firstrow = next(iter(rows))
+            raise RuntimeError(
+                f"Passed {len(columns)} columns {columns!r}, but "
+                f"{len(firstrow)} elements in first row: {firstrow}"
+            ) from exc
+        return out  # type: ignore[return-value]
+
+    # Container behaviour
+
+    def __bool__(self) -> bool:
+        """Test whether the array contains any rows (is non-empty)."""
+        return bool(len(self.data))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, GenomicArray):
+            return NotImplemented
+        return bool(self.data.equals(other.data))
+
+    def __len__(self) -> int:
+        """Return the number of rows (genomic intervals) in the array."""
+        return len(self.data)
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.data.columns
+
+    def __getitem__(self, index: Any) -> pd.Series | pd.DataFrame:
+        """Access a portion of the data.
+
+        Cases:
+
+        - single integer: a row, as pd.Series
+        - string row name: a column, as pd.Series
+        - a boolean array: masked rows, as_dataframe
+        - tuple of integers: selected rows, as_dataframe
+        """
+        if isinstance(index, int):
+            # A single row
+            return self.data.iloc[index]
+            # return self.as_dataframe(self.data.iloc[index:index+1])
+        if isinstance(index, str):
+            # A column, by name
+            return self.data[index]
+        if (
+            isinstance(index, tuple)
+            and len(index) == 2
+            and index[1] in self.data.columns
+        ):
+            # Row index, column index -> cell value
+            return self.data.loc[index]
+        if isinstance(index, slice):
+            # return self.as_dataframe(self.data.take(index))
+            return self.as_dataframe(self.data[index])
+        # Iterable -- selected row indices or boolean array, probably
+        try:
+            if isinstance(index, type(None)) or len(index) == 0:
+                empty = pd.DataFrame(columns=self.data.columns)
+                return self.as_dataframe(empty)
+        except TypeError as exc:
+            raise TypeError(
+                f"object of type {type(index)!r} "
+                f"cannot be used as an index into a {self.__class__.__name__}"
+            ) from exc
+        return self.as_dataframe(self.data[index])
+        # return self.as_dataframe(self.data.take(index))
+
+    def __setitem__(
+        self,
+        index: str | tuple[int, str] | slice | int | tuple[pd.Series, str],
+        value: Any,
+    ) -> None:
+        """Assign to a portion of the data."""
+        if isinstance(index, int):
+            self.data.iloc[index] = value
+        elif isinstance(index, str):
+            self.data[index] = value
+        elif (
+            isinstance(index, tuple)
+            and len(index) == 2
+            and index[1] in self.data.columns
+        ):
+            self.data.loc[index] = value
+        else:
+            assert isinstance(index, slice) or len(index) > 0
+            self.data[index] = value
+
+    def __delitem__(self, index) -> None:
+        raise NotImplementedError
+
+    def __iter__(self):  # type: ignore[override]
+        return self.data.itertuples(index=False)
+
+    __next__ = next
+
+    @property
+    def chromosome(self) -> pd.Series:
+        """Get column 'chromosome'."""
+        return self.data["chromosome"]
+
+    @property
+    def start(self) -> pd.Series:
+        """Get column 'start'."""
+        return self.data["start"]
+
+    @property
+    def end(self) -> pd.Series:
+        """Get column 'end'."""
+        return self.data["end"]
+
+    @property
+    def sample_id(self) -> pd.Series:
+        """Get metadata field 'sample_id'."""
+        return self.meta.get("sample_id")
+
+    # Traversal
+
+    def autosomes(self, also: str | list[str] | pd.Series | None = None) -> Self:
+        """Select autosomal rows, excluding sex chromosomes and alternative contigs.
+
+        Accepts both arabic-numeral chromosome names (e.g. ``chr1``) and
+        Roman-numeral names (e.g. ``chrI``, ``chrXVI``). Sex chromosomes are
+        inferred from the chromosome set and excluded, so ``chrX`` is treated
+        as a sex chromosome in human data and as autosome 10 in yeast data.
+
+        Mitochondrial and alternative/unplaced contigs are always excluded.
+
+        If no autosomes can be recognized (e.g. an unfamiliar custom assembly),
+        emits a warning and returns the whole array unchanged.
+        """
+        unique = self.chromosome.unique()
+        sex_x, sex_y = infer_sex_chrom_labels(unique)
+        is_auto = self.chromosome.map(
+            lambda n: (
+                is_autosome(n, sex_x, sex_y)
+                and not is_mitochondrial(n)
+                and not is_alternative_contig(n)
+            )
+        )
+        if not is_auto.any():
+            logging.warning(
+                "GenomicArray.autosomes(): no autosomes recognized in %d "
+                "chromosomes (sample: %s); returning the array unchanged.",
+                len(unique),
+                sorted(map(str, unique))[:8],
+            )
+            return self
+        if also is not None:
+            if isinstance(also, pd.Series):
+                is_auto |= also
+            else:
+                # The assumption is that `also` is a single chromosome name or an iterable thereof.
+                if isinstance(also, str):
+                    also = [also]
+                for a_chrom in also:
+                    is_auto |= self.chromosome == a_chrom
+        return self[is_auto]
+
+    def by_arm(
+        self, min_gap_size: int | float = 1e5, min_arm_bins: int = 50
+    ) -> Iterator[tuple[str, Self]]:
+        """Iterate over bins grouped by chromosome arm (inferred)."""
+        # ENH:
+        # - Accept GArray of actual centromere regions as input
+        #   -> find largest gap (any size) within cmere region, split there
+        # - Cache centromere locations once found
+        self.data.chromosome = self.data.chromosome.astype(str)
+        for chrom, subtable in self.data.groupby("chromosome", sort=False):
+            margin = max(min_arm_bins, round(0.1 * len(subtable)))
+            if len(subtable) > 2 * margin + 1:
+                # Found a candidate centromere
+                gaps = (
+                    subtable.start.to_numpy()[margin + 1 : -margin]
+                    - subtable.end.to_numpy()[margin : -margin - 1]
+                )
+                cmere_idx = gaps.argmax() + margin + 1
+                cmere_size = gaps[cmere_idx - margin - 1]
+            else:
+                cmere_idx = 0
+                cmere_size = 0
+            if cmere_idx and cmere_size >= min_gap_size:
+                logging.debug(
+                    "%s centromere at %d of %d bins (size %s)",
+                    chrom,
+                    cmere_idx,
+                    len(subtable),
+                    cmere_size,
+                )
+                p_arm = subtable.index[:cmere_idx]
+                yield chrom, self.as_dataframe(subtable.loc[p_arm, :])
+                q_arm = subtable.index[cmere_idx:]
+                yield chrom, self.as_dataframe(subtable.loc[q_arm, :])
+            else:
+                # No centromere found -- emit the whole chromosome
+                if cmere_idx:
+                    logging.debug(
+                        "%s: Ignoring centromere at %d of %d bins (size %s)",
+                        chrom,
+                        cmere_idx,
+                        len(subtable),
+                        cmere_size,
+                    )
+                else:
+                    logging.debug("%s: Skipping centromere search, too small", chrom)
+                yield chrom, self.as_dataframe(subtable)
+
+    def by_chromosome(self) -> Iterator[tuple[str, Self]]:
+        """Iterate over bins grouped by chromosome name."""
+        for chrom, subtable in self.data.groupby("chromosome", sort=False):
+            yield chrom, self.as_dataframe(subtable)
+
+    def by_ranges(
+        self, other, mode: str = "outer", keep_empty: bool = True
+    ) -> Iterator:
+        """Group rows by another GenomicArray's bin coordinate ranges.
+
+        For example, this can be used to group SNVs by CNV segments.
+
+        Bins in this array that fall outside the other array's bins are skipped.
+
+        `self` must be sorted by start position within each chromosome, as
+        `tabio.read` and `sort` leave it; rows out of that order raise
+        `ValueError`. Chromosome order does not matter: this groups by
+        chromosome before searching.
+
+        Parameters
+        ----------
+        other : GenomicArray
+            Another GA instance.
+        mode : string
+            Determines what to do with bins that overlap a boundary of the
+            selection. Possible values are:
+
+            - ``inner``: Drop the bins on the selection boundary, don't emit them.
+            - ``outer``: Keep/emit those bins as they are.
+            - ``trim``: Emit those bins but alter their boundaries to match the
+              selection; the bin start or end position is replaced with the
+              selection boundary position.
+        keep_empty : bool
+            Whether to also yield `other` bins with no overlapping bins in
+            `self`, or to skip them when iterating.
+
+        Yields
+        ------
+        tuple
+            (other bin, GenomicArray of overlapping rows in self), in `other`'s
+            row order. With `keep_empty`, exactly one per row of `other`, so
+            callers may pair them positionally.
+        """
+        for bin_row, subrange in by_ranges(self.data, other.data, mode, keep_empty):  # type: ignore[func-returns-value]
+            if len(subrange):
+                yield bin_row, self.as_dataframe(subrange)
+            elif keep_empty:
+                yield bin_row, self.as_rows(subrange)
+
+    def coords(self, also: str | Iterable[str] = ()) -> map:
+        """Iterate over plain coordinates of each bin: chromosome, start, end.
+
+        Parameters
+        ----------
+        also : str, or iterable of strings
+            Also include these columns from `self`, in addition to chromosome,
+            start, and end.
+
+        Example, yielding rows in BED format:
+
+        >>> probes.coords(also=["gene", "strand"])
+        """
+        cols = list(GenomicArray._required_columns)
+        if also:
+            if isinstance(also, str):
+                cols.append(also)
+            else:
+                cols.extend(also)
+        coordframe = self.data.loc[:, cols]
+        return coordframe.itertuples(index=False)  # type: ignore[no-any-return]
+
+    def labels(self) -> pd.Series:
+        """Get chromosomal coordinates as genomic range labels."""
+        return self.data.apply(to_label, axis=1)
+
+    def in_range(
+        self,
+        chrom: str | None = None,
+        start: Numeric | None = None,
+        end: Numeric | None = None,
+        mode: str = "outer",
+    ) -> Self:
+        """Get the GenomicArray portion within the given genomic range.
+
+        `self` must be sorted by start position within each chromosome, as
+        `tabio.read` and `sort` leave it; rows out of that order raise
+        `ValueError`. Without a `chrom` the whole array is searched at once, so
+        it must then ascend from end to end -- which a multi-chromosome array
+        does not, since coordinates restart at every chromosome.
+
+        Parameters
+        ----------
+        chrom : str or None
+            Chromosome name to select. Use None if `self` has only one
+            chromosome.
+        start : int or None
+            Start coordinate of range to select, in 0-based coordinates.
+            If None, start from 0.
+        end : int or None
+            End coordinate of range to select. If None, select to the end of the
+            chromosome.
+        mode : str
+            As in `by_ranges`: ``outer`` includes bins straddling the range
+            boundaries, ``trim`` additionally alters the straddling bins'
+            endpoints to match the range boundaries, and ``inner`` excludes
+            those bins.
+
+        Returns
+        -------
+        GenomicArray
+            The subset of `self` enclosed by the specified range.
+        """
+        starts = [int(start)] if start is not None else None
+        ends = [int(end)] if end is not None else None
+        results = iter_ranges(self.data, chrom, starts, ends, mode)
+        return self.as_dataframe(next(results))
+
+    def in_ranges(
+        self,
+        chrom: str | None = None,
+        starts: Sequence[Numeric] | None = None,
+        ends: Sequence[Numeric] | None = None,
+        mode: str = "outer",
+    ) -> GenomicArray:
+        """Get the GenomicArray portion within the specified ranges.
+
+        Similar to `in_range`, but concatenating the selections of all the
+        regions specified by the `starts` and `ends` arrays.
+
+        `self` must be sorted by start position within each chromosome, as
+        `tabio.read` and `sort` leave it; rows out of that order raise
+        `ValueError`. Without a `chrom` the whole array is searched at once, so
+        it must then ascend from end to end -- which a multi-chromosome array
+        does not, since coordinates restart at every chromosome.
+
+        Parameters
+        ----------
+        chrom : str or None
+            Chromosome name to select. Use None if `self` has only one
+            chromosome.
+        starts : int array, or None
+            Start coordinates of ranges to select, in 0-based coordinates.
+            If None, start from 0.
+        ends : int array, or None
+            End coordinates of ranges to select. If None, select to the end of the
+            chromosome. If `starts` and `ends` are both specified, they must be
+            arrays of equal length.
+        mode : str
+            As in `by_ranges`: ``outer`` includes bins straddling the range
+            boundaries, ``trim`` additionally alters the straddling bins'
+            endpoints to match the range boundaries, and ``inner`` excludes
+            those bins.
+
+        Returns
+        -------
+        GenomicArray
+            Concatenation of all the subsets of `self` enclosed by the specified
+            ranges.
+        """
+        chunks = list(iter_ranges(self.data, chrom, starts, ends, mode))
+        # An empty `starts`/`ends` selects nothing, and `pd.concat` raises on an
+        # empty list, so hoist that case out.
+        if not chunks:
+            return self.as_dataframe(self.data.iloc[:0])
+        return self.as_dataframe(pd.concat(chunks, sort=False))
+
+    def into_ranges(
+        self,
+        other: GenomicArray | CopyNumArray,
+        column: str,
+        default: int | float | str,
+        summary_func: Callable | None = None,
+    ) -> pd.Series:
+        """Re-bin values from `column` into the corresponding ranges in `other`.
+
+        Match overlapping/intersecting rows from `other` to each row in `self`.
+        Then, within each range in `other`, extract the value(s) from `column`
+        in `self`, using the function `summary_func` to produce a single value
+        if multiple bins in `self` map to a single range in `other`.
+
+        For example, group SNVs (self) by CNV segments (other) and calculate the
+        median (summary_func) of each SNV group's allele frequencies.
+
+        `self` must be sorted by start position within each chromosome, as
+        `tabio.read` and `sort` leave it; rows out of that order raise
+        `ValueError`. Chromosome order does not matter: this groups by
+        chromosome before searching.
+
+        Parameters
+        ----------
+        other : GenomicArray
+            Ranges into which the overlapping values of `self` will be
+            summarized.
+        column : string
+            Column name in `self` to extract values from.
+        default
+            Value to assign to indices in `other` that do not overlap any bins in
+            `self`. Type should be the same as or compatible with the output
+            field specified by `column`, or the output of `summary_func`.
+        summary_func : callable, dict of string-to-callable, or None
+            Specify how to reduce 1 or more `other` rows into a single value for
+            the corresponding row in `self`.
+
+                - If callable, apply to the `column` field each group of rows in
+                  `other` column.
+                - If a single-element dict of column name to callable, apply to that
+                  field in `other` instead of `column`.
+                - If None, use an appropriate summarizing function for the datatype
+                  of the `column` column in `other` (e.g. median of numbers,
+                  concatenation of strings).
+                - If some other value, assign that value to `self` wherever there is
+                  an overlap.
+
+        Returns
+        -------
+        pd.Series
+            The extracted and summarized values from `self` corresponding to
+            other's genomic ranges: the same length as `other`, in `other`'s
+            row order, and indexed by `other`'s index labels.
+        """
+        if column not in self:
+            logging.warning("No '%s' column available for summary calculation", column)
+            return pd.Series(np.repeat(default, len(other)), index=other.data.index)
+        return into_ranges(self.data, other.data, column, default, summary_func)
+
+    def iter_ranges_of(
+        self,
+        other: GenomicArray | CopyNumArray,
+        column: str,
+        mode: str = "outer",
+        keep_empty: bool = True,
+    ) -> Iterator[pd.Series]:
+        """Extract values of `column` grouped by another array's ranges.
+
+        For example, this can be used to group SNVs by CNV segments.
+
+        Bins in this array that fall outside the other array's bins are skipped.
+
+        `self` must be sorted by start position within each chromosome, as
+        `tabio.read` and `sort` leave it; rows out of that order raise
+        `ValueError`. Chromosome order does not matter: this groups by
+        chromosome before searching.
+
+        Parameters
+        ----------
+        other : GenomicArray
+            Another GA instance.
+        column : string
+            Column name in `self` to extract values from.
+        mode : string
+            Determines what to do with bins that overlap a boundary of the
+            selection. Possible values are:
+
+            - ``inner``: Drop the bins on the selection boundary, don't emit them.
+            - ``outer``: Keep/emit those bins as they are.
+            - ``trim``: Emit those bins but alter their boundaries to match the
+              selection; the bin start or end position is replaced with the
+              selection boundary position.
+        keep_empty : bool
+            Whether to also emit an empty Series for `other` rows with no
+            overlapping rows in `self`, or to skip those rows.
+
+        Yields
+        ------
+        pd.Series
+            The `column` values of the rows in `self` overlapping each row of
+            `other`, in `other`'s row order. With `keep_empty`, exactly one per
+            row of `other`, so callers may pair them positionally.
+        """
+        if column not in self.data.columns:
+            raise ValueError(f"No column named {column!r} in this object")
+        ser = self.data[column]
+        for slc in iter_slices(self.data, other.data, mode, keep_empty):
+            yield ser[slc]
+
+    # Modification
+
+    def add(self, other: CopyNumArray) -> None:
+        """Combine this array's data with another GenomicArray (in-place).
+
+        Any optional columns must match between both arrays.
+        """
+        if not isinstance(other, self.__class__):
+            raise ValueError(
+                f"Argument (type {type(other)}) is not a {self.__class__} instance"
+            )
+        if len(other.data):
+            self.data = pd.concat([self.data, other.data], ignore_index=True)
+            self.sort()
+
+    def concat(self, others: Iterable[Self]) -> Self:
+        """Concatenate several GenomicArrays, keeping this array's metadata.
+
+        This array's data table is not implicitly included in the result.
+        """
+        table = pd.concat([otr.data for otr in others], ignore_index=True)
+        result = self.as_dataframe(table)
+        result.sort()
+        return result
+
+    def copy(self) -> Self:
+        """Create an independent copy of this object."""
+        return self.as_dataframe(self.data.copy())
+
+    def add_columns(self, **columns) -> Self:
+        """Add the given columns to a copy of this GenomicArray.
+
+        Parameters
+        ----------
+        **columns : array
+            Keyword arguments where the key is the new column's name and the
+            value is an array of the same length as `self` which will be the new
+            column's values.
+
+        Returns
+        -------
+        GenomicArray or subclass
+            A new instance of `self` with the given columns included in the
+            underlying dataframe.
+        """
+        return self.as_dataframe(self.data.assign(**columns))
+
+    def keep_columns(self, colnames: tuple[str, str, str, str, str, str]) -> Self:
+        """Extract a subset of columns, reusing this instance's metadata."""
+        colnames = self.data.columns.intersection(colnames)
+        return self.__class__(self.data.loc[:, colnames], self.meta.copy())
+
+    def drop_extra_columns(self) -> Self:
+        """Remove any optional columns from this GenomicArray.
+
+        Returns
+        -------
+        GenomicArray or subclass
+            A new copy with only the minimal set of columns required by the
+            class (e.g. chromosome, start, end for GenomicArray; may be more for
+            subclasses).
+        """
+        table = self.data.loc[:, self._required_columns]
+        return self.as_dataframe(table)
+
+    def filter(self, func: Callable | None = None, **kwargs) -> Self:
+        """Take a subset of rows where the given condition is true.
+
+        Parameters
+        ----------
+        func : callable
+            A boolean function which will be applied to each row to keep rows
+            where the result is True.
+        **kwargs : string
+            Keyword arguments like ``chromosome="chr7"`` or
+            ``gene="Antitarget"``, which will keep rows where the keyed field
+            equals the specified value.
+
+        Return
+        ------
+        GenomicArray
+            Subset of `self` where the specified condition is True.
+        """
+        table = self.data
+        if func is not None:
+            table = table[table.apply(func, axis=1)]
+        for key, val in list(kwargs.items()):
+            assert key in self
+            table = table[table[key] == val]
+        return self.as_dataframe(table)
+
+    def shuffle(self) -> ndarray:
+        """Randomize the order of bins in this array (in-place)."""
+        order = np.arange(len(self.data))
+        rng = np.random.default_rng(0xA5EED)
+        rng.shuffle(order)
+        self.data = self.data.iloc[order]
+        return order
+
+    def sort(self) -> None:
+        """Sort this array's bins in-place, with smart chromosome ordering."""
+        sort_key = self.data.chromosome.apply(sorter_chrom)
+        self.data = (
+            self.data.assign(_sort_key_=sort_key)
+            .sort_values(by=["_sort_key_", "start", "end"], kind="mergesort")
+            .drop("_sort_key_", axis=1)
+            .reset_index(drop=True)
+        )
+
+    def sort_columns(self) -> None:
+        """Sort this array's columns in-place, per class definition."""
+        extra_cols = [
+            col for col in self.data.columns if col not in self._required_columns
+        ]
+        sorted_colnames = list(self._required_columns) + sorted(extra_cols)
+        assert len(sorted_colnames) == len(self.data.columns)
+        self.data = self.data.reindex(columns=sorted_colnames)
+
+    # Genome arithmetic
+
+    def cut(self, other: GenomicArray) -> Self:
+        """Split this array's regions at the boundaries in ``other``."""
+        return self.as_dataframe(cut(self.data, other.data))
+
+    def flatten(
+        self,
+        combine: dict[str, Callable] | None = None,
+        split_columns: Iterable[str] | None = None,
+    ) -> GenomicArray:
+        """Split this array's regions where they overlap.
+
+        Each sub-interval takes its fields from the rows covering it alone.
+        See :func:`skgenome.merge.flatten` for `combine` and `split_columns`.
+        """
+        return self.as_dataframe(
+            flatten(self.data, combine=combine, split_columns=split_columns)
+        )
+
+    def intersection(self, other: GenomicArray, mode: str = "outer") -> GenomicArray:
+        """Select the bins in `self` that overlap the regions in `other`.
+
+        The extra fields of `self`, but not `other`, are retained in the
+        output. A bin overlapping several regions appears once per region, and
+        in `trim` mode is clipped to each; the rows come in `other`'s row
+        order, and within one region in `self`'s.
+
+        Unlike `by_ranges` and `in_range`, this imposes no ordering on `self`:
+        every mode pairs the rows through bioframe, which sorts for itself.
+
+        Parameters
+        ----------
+        other : GenomicArray
+            The regions to select by.
+        mode : str
+            As in `by_ranges`: ``outer`` includes bins straddling a region's
+            boundaries, ``trim`` additionally alters the straddling bins'
+            endpoints to match them, and ``inner`` excludes those bins.
+
+        Returns
+        -------
+        GenomicArray
+            The rows of `self` that overlap a region of `other`.
+        """
+        if mode not in ("outer", "inner", "trim"):
+            raise ValueError(f"Unrecognized mode: {mode!r}")
+        if not len(self) or not len(other):
+            return self.as_dataframe(self.data.iloc[:0])
+        # Take from bioframe only its pairing of the rows: with `return_input`
+        # it also returns index, index_ and the two inputs' coordinates
+        # suffixed apart, in the same frame as the user's columns, where a
+        # column of the input can share one of those names -- `read_tab`
+        # accepts arbitrary extra columns, so any name can arrive from a file,
+        # and none of them is ours to reserve. Indexing both inputs from zero
+        # makes the labels bioframe reports positions instead, so the pairing
+        # is independent of whatever labels the caller's rows carry.
+        mine = self.data.reset_index(drop=True)
+        theirs = other.data.reset_index(drop=True)
+        pairs = bioframe.overlap(
+            mine,
+            theirs,
+            how="inner",
+            cols1=_BF_COLS,
+            cols2=_BF_COLS,
+            return_index=True,
+            return_input=False,
+        )
+        # Sort by `other`'s rows then `self`'s, which reproduces `by_ranges`'
+        # row order, and read the pairing out as positions into each input --
+        # `mine` is `self.data` row for row. Sorting before the 'inner' filter
+        # rather than after costs nothing: bioframe emits each pair once, so
+        # the key is unique and dropping rows cannot disturb the order.
+        pairs = pairs.sort_values(["index_", "index"])
+        rows = pairs["index"].to_numpy(dtype=int)
+        regions = pairs["index_"].to_numpy(dtype=int)
+        my_starts = mine.start.to_numpy()
+        their_starts = theirs.start.to_numpy()
+        if mode == "inner":
+            # Keep only self bins fully contained within an other bin, by the
+            # same point-aware rule bioframe paired them under: a zero-width
+            # bin is the base at its start, so it is contained wherever that
+            # base is, and a one-base bin fits inside the point naming it.
+            my_widened = point_aware_ends(my_starts, mine.end)
+            their_widened = point_aware_ends(their_starts, theirs.end)
+            contained = (my_starts[rows] >= their_starts[regions]) & (
+                my_widened[rows] <= their_widened[regions]
+            )
+            rows, regions = rows[contained], regions[contained]
+        # Take self's rows, with duplicates, one per surviving pair
+        selected = self.data.iloc[rows]
+        if mode == "trim":
+            # Clip each bin to the region that selected it. The bounds are the
+            # raw ones, not the point-aware widening the pairing was decided
+            # under: clipping to `start + 1` would hand back a base the query
+            # never asked for, the same reason `idx_ranges` reports the bounds
+            # it was given rather than the ones it searched with. No clip can
+            # invert a row, since every pair here genuinely overlaps and so the
+            # greater start never exceeds the lesser end -- which is what the
+            # old path, clipping against bounds an unsorted table had
+            # misplaced, could not promise.
+            my_ends = mine.end.to_numpy()
+            their_ends = theirs.end.to_numpy()
+            selected = selected.assign(
+                start=np.maximum(my_starts[rows], their_starts[regions]),
+                end=np.minimum(my_ends[rows], their_ends[regions]),
+            )
+        return self.as_dataframe(selected)
+
+    def merge(
+        self,
+        bp: int = 0,
+        stranded: bool = False,
+        combine: dict[str, Callable] | None = None,
+    ) -> GenomicArray:
+        """Merge adjacent or overlapping regions into single rows.
+
+        Similar to 'bedtools merge'. Pass ``bp=1`` to merge only regions that
+        genuinely overlap, leaving bookended regions as separate rows.
+        """
+        return self.as_dataframe(merge(self.data, bp, stranded, combine))
+
+    def resize_ranges(
+        self, bp: int, chrom_sizes: Mapping[str, Numeric] | None = None
+    ) -> GenomicArray:
+        """Resize each genomic bin by a fixed number of bases at each end.
+
+        Bin 'start' values have a minimum of 0, and `chrom_sizes` can
+        specify each chromosome's maximum 'end' value.
+
+        Similar to 'bedtools slop'.
+
+        Parameters
+        ----------
+        bp : int
+            Number of bases in each direction to expand or shrink each bin.
+            Applies to 'start' and 'end' values symmetrically, and may be
+            positive (expand) or negative (shrink).
+        chrom_sizes : dict of string-to-int
+            Chromosome name to length in base pairs. If given, all chromosomes
+            in `self` must be included.
+        """
+        table = self.data
+        limits = {"lower": 0}
+        if chrom_sizes:
+            limits["upper"] = self.chromosome.map(chrom_sizes)
+        table = table.assign(
+            start=(table["start"] - bp).clip(**limits),
+            end=(table["end"] + bp).clip(**limits),
+        )
+        if bp < 0:
+            # Drop any bins that now have zero or negative size
+            ok_size = table["end"] - table["start"] > 0
+            logging.debug("Dropping %d bins with size <= 0", (~ok_size).sum())
+            table = table[ok_size]
+        # Don't modify the original
+        return self.as_dataframe(table.copy())
+
+    def squash(
+        self,
+        by: str | None = None,
+        combine: dict[str, Callable] | None = None,
+    ) -> Self:
+        """Combine consecutive adjacent rows into single rows.
+
+        Parameters
+        ----------
+        by : str or None
+            If given, only combine consecutive rows with the same value
+            in this column (e.g. ``"gene"``).
+        combine : dict or None
+            Column-to-function mappings for aggregation.
+        """
+        return self.as_dataframe(squash(self.data, by=by, combine=combine))
+
+    def subdivide(
+        self, avg_size: float, min_size: int = 0, verbose: bool = False
+    ) -> GenomicArray:
+        """Resize this array's regions to roughly equal-sized sub-regions.
+
+        Contiguous regions are merged before being divided, so their original
+        boundaries are not preserved.
+        """
+        return self.as_dataframe(subdivide(self.data, avg_size, min_size, verbose))
+
+    def subtract(self, other: GenomicArray) -> GenomicArray:
+        """Remove the overlapping regions in `other` from this array."""
+        return self.as_dataframe(subtract(self.data, other.data))
+
+    def total_range_size(self) -> int:
+        """Total number of bases covered by all (merged) regions."""
+        if not len(self):
+            return 0
+        regions = merge(self.data, bp=1)
+        return int(regions.end.sum() - regions.start.sum())  # type: ignore[no-any-return]

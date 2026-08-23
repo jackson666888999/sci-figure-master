@@ -1,0 +1,121 @@
+url: https://rpkgs.datanovia.com/survminer/index.html
+
+template:
+  bootstrap: 5
+  bootswatch: lumen
+  ganalytics: G-62JB5GM9C4
+
+development:
+  mode: "auto"
+
+copy:
+  - pkgdown/cheatsheet/survminer_cheatsheet.pdf
+  - tools
+
+reference:
+  - title: Fit survival curves
+    desc: Fit survival curves and compute p-values, median survival and median follow-up.
+    contents:
+      - surv_group_by
+      - surv_fit
+      - surv_summary
+      - surv_median
+      - surv_median_followup
+      - surv_pvalue
+      - weighted_logrank
+      - pairwise_survdiff
+      - surv_cutpoint
+  - title: Visualize survival curves
+    desc: Summarize and visualize Kaplan-Meier survival curves.
+    contents:
+      - ggsurvplot
+      - ggsurvplot_facet
+      - ggsurvplot_combine
+      - ggsurvplot_group_by
+      - ggsurvplot_add_all
+      - ggsurvplot_df
+      - ggsurvplot_list
+      - ggflexsurvplot
+      - ggsurvparametric
+      - arrange_ggsurvplots
+      - ggsurvevents
+  - title: Modern methods
+    desc: RMST, landmark, milestone and competing-risks summaries reviewers now expect.
+    contents:
+      - ggrmst_difference
+      - gglandmark
+      - ggmilestone
+      - ggcompetingrisks
+  - title: Cox model summary and forest plots
+    contents:
+      - ggforest
+      - ggforest_models
+      - ggforest_subgroup
+      - ggadjustedcurves
+  - title: Diagnostics of Cox model
+    contents:
+      - ggcoxdiagnostics
+      - ggcoxfunctional
+      - ggcoxzph
+      - ggcoxnph
+  - title: Clinical trial data
+    desc: Prepare CDISC ADaM time-to-event (ADTTE) data for analysis.
+    contents:
+      - surv_adtte
+  - title: Tables, themes and helpers
+    contents:
+      - ggsurvtable
+      - customize_labels
+      - build_ggsurvplot
+      - add_ggsurvplot
+      - ggsurvplot_arguments
+      - theme_survminer
+  - title: Data
+    contents:
+      - myeloma
+      - BMT
+      - BRCAOV.survInfo
+
+
+articles:
+  - title: Get started
+    navbar: Get started
+    contents:
+      - Get_started
+  - title: Methods
+    navbar: Methods
+    desc: The survival summaries a manuscript reports.
+    contents:
+      - Effect_measures
+      - Cox_forests_diagnostics
+      - Competing_risks
+      - Specifiying_weights_in_log-rank_comparisons
+  - title: Customization and examples
+    navbar: Customization
+    desc: Tune the look and compose on the objects survminer returns.
+    contents:
+      - Customization_recipes
+      - Playing_with_fonts_and_texts
+      - ggforest-show-interactions-hazard-ratio
+      - Informative_Survival_Plots
+
+
+navbar:
+  title: "survminer"
+  left:
+  - text: Cheatsheet
+    href: https://rpkgs.datanovia.com/survminer/survminer_cheatsheet.pdf
+  - text: Reference
+    href: reference/index.html
+  - text: Articles
+    href: articles/index.html
+  - text: News
+    href: news/index.html
+  right:
+    - icon: fa-github
+      href: https://github.com/kassambara/survminer
+      text: GitHub
+
+
+
+

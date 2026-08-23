@@ -1,0 +1,54 @@
+# Sample .travis.yml for R projects
+
+language: r
+r: 
+    - devel
+cache: packages
+
+before_install:
+  - R -e 'install.packages("devtools")'
+  - R -e 'devtools::install_github("Bioconductor/BiocGenerics", ref = "master")'
+
+install:
+  - R -e 'devtools::install_deps(upgrade = "always")'
+  - R -e 'install.packages("reshape2")'
+  - R -e 'install.packages("covr")'
+  - R -e 'devtools::install_github("RGLab/RProtoBufLib")'
+  - R -e 'devtools::install_github("RGLab/cytolib")'
+
+script:
+  - R CMD build . --no-build-vignettes
+  - R -e 'install.packages(list.files(pattern="*tar.gz"), repos=NULL, type="source")'
+  - R -e 'devtools::install_github("RGLab/flowViz")'
+  - R -e 'devtools::install_github("RGLab/ncdfFlow")'  
+  - R -e 'devtools::install_github("RGLab/flowWorkspace")'  
+  - R -e 'devtools::install_github("RGLab/flowWorkspaceData")'
+  - R -e 'devtools::install_github("RGLab/flowStats")'
+  - R -e 'devtools::install_github("RGLab/flowClust")'
+  - R -e 'devtools::install_github("RGLab/ggcyto")'
+  - R -e 'devtools::install_github("RGLab/openCyto")'
+  - R -e 'devtools::install_deps(dep = T, upgrade = "always")'
+  - R CMD build .
+  - R CMD check *tar.gz
+
+
+group: stable
+warnings_are_errors: false 
+sudo: required 
+
+bioc_required: true
+
+env:
+ global:
+   - CRAN: http://cran.rstudio.com
+
+notifications:
+  email:
+    on_success: change
+    on_failure: change
+
+r_github_packages:
+  - r-lib/covr
+
+after_success: 
+  - Rscript -e 'library(covr); codecov()'

@@ -1,0 +1,715 @@
+#!/usr/bin/env python
+"""Tests for export commands."""
+
+import logging
+import math
+import os
+import shutil
+import tempfile
+import unittest
+import warnings
+
+import pytest
+
+logging.basicConfig(level=logging.ERROR, format="%(message)s")
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+import numpy as np
+import pandas as pd
+import pysam
+from conftest import linecount
+
+import cnvlib
+from cnvlib import (
+    access,
+    antitarget,
+    autobin,
+    batch,
+    bintest,
+    call,
+    cluster,
+    cmdutil,
+    cnary,
+    commands,
+    core,
+    coverage,
+    diagram,
+    export,
+    fix,
+    heatmap,
+    import_rna,
+    importers,
+    metrics,
+    parallel,
+    params,
+    plots,
+    purity,
+    reference,
+    reports,
+    samutil,
+    scatter,
+    segfilters,
+    segmentation,
+    segmetrics,
+    smoothing,
+    vary,
+)
+from skgenome import GenomicArray as GA
+from skgenome import tabio
+
+
+class ExportTests(unittest.TestCase):
+    """Tests for export commands."""
+
+    def test_export_bed_vcf(self):
+        """The 'export' command for formats with absolute copy number."""
+        for fname, ploidy, is_f in [
+            ("tr95t.cns", 2, True),
+            ("cl_seq.cns", 6, True),
+            ("amplicon.cns", 2, False),
+        ]:
+            with self.subTest(fname=fname, ploidy=ploidy):
+                cns = cnvlib.read("formats/" + fname)
+                # BED
+                for show in ("ploidy", "variant", "all"):
+                    tbl_bed = export.export_bed(
+                        cns, ploidy, True, None, is_f, cns.sample_id, show
+                    )
+                    if show == "all":
+                        self.assertEqual(len(tbl_bed), len(cns), f"{fname} {ploidy}")
+                    else:
+                        self.assertLess(len(tbl_bed), len(cns))
+                # VCF
+                _vheader, vcf_body = export.export_vcf(cns, ploidy, True, None, is_f)
+                self.assertTrue(0 < len(vcf_body.splitlines()) < len(cns))
+
+    def test_export_seg_values_match_input(self):
+        """SEG output reproduces input segment values, not just row counts.
+
+        Guards the clinical deliverable against value-scrambling regressions.
+        """
+        cns = cnvlib.read("formats/tr95t.cns")
+        seg = export.export_seg(["formats/tr95t.cns"])
+        self.assertEqual(len(seg), len(cns))
+        self.assertTrue((seg["ID"] == cns.sample_id).all())
+        self.assertTrue((seg["chrom"].to_numpy() == cns.chromosome.to_numpy()).all())
+        np.testing.assert_allclose(
+            seg["seg.mean"].to_numpy(), cns["log2"].to_numpy(), atol=1e-6
+        )
+        np.testing.assert_array_equal(
+            seg["num.mark"].to_numpy(), cns["probes"].to_numpy()
+        )
+        # SEG uses 1-based start, inclusive end
+        np.testing.assert_array_equal(
+            seg["loc.start"].to_numpy(), cns.start.to_numpy() + 1
+        )
+        np.testing.assert_array_equal(seg["loc.end"].to_numpy(), cns.end.to_numpy())
+        self.assertTrue((seg["loc.start"] < seg["loc.end"]).all())
+
+    def test_export_bed_values(self):
+        """BED export emits finite non-negative integer copy numbers."""
+        cns = cnvlib.read("formats/tr95t.cns")
+        bed = export.export_bed(cns, 2, True, None, True, cns.sample_id, "all")
+        self.assertEqual(len(bed), len(cns))
+        self.assertTrue(
+            (bed["chromosome"].to_numpy() == cns.chromosome.to_numpy()).all()
+        )
+        self.assertTrue((bed["start"] < bed["end"]).all())
+        self.assertEqual(bed["ncopies"].dtype.kind, "i")
+        self.assertTrue((bed["ncopies"] >= 0).all())
+        # A copy-number gain segment (max log2) must export as > ploidy copies
+        gain_idx = int(np.argmax(cns["log2"].to_numpy()))
+        self.assertGreater(bed["ncopies"].iloc[gain_idx], 2)
+
+    def test_export_male_chrx_gain_surfaces(self):
+        """A male sample's chrX gain must surface through call/VCF/BED (#883).
+
+        Synthetic male-sample segments built against a female (diploid)
+        reference: neutral male chrX sits at log2=-1, and a true chrX
+        duplication to 2 copies sits at log2=0. The whole point of the
+        sex-aware machinery is that this duplication is a *variant* for a
+        male sample even though cn=2 looks "neutral" on autosomal ploidy.
+
+        Guards two failure modes the original report (#883) and the
+        show/don't-mute principle care about:
+
+        - The `.cns` cn column and `export vcf` (sex-aware) must EMIT the
+          chrX gain. (`ncopies==abs_exp` filter must not falsely drop it.)
+        - `export bed --show variant` must emit it; `--show ploidy` (the
+          default, intentionally sex-agnostic for FreeBayes ``--cnv-map``
+          compatibility) must omit cn==ploidy regions and emit the neutral
+          haploid chrX as cn=1 -- absent-means-default per cnv-map's
+          contract, so a cn=2 region is recoverable as "default ploidy 2".
+        """
+        rows = [
+            ("chr1", 1, 1000, "-", 0.0, 50),  # autosome neutral, cn=2
+            ("chr1", 1000, 2000, "-", 0.58, 50),  # autosome gain, cn=3
+            ("chrX", 1, 1000, "-", -1.0, 50),  # male chrX neutral, cn=1
+            ("chrX", 1000, 2000, "-", 0.0, 50),  # male chrX 1->2 (the gain)
+            ("chrX", 2000, 3000, "-", 1.4, 50),  # male chrX big gain (#883's log2)
+        ]
+        cns = cnary.CopyNumArray(
+            pd.DataFrame(
+                rows,
+                columns=["chromosome", "start", "end", "gene", "log2", "probes"],
+            ),
+            {"sample_id": "M1"},
+        )
+        called = call.do_call(
+            cns,
+            method="threshold",
+            is_haploid_x_reference=False,
+            is_sample_female=False,
+        )
+        cn = dict(zip(called["start"].to_numpy(), called["cn"].to_numpy(), strict=True))
+        # do_call's rounding must not collapse a male chrX gain to abs_exp=1.
+        self.assertEqual(cn[1], 1)  # neutral haploid -> cn=1 (abs_exp=1)
+        self.assertGreater(cn[1000], 1)  # 1->2 gain shows
+        self.assertGreater(cn[2000], 1)  # #883's log2=1.4 shows (was reported as cn=1)
+
+        # VCF: sex-aware filter must emit both chrX gains and skip the neutral.
+        _, vcf_body = export.export_vcf(called, 2, False, None, False)
+        body = vcf_body.splitlines()
+        chrx_records = [ln for ln in body if ln.startswith("chrX\t")]
+        chrx_starts = {int(ln.split("\t")[1]) for ln in chrx_records}
+        self.assertIn(1000, chrx_starts)  # the 1->2 gain emitted
+        self.assertIn(2000, chrx_starts)  # the big gain emitted
+        self.assertNotIn(1, chrx_starts)  # neutral haploid NOT emitted
+
+        # BED --show variant: sex-aware, same shape as VCF.
+        bed_variant = export.export_bed(called, 2, False, None, False, "M1", "variant")
+        chrx_variant_starts = set(
+            bed_variant.loc[bed_variant["chromosome"] == "chrX", "start"].to_numpy()
+        )
+        self.assertEqual(chrx_variant_starts, {1000, 2000})
+
+        # BED --show ploidy (default): the cnv-map contract -- skip cn==ploidy(2),
+        # emit raw integer cn for everything else. So the 1->2 chrX gain is
+        # OMITTED (absent <=> default ploidy 2, losslessly recoverable by the
+        # consumer); the neutral haploid chrX is EMITTED as cn=1; the big chrX
+        # gain (cn != 2) is EMITTED.
+        bed_ploidy = export.export_bed(called, 2, False, None, False, "M1", "ploidy")
+        ploidy_rows = {
+            (row.chromosome, row.start): row.ncopies for row in bed_ploidy.itertuples()
+        }
+        self.assertEqual(ploidy_rows.get(("chrX", 1)), 1)  # neutral haploid emitted
+        self.assertNotIn(("chrX", 1000), ploidy_rows)  # cn=2 omitted by contract
+        self.assertGreater(ploidy_rows[("chrX", 2000)], 2)  # big gain emitted
+
+    def test_export_vcf_values(self):
+        """VCF export emits well-formed, non-degenerate SV records.
+
+        Note: <DUP>/<DEL> is decided per chromosome's expected copies (sex-aware),
+        so it does not track the ploidy-relative FOLD_CHANGE_LOG sign on the sex
+        chromosomes; we assert structure and consistency, not that cross-field tie.
+        """
+        cns = cnvlib.read("formats/tr95t.cns")
+        _vheader, vcf_body = export.export_vcf(cns, 2, True, None, True)
+        var_lines = [ln for ln in vcf_body.splitlines() if not ln.startswith("#")]
+        self.assertTrue(0 < len(var_lines) < len(cns))  # only non-neutral segments
+        svtypes, fold_changes = set(), []
+        for ln in var_lines:
+            fields = ln.split("\t")
+            self.assertEqual(len(fields), 10)  # CHROM..FORMAT + 1 sample
+            info = dict(kv.split("=", 1) for kv in fields[7].split(";") if "=" in kv)
+            self.assertLess(int(fields[1]), int(info["END"]))  # POS < END
+            self.assertTrue(math.isfinite(float(info["FOLD_CHANGE_LOG"])))
+            self.assertEqual(fields[4], f"<{info['SVTYPE']}>")  # ALT matches SVTYPE
+            svtypes.add(info["SVTYPE"])
+            fold_changes.append(float(info["FOLD_CHANGE_LOG"]))
+            # CN, when present in FORMAT, parses as a non-negative integer
+            fmt = fields[8].split(":")
+            if "CN" in fmt:
+                cn = int(fields[9].split(":")[fmt.index("CN")])
+                self.assertGreaterEqual(cn, 0)
+        self.assertEqual(svtypes, {"DUP", "DEL"})  # tr95t has both gains and losses
+        self.assertGreater(len(set(fold_changes)), 1)  # not a stuck/degenerate value
+
+    def test_export_vcf_loh_allele_specific_fields(self):
+        """VCF export surfaces allele-specific CN and BAF for LOH evidence (#892).
+
+        Two clinically meaningful regimes must round-trip through ``export vcf``:
+
+        - Copy-LOSS LOH (cn=1, cn1=1, cn2=0): a hemizygous deletion that also
+          shows allelic imbalance. The DEL record must carry CN1/CN2 in FORMAT
+          and BAF/BAFN in INFO so downstream LOH-aware tools see the evidence.
+        - Copy-NEUTRAL LOH (cn=2, cn1=2, cn2=0): clinically actionable but
+          *invisible* before this change because total cn matches expected
+          diploid. Must emit as ``SVTYPE=CNV`` with an explicit ``LOH`` flag
+          so existing DUP/DEL-only consumers still recognize "something here"
+          and LOH-aware consumers can act on the flag.
+
+        Synthetic fixture: a female autosomal segment set with cn1/cn2/baf/nbaf
+        already populated (skipping the variant-VCF round trip that ``call``
+        does, so the assertions stay focused on the export step).
+        """
+        rows = [
+            # cn=2 segment with balanced alleles -> not emitted (neutral, no LOH)
+            ("chr1", 1, 1000, "-", 0.0, 50, 2, 1, 1, 0.50, 30),
+            # copy-loss LOH: hemizygous deletion with allelic imbalance
+            ("chr1", 1000, 2000, "-", -1.0, 50, 1, 1, 0, 1.00, 20),
+            # copy-neutral LOH: cn matches expected but one allele lost
+            ("chr1", 2000, 3000, "-", 0.0, 50, 2, 2, 0, 1.00, 30),
+            # copy-GAIN with balanced alleles (no LOH) -> DUP, CN1/CN2 still emitted
+            ("chr1", 3000, 4000, "-", 0.58, 50, 3, 2, 1, 0.33, 25),
+        ]
+        cns = cnary.CopyNumArray(
+            pd.DataFrame(
+                rows,
+                columns=[
+                    "chromosome",
+                    "start",
+                    "end",
+                    "gene",
+                    "log2",
+                    "probes",
+                    "cn",
+                    "cn1",
+                    "cn2",
+                    "baf",
+                    "nbaf",
+                ],
+            ),
+            {"sample_id": "T1"},
+        )
+        _vheader, vcf_body = export.export_vcf(cns, 2, False, None, True)
+        var_lines = [ln for ln in vcf_body.splitlines() if not ln.startswith("#")]
+        # Three records: cn=1 LOH, cn=2 copy-neutral LOH, cn=3 gain. The
+        # cn=2/cn1=cn2=1 balanced-neutral segment is correctly suppressed.
+        self.assertEqual(len(var_lines), 3)
+        by_start = {int(ln.split("\t")[1]): ln for ln in var_lines}
+        self.assertEqual(set(by_start), {1000, 2000, 3000})
+
+        # All three records expose CN1/CN2 in FORMAT and BAF/BAFN in INFO.
+        for ln in var_lines:
+            fields = ln.split("\t")
+            fmt = fields[8].split(":")
+            self.assertIn("CN1", fmt)
+            self.assertIn("CN2", fmt)
+            info = dict(kv.split("=", 1) for kv in fields[7].split(";") if "=" in kv)
+            self.assertIn("BAF", info)
+            self.assertIn("BAFN", info)
+
+        # Copy-loss LOH: DEL with CN1=1, CN2=0.
+        del_fields = by_start[1000].split("\t")
+        self.assertEqual(del_fields[4], "<DEL>")
+        del_fmt = del_fields[8].split(":")
+        del_vals = del_fields[9].split(":")
+        self.assertEqual(del_vals[del_fmt.index("CN1")], "1")
+        self.assertEqual(del_vals[del_fmt.index("CN2")], "0")
+
+        # Copy-neutral LOH: SVTYPE=CNV with LOH flag, SVLEN=0, CN1=2, CN2=0.
+        cnv_fields = by_start[2000].split("\t")
+        self.assertEqual(cnv_fields[4], "<CNV>")
+        cnv_info_kvs = cnv_fields[7].split(";")
+        self.assertIn("LOH", cnv_info_kvs)
+        cnv_info = dict(kv.split("=", 1) for kv in cnv_info_kvs if "=" in kv)
+        self.assertEqual(cnv_info["SVTYPE"], "CNV")
+        self.assertEqual(int(cnv_info["SVLEN"]), 0)
+        cnv_fmt = cnv_fields[8].split(":")
+        cnv_vals = cnv_fields[9].split(":")
+        self.assertEqual(cnv_vals[cnv_fmt.index("CN1")], "2")
+        self.assertEqual(cnv_vals[cnv_fmt.index("CN2")], "0")
+
+        # Copy-GAIN without LOH: DUP, no LOH flag, CN1/CN2 still present.
+        dup_fields = by_start[3000].split("\t")
+        self.assertEqual(dup_fields[4], "<DUP>")
+        self.assertNotIn("LOH", dup_fields[7].split(";"))
+        dup_fmt = dup_fields[8].split(":")
+        dup_vals = dup_fields[9].split(":")
+        self.assertEqual(dup_vals[dup_fmt.index("CN1")], "2")
+        self.assertEqual(dup_vals[dup_fmt.index("CN2")], "1")
+
+    def test_export_vcf_no_allele_specific_columns_backwards_compatible(self):
+        """A .cns without cn1/cn2/baf still produces a valid VCF (no CN1/CN2/BAF).
+
+        The common workflow (``cnvkit call`` without ``-v VCF``) produces a .cns
+        with no allele-specific columns; the VCF must remain unchanged in shape
+        for those segments so existing downstream parsers do not break.
+        """
+        cns = cnvlib.read("formats/tr95t.cns")
+        self.assertNotIn("cn1", cns.data.columns)  # fixture confirms absence
+        _vheader, vcf_body = export.export_vcf(cns, 2, True, None, True)
+        for ln in vcf_body.splitlines():
+            if ln.startswith("#"):
+                continue
+            fields = ln.split("\t")
+            fmt = fields[8].split(":")
+            self.assertNotIn("CN1", fmt)
+            self.assertNotIn("CN2", fmt)
+            info_keys = {kv.split("=", 1)[0] for kv in fields[7].split(";")}
+            self.assertNotIn("BAF", info_keys)
+            self.assertNotIn("BAFN", info_keys)
+            self.assertNotIn("LOH", info_keys)
+            # SVTYPE remains DUP/DEL only — no spurious CNV records.
+            info = dict(kv.split("=", 1) for kv in fields[7].split(";") if "=" in kv)
+            self.assertIn(info["SVTYPE"], {"DUP", "DEL"})
+
+    def test_export_vcf_missing_probes_column(self):
+        """A .cns without a ``probes`` column still yields records, with ``PROBES=.``
+
+        ``segments2vcf`` reindexes the segment table onto a fixed column list, so
+        a segment file lacking ``probes`` gets NaN there rather than raising. The
+        #53 guard against unparseable probe counts then skipped every segment,
+        turning a missing optional column into a silent, header-only VCF. A
+        missing support count must not suppress the record: PROBES, CNQ and the
+        deletion genotype's GQ report the VCF missing value instead.
+        """
+        cns = cnvlib.read("formats/amplicon.cns")
+        # Sex context used for this fixture elsewhere in this class: a male
+        # sample against a haploid-X reference.
+        args = (2, True, None, False)
+        with_probes = self._vcf_records(cns, args)
+        without = self._vcf_records(
+            cns.as_dataframe(cns.data.drop(columns=["probes"])), args
+        )
+        self.assertTrue(with_probes)
+        # The same segments are emitted, and everything up to INFO is identical.
+        self.assertEqual(len(without), len(with_probes))
+        self.assertEqual([f[:7] for f in without], [f[:7] for f in with_probes])
+        self.assertTrue([f for f in without if f[4] == "<DEL>"])  # GQ check below
+        for fields in without:
+            where = f"{fields[0]}:{fields[1]}"
+            info = dict(kv.split("=", 1) for kv in fields[7].split(";") if "=" in kv)
+            self.assertEqual(info["PROBES"], ".", where)
+            fmt = fields[8].split(":")
+            vals = fields[9].split(":")
+            if "CNQ" in fmt:
+                self.assertEqual(vals[fmt.index("CNQ")], ".", where)
+            if info["SVTYPE"] == "DEL":
+                # GQ carries the probe count for losses (legacy GT:GQ shape).
+                self.assertEqual(vals[fmt.index("GQ")], ".", where)
+
+    def test_export_vcf_blank_probes_field(self):
+        """A blank ``probes`` field drops only that segment's count, not the file.
+
+        One missing value makes the whole column float-typed, so an intact count
+        arrives at the exporter as 6.0 rather than 6; the #53 guard rejected
+        every such value and emptied the VCF. Intact counts must still render as
+        integers, and only the blank one as the VCF missing value.
+        """
+        rows = [
+            ("chr1", 0, 1000, "-", -1.0, 6.0),  # loss, probe count intact
+            ("chr1", 1000, 2000, "-", 0.58, np.nan),  # gain, probe count blank
+        ]
+        cns = cnary.CopyNumArray(
+            pd.DataFrame(
+                rows,
+                columns=["chromosome", "start", "end", "gene", "log2", "probes"],
+            ),
+            {"sample_id": "T1"},
+        )
+        records = self._vcf_records(cns, (2, False, None, True))
+        self.assertEqual([f[4] for f in records], ["<DEL>", "<DUP>"])
+        self.assertEqual(self._probes_info(records), ["6", "."])
+        # The loss reports its count as GQ; the gain reports missing CNQ.
+        self.assertEqual(records[0][9].split(":"), ["0/1", "6"])
+        self.assertEqual(records[1][9].split(":")[-1], ".")
+
+    def test_export_vcf_missing_probes_allele_specific(self):
+        """CNQ is the VCF missing value in allele-specific records, too.
+
+        The allele-specific ``GT:GQ:CN:CN1:CN2:CNQ`` genotype reports the probe
+        count in its own field, which must not fall back to the NaN text when
+        the segments carry no ``probes`` column.
+        """
+        rows = [
+            # copy-loss LOH and a copy-neutral LOH segment, no probes column
+            ("chr1", 0, 1000, "-", -1.0, 1, 1, 0, 1.00, 20),
+            ("chr1", 1000, 2000, "-", 0.0, 2, 2, 0, 1.00, 30),
+        ]
+        cns = cnary.CopyNumArray(
+            pd.DataFrame(
+                rows,
+                columns=[
+                    "chromosome",
+                    "start",
+                    "end",
+                    "gene",
+                    "log2",
+                    "cn",
+                    "cn1",
+                    "cn2",
+                    "baf",
+                    "nbaf",
+                ],
+            ),
+            {"sample_id": "T1"},
+        )
+        records = self._vcf_records(cns, (2, False, None, True))
+        self.assertEqual(len(records), 2)
+        self.assertEqual(self._probes_info(records), [".", "."])
+        for fields in records:
+            fmt = fields[8].split(":")
+            self.assertEqual(fmt[-1], "CNQ")
+            self.assertEqual(fields[9].split(":")[-1], ".")
+
+    def test_export_vcf_nonnumeric_probes_skipped_loudly(self):
+        """Present-but-unparseable probe counts are still skipped, with a warning.
+
+        Segment files written by the buggy v0.7.1 release carry unparseable
+        probe counts (#53); those segments remain excluded. Unlike before, the
+        exporter reports the dropped segments instead of quietly writing a
+        header-only VCF.
+        """
+        cns = cnvlib.read("formats/amplicon.cns")
+        garbled = cns.as_dataframe(cns.data.assign(probes="foo"))
+        with self.assertLogs(level="WARNING") as cm:
+            self.assertEqual(
+                list(export.segments2vcf(garbled, 2, True, None, False)), []
+            )
+        self.assertTrue(any("unparseable probe count" in m for m in cm.output))
+        with self.assertLogs(level="WARNING"):
+            _vheader, vcf_body = export.export_vcf(garbled, 2, True, None, False)
+        # Header row of the table only -- no variant records.
+        self.assertEqual(len(vcf_body.splitlines()), 1)
+
+    def test_export_vcf_copy_neutral_sample_is_not_a_warning(self):
+        """A flat sample emitting no records is reported, but not as a warning.
+
+        Every segment matching the expected copy number is the correct outcome
+        for a copy-neutral sample, so it must not be conflated with the
+        unparseable-probe-count pathology above.
+        """
+        rows = [
+            ("chr1", 0, 1000, "-", 0.0, 50),
+            ("chr1", 1000, 2000, "-", 0.01, 60),
+        ]
+        cns = cnary.CopyNumArray(
+            pd.DataFrame(
+                rows,
+                columns=["chromosome", "start", "end", "gene", "log2", "probes"],
+            ),
+            {"sample_id": "T1"},
+        )
+        with self.assertLogs(level="INFO") as cm:
+            _vheader, vcf_body = export.export_vcf(cns, 2, False, None, True)
+        self.assertEqual(len(vcf_body.splitlines()), 1)
+        self.assertTrue(any("No VCF records" in m for m in cm.output))
+        self.assertEqual({r.levelname for r in cm.records}, {"INFO"})
+
+    def test_export_vcf_ci_fields_survive_a_vcf_parser(self):
+        """Both CIPOS/CIEND bounds reach a reader, on the ``--cnr`` path (#72).
+
+        The fields were emitted wrapped in parentheses for eight years. htslib
+        does not reject that: it reads ``(-56`` as a missing integer, keeps the
+        right bound, and hands back a well-formed record with the left
+        confidence bound silently gone. Parsing the output is therefore the
+        only assertion that can detect the defect -- the text looks plausible.
+        """
+        segments = cnvlib.read("formats/amplicon.cns")
+        bins = cnvlib.read("formats/amplicon.cnr")
+        header, body = export.export_vcf(segments, 2, True, None, True, cnarr=bins)
+        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".vcf") as tmp:
+            tmp.write(header + body)
+            tmp.flush()
+            records = list(pysam.VariantFile(tmp.name))
+        self.assertGreater(len(records), 0)
+        n_seen = 0
+        for rec in records:
+            for key in ("CIPOS", "CIEND"):
+                bounds = rec.info.get(key)
+                if bounds is None:
+                    continue  # omitted for a segment with no bins; see below
+                n_seen += 1
+                # A dropped bound reads as None, not as an error
+                self.assertNotIn(None, bounds, f"{key} at {rec.chrom}:{rec.pos}")
+                # The interval brackets the breakpoint: left <= 0 <= right
+                self.assertLessEqual(bounds[0], 0, f"{key} at {rec.chrom}:{rec.pos}")
+                self.assertGreaterEqual(bounds[1], 0, f"{key} at {rec.chrom}:{rec.pos}")
+        self.assertGreater(n_seen, 0)
+
+    def test_export_vcf_ci_bounds_stay_on_one_chromosome(self):
+        """A breakpoint's confidence interval never borrows another chromosome.
+
+        The bounds come from the bins flanking a breakpoint, so a segment's
+        outward bound is derived from its neighbouring segment. Shifting the
+        whole table at once takes that neighbour across a chromosome boundary,
+        producing an offset measured against a different chromosome entirely.
+        The first segment of a chromosome has nothing to its left and the last
+        has nothing to its right, so those bounds are zero.
+        """
+        rows = [
+            ("chr1", 0, 1000, "-", 1.0, 10),
+            ("chr1", 2000, 3000, "-", -1.0, 10),
+            ("chr2", 0, 1000, "-", 1.0, 10),
+        ]
+        segments = cnary.CopyNumArray(
+            pd.DataFrame(
+                rows, columns=["chromosome", "start", "end", "gene", "log2", "probes"]
+            ),
+            {"sample_id": "T1"},
+        )
+        # Two bins per segment, so the inner bin edges that bracket each
+        # breakpoint are distinct: the CI runs from the START of the last bin
+        # before the breakpoint to the END of the first bin after it.
+        bin_rows = [
+            ("chr1", 100, 300, "-", 1.0),
+            ("chr1", 700, 900, "-", 1.0),
+            ("chr1", 2100, 2300, "-", -1.0),
+            ("chr1", 2700, 2800, "-", -1.0),
+            ("chr2", 300, 400, "-", 1.0),
+            ("chr2", 600, 700, "-", 1.0),
+        ]
+        bins = cnary.CopyNumArray(
+            pd.DataFrame(
+                bin_rows, columns=["chromosome", "start", "end", "gene", "log2"]
+            ),
+            {"sample_id": "T1"},
+        )
+        records = self._vcf_records(segments, (2, False, None, True, None, bins))
+        infos = [
+            dict(kv.split("=", 1) for kv in fields[7].split(";") if "=" in kv)
+            for fields in records
+        ]
+        by_chrom_pos = {
+            (fields[0], int(fields[1])): info
+            for fields, info in zip(records, infos, strict=True)
+        }
+        self.assertEqual(len(by_chrom_pos), 3)
+        # chr1's first segment: nothing to its left, so that bound is zero
+        first = by_chrom_pos[("chr1", 1)]
+        self.assertEqual(first["CIPOS"], "0,300")
+        # Its END bound reaches into chr1's next segment, which is legitimate
+        self.assertEqual(first["CIEND"], "-300,1300")
+        # chr1's last segment: nothing to its right, and chr2 must not supply it
+        last_chr1 = by_chrom_pos[("chr1", 2000)]
+        self.assertEqual(last_chr1["CIPOS"], "-1300,300")
+        self.assertEqual(last_chr1["CIEND"], "-300,0")
+        # chr2's only segment is both first and last of its chromosome
+        only_chr2 = by_chrom_pos[("chr2", 1)]
+        self.assertEqual(only_chr2["CIPOS"], "0,400")
+        self.assertEqual(only_chr2["CIEND"], "-400,0")
+
+    def test_export_vcf_ci_omitted_when_no_bin_covers_the_segment(self):
+        """A segment no bin overlaps has no confidence interval, so emits none.
+
+        ``--cnr`` accepts any file; nothing checks that its bins cover the
+        segments. An uncovered segment leaves the breakpoint unlocalized, which
+        is not the same as localizing it exactly -- emitting ``0,0`` would claim
+        the strongest possible precision for the case with the least evidence.
+        The copy-number call itself is unaffected, so the record still appears.
+        """
+        rows = [
+            ("chr1", 0, 1000, "-", 1.0, 10),
+            ("chr1", 5000, 6000, "-", -1.0, 10),
+        ]
+        segments = cnary.CopyNumArray(
+            pd.DataFrame(
+                rows, columns=["chromosome", "start", "end", "gene", "log2", "probes"]
+            ),
+            {"sample_id": "T1"},
+        )
+        # Bins cover the first segment only
+        bins = cnary.CopyNumArray(
+            pd.DataFrame(
+                [("chr1", 100, 900, "-", 1.0)],
+                columns=["chromosome", "start", "end", "gene", "log2"],
+            ),
+            {"sample_id": "T1"},
+        )
+        records = self._vcf_records(segments, (2, False, None, True, None, bins))
+        self.assertEqual(len(records), 2)  # both calls survive
+        infos = [
+            dict(kv.split("=", 1) for kv in fields[7].split(";") if "=" in kv)
+            for fields in records
+        ]
+        # The covered segment keeps the bound it can compute and drops the one
+        # that would have to come from its uncovered neighbour
+        self.assertEqual(infos[0]["CIPOS"], "0,900")
+        self.assertNotIn("CIEND", infos[0])
+        # The uncovered segment has neither
+        self.assertNotIn("CIPOS", infos[1])
+        self.assertNotIn("CIEND", infos[1])
+        # Never the string "nan", which htslib reads as a missing value
+        self.assertNotIn("nan", "".join(fields[7] for fields in records))
+
+    @staticmethod
+    def _vcf_records(segments, args):
+        """Emitted VCF records of `segments`, each split into its 10 fields."""
+        _vheader, vcf_body = export.export_vcf(segments, *args)
+        return [
+            ln.split("\t") for ln in vcf_body.splitlines() if not ln.startswith("#")
+        ]
+
+    @staticmethod
+    def _probes_info(records):
+        """The PROBES INFO value of each split VCF record."""
+        return [
+            dict(kv.split("=", 1) for kv in fields[7].split(";") if "=" in kv)["PROBES"]
+            for fields in records
+        ]
+
+    def test_export_cdt_jtv(self):
+        """The 'export' command for CDT and Java TreeView formats."""
+        fnames = ["formats/p2-20_1.cnr", "formats/p2-20_2.cnr"]
+        sample_ids = list(map(core.fbase, fnames))
+        nrows = linecount(fnames[0]) - 1
+        for fmt_key, header2 in (("cdt", 2), ("jtv", 0)):
+            table = export.merge_samples(fnames)
+            formatter = export.EXPORT_FORMATS[fmt_key]
+            _oh, outrows = formatter(sample_ids, table)
+            self.assertEqual(len(list(outrows)), nrows + header2)
+
+    def test_export_nexus(self):
+        """The 'export nexus-basic' and 'nexus-ogt' commands."""
+        cnr = cnvlib.read("formats/amplicon.cnr")
+        table_nb = export.export_nexus_basic(cnr)
+        self.assertEqual(len(table_nb), len(cnr))
+        varr = commands.load_het_snps(
+            "formats/na12878_na12882_mix.vcf", None, None, 15, None
+        )
+        table_ogt = export.export_nexus_ogt(cnr, varr, 0.05)
+        self.assertEqual(len(table_ogt), len(cnr))
+
+    def test_export_nexus_ogt_min_weight(self):
+        """BAFs stay on their own rows after --min-weight drops early bins.
+
+        Dropping bins leaves a gapped index, and the BAF column is assigned
+        back onto the filtered table, which pandas aligns by label. Without a
+        matching index the values land on the wrong bins and some are lost.
+        """
+        cnr = cnvlib.read("formats/amplicon.cnr")
+        varr = commands.load_het_snps(
+            "formats/na12878_na12882_mix.vcf", None, None, 15, None
+        )
+        full = export.export_nexus_ogt(cnr.copy(), varr)
+        # amplicon.cnr's lowest weight is ~0.28, so this drops a real prefix
+        kept = cnr["weight"] >= 0.4
+        self.assertTrue(0 < kept.sum() < len(cnr))
+        self.assertFalse(kept.iat[0])
+        table = export.export_nexus_ogt(cnr.copy(), varr, 0.4)
+        self.assertEqual(len(table), int(kept.sum()))
+        expected = full["B-Allele Frequency"][kept.to_numpy()]
+        self.assertEqual(
+            table["B-Allele Frequency"].fillna(-1).tolist(),
+            expected.fillna(-1).tolist(),
+        )
+        self.assertEqual(
+            table["B-Allele Frequency"].notna().sum(), expected.notna().sum()
+        )
+
+    def test_export_seg(self):
+        """The 'export seg' command."""
+        seg_rows = export.export_seg(["formats/tr95t.cns"])
+        self.assertGreater(len(seg_rows), 0)
+        seg2_rows = export.export_seg(["formats/tr95t.cns", "formats/cl_seq.cns"])
+        self.assertGreater(len(seg2_rows), len(seg_rows))
+
+    def test_export_theta(self):
+        """The 'export theta' command."""
+        segarr = cnvlib.read("formats/tr95t.cns")
+        len_seg_auto = len(segarr.autosomes())
+        table_theta = export.export_theta(segarr, None)
+        self.assertEqual(len(table_theta), len_seg_auto)
+        ref = cnvlib.read("formats/reference-tr.cnn")
+        table_theta = export.export_theta(segarr, ref)
+        self.assertEqual(len(table_theta), len_seg_auto)
+        varr = commands.load_het_snps(
+            "formats/na12878_na12882_mix.vcf", "NA12882", "NA12878", 15, None
+        )
+        tumor_snps, normal_snps = export.export_theta_snps(varr)
+        self.assertLess(len(tumor_snps), len(varr))
+        self.assertGreater(len(tumor_snps), 0)
+        self.assertLess(len(normal_snps), len(varr))
+        self.assertGreater(len(normal_snps), 0)

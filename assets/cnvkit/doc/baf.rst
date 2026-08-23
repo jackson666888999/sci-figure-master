@@ -1,0 +1,267 @@
+Allele frequencies and copy number
+==================================
+
+What is BAF?
+------------
+
+In this context, the "B" allele is the non-reference allele observed in a germline
+heterozygous SNP, i.e. in the normal/control sample. Since the tumor cells' DNA
+originally derived from normal cells' DNA, most of these SNPs will also be
+present in the tumor sample. But due to allele-specific copy number alterations,
+loss of heterozygosity or allelic imbalance, the allelic frequency of these SNPs
+may be different in the tumor, and that's evidence that one (or both) of the
+germline copies was gained or lost during tumor evolution.
+
+The shift in b-allele frequency is calculated relative to the expected
+heterozygous frequency 0.5, and minor allele frequencies are "mirrored" above
+and below 0.5 so that it does not matter which allele is considered the
+reference -- the relative shift from 0.5 will be the same either way. (Multiple
+alternate alleles are not considered here.)
+
+
+How does it work?
+-----------------
+
+Estimation from SNP b-allele frequencies works by comparing the shift in
+allele frequency of heterozygous, germline SNPs in the tumor sample from the
+expected ~50% -- e.g. a 3-copy segment in a diploid genome would have log2
+ratio of +0.58 and heterozygous SNPs would have an average BAF of 67% or 33% if
+the tumor sample is fully clonal, and closer to log2 0.0 and BAF 0.5 if there
+is normal-cell contamination and/or :doc:`tumor heterogeneity <heterogeneity>`.
+
+Use SNP b-allele frequencies from a VCF in these commands:
+
+- :ref:`segment`
+- :ref:`call`
+- :ref:`scatter`
+- :ref:`export` ``nexus-ogt`` and ``theta``
+
+
+.. _baf-vcf-prep:
+
+Preparing a VCF
+---------------
+
+CNVkit's BAF analysis requires a VCF that contains heterozygous **germline**
+SNVs in the analyzed sample. Somatic-only variant calls cannot be used --
+their allele frequencies do not encode the allelic-imbalance signal that BAF
+analysis depends on. The clearest setup is:
+
+- A joint tumor/normal VCF produced by an SNV caller such as FreeBayes,
+  VarDict, or MuTect, with both samples present.
+- Germline SNVs are kept in the file (do not strip them out). For MuTect,
+  this typically means keeping the ``REJECT`` records.
+- Somatic variants are flagged with the ``SOMATIC`` tag in the INFO column.
+  CNVkit will skip these by default.
+- Structural variants are ignored. A symbolic allele such as ``<DEL>`` covers
+  the whole span its ``END`` or ``SVLEN`` declares, and its genotype records
+  whether the rearrangement is present rather than an allelic balance at each
+  position within it, so it is not a b-allele frequency. Alleles that share a
+  record with such a variant are ignored too, because a VCF record's ``END``
+  describes its longest alternate allele and no narrower position can be
+  recovered for the others. Both are reported in the log when they occur.
+  Ordinary insertions and deletions written as sequences are kept.
+
+If you do not have a matched normal sample, you can use 1000 Genomes common
+SNP sites to extract likely germline SNVs from a tumor-only VCF and use just
+those sites. Note that without a paired normal, sample-level somatic filtering
+is weaker (see below).
+
+If you are calling somatic variants, configure the caller to also emit germline
+genotypes -- a somatic-only VCF gives CNVkit no heterozygous SNPs to use:
+
+- **GATK Mutect2:** re-run with ``--genotype-germline-sites true
+  --genotype-pon-sites true`` to keep the germline SNP sites in the same VCF.
+- **Strelka:** run its *germline* workflow, not the somatic one. Strelka's
+  somatic VCF contains only somatic variants and omits the ``GT`` field, so it
+  has no usable germline SNPs.
+
+An `example VCF
+<https://github.com/etal/cnvkit/blob/master/test/formats/na12878_na12882_mix.vcf?raw=true>`_
+constructed from the 1000 Genomes samples NA12878 and NA12882 is included in
+CNVkit's test suite.
+
+See also: :ref:`vcfformat`.
+
+
+Sample identification in VCFs
+-----------------------------
+
+When the VCF contains multiple samples, CNVkit needs to know which is the
+tumor and which is the normal. There are two ways:
+
+- **PEDIGREE header tag.** Add a PEDIGREE tag to the VCF header declaring the
+  tumor sample(s) as ``Derived`` and the normal as ``Original``. CNVkit will
+  detect this automatically.
+- **Command-line options.** Pass ``-i``/``--sample-id`` to identify the tumor
+  sample and ``-n``/``--normal-id`` to identify the matched normal. These
+  options are accepted by the :ref:`call`, :ref:`scatter`, :ref:`segment`,
+  :ref:`export` ``theta``, and :ref:`export` ``nexus-ogt`` commands.
+
+The command-line options take precedence. A PEDIGREE tag records how the file
+was made, which is not always how it is being analyzed, so naming a sample
+overrides the header rather than being overridden by it -- you do not have to
+rewrite a VCF to analyze a pairing its writer did not anticipate. Displacing a
+declared pairing is reported in the log.
+
+The four combinations resolve as follows, with whichever half of the pair you
+leave out filled in from the PEDIGREE tag when the VCF has one and from the
+order of the samples in the file otherwise:
+
+- ``--sample-id`` and ``--normal-id``: the named pair is used as given.
+- ``--sample-id`` alone: if the header declares that sample as a tumor, the
+  normal declared with it is used; otherwise the sample is analyzed unpaired.
+- ``--normal-id`` alone: the tumor declared against that normal is used; if the
+  header declares none, the first other sample in the file is taken as the
+  tumor.
+- Neither: the declared pair is used; with nothing declared, the first sample
+  in the file is analyzed unpaired.
+
+Naming the same sample as both the tumor and its own matched normal is an
+error rather than a request to analyze it unpaired; omit ``--normal-id`` for
+that.
+
+What the pairing changes is whose genotype the analysis reads. With a matched
+normal, a locus that is variant in the tumor but homozygous reference in the
+normal is dropped as somatic, the heterozygous sites are then selected by the
+*normal's* genotype rather than the tumor's, and ``--min-variant-depth``
+applies to the normal's read depth. Analyzed unpaired, the sample's own
+genotype is all there is: a variant that appears heterozygous only because it
+is somatic and subclonal is indistinguishable from a germline SNP. Only the
+``SOMATIC`` INFO flag remains to exclude it, so a tumor-with-somatic-only VCF
+will look superficially heterozygous to CNVkit. This is a common cause of
+incorrect BAF output (see :ref:`baf-troubleshooting`), and it is why a
+tumor-only VCF should be restricted to common SNP sites (:ref:`baf-vcf-prep`).
+
+
+.. _baf-rescaling:
+
+BAF rescaling for purity
+------------------------
+
+When ``cnvkit call --purity P`` is run with a VCF, the per-segment observed
+BAF is rescaled to estimate the BAF of pure tumor cells. The model assumes
+the observed BAF is a mixture of tumor and normal contributions:
+
+.. math::
+
+    \text{obs\_baf} = p \cdot \text{tumor\_baf} + (1 - p) \cdot \text{normal\_baf}
+
+where :math:`p` is the tumor purity and the normal contribution is at the
+heterozygous baseline :math:`\text{normal\_baf} = 0.5`. Solving for the
+tumor BAF:
+
+.. math::
+
+    \text{tumor\_baf} = \frac{\text{obs\_baf} - 0.5 \cdot (1 - p)}{p}
+
+Equivalently, the tumor's deviation from 0.5 is the observed deviation
+amplified by :math:`1/p`: when purity is low, small mis-modeled deviations
+in the observed BAF are amplified into large deviations in the rescaled
+output.
+
+When the input matches the model assumptions, the rescaled tumor BAF lies in
+[0, 1]. If the rescaled value falls outside that interval, the values are
+clamped to [0, 1] and a warning is logged. See :ref:`baf-troubleshooting`.
+
+
+Allele-specific copy number and LOH
+-----------------------------------
+
+The :ref:`call` command pairs the rescaled BAF with the integer total copy
+number to split each segment into its two allelic copy numbers, output as
+columns ``cn1`` (major) and ``cn2`` (minor) in the ``.cns`` file. The
+calculation follows `PSCBS <https://doi.org/10.1093/bioinformatics/btr329>`_:
+the total copy number is multiplied by the upper-half BAF and rounded to the
+nearest integer, with the constraint :math:`\text{cn1} \geq \text{cn2}` and
+:math:`\text{cn1} + \text{cn2} = \text{cn}`.
+
+Allelic imbalance, including copy-number-neutral loss of heterozygosity
+(LOH), is apparent when ``cn1`` and ``cn2`` differ. Specifically:
+
+- ``cn1 == cn2``: balanced segment (e.g. ``2/2`` for diploid neutral, ``3/3``
+  for a balanced 6-copy gain).
+- ``cn1 != cn2``: allelic imbalance (e.g. ``2/1`` for a single-copy loss).
+- ``cn2 == 0`` with ``cn > 0``: complete loss of heterozygosity for that
+  segment (e.g. ``2/0`` for copy-number-neutral LOH, ``1/0`` for hemizygous
+  loss).
+
+If the segment had no overlapping heterozygous SNPs, the ``baf``, ``cn1``,
+and ``cn2`` columns are written as missing values (NaN).
+
+
+.. _baf-troubleshooting:
+
+Troubleshooting
+---------------
+
+The two most common BAF problems are summarized below.
+
+Negative or out-of-range BAF in ``.cns`` output
+```````````````````````````````````````````````
+
+Symptom: ``cnvkit call --purity`` produces a ``.cns`` file with ``baf``
+values outside [0, 1] (older CNVkit versions), or you see a log message
+like::
+
+    WARNING: 17 segment(s) had tumor BAF outside [0, 1] after purity
+    rescaling (purity=0.37); values clamped. The purity estimate may be
+    too low, or the input VCF may contain somatic variants.
+
+This means observed BAFs were too far from 0.5 for the rescaling model
+(see :ref:`baf-rescaling`). Likely causes:
+
+- **The VCF contains somatic-only variants** (most common). Re-run with a
+  VCF that includes germline heterozygous SNPs. See :ref:`baf-vcf-prep`.
+- **Sample IDs not specified.** With ``-i``/``-n`` missing in a paired
+  tumor/normal VCF that declares no pairing of its own, CNVkit cannot apply
+  genotype-based somatic filtering. Set ``--sample-id`` and ``--normal-id``
+  (or add a PEDIGREE header).
+- **Purity estimate is too low.** If the purity passed to ``--purity`` is
+  below the actual tumor cell fraction, observed deviations from 0.5 get
+  amplified beyond the [0, 1] range during rescaling.
+
+Out-of-range values are clamped to [0, 1] on output, but the underlying
+input issue should be investigated.
+
+"No heterozygous variants" or "Median allele frequency far from 0.5"
+````````````````````````````````````````````````````````````````````
+
+Symptom: a log message at load time, e.g.::
+
+    WARNING: No heterozygous variants remain after filtering.
+
+or::
+
+    WARNING: Median allele frequency 0.93 is far from the 0.5 expected for
+    heterozygous germline SNPs.
+
+Both indicate the loaded variants don't look like germline heterozygous
+SNPs. Re-check the VCF preparation (see :ref:`baf-vcf-prep`) and sample
+identification.
+
+``baf`` is 0 across (nearly) every segment
+``````````````````````````````````````````
+
+Symptom: the ``.cns`` output has ``baf`` of exactly 0 in most or all
+segments, even though the VCF clearly contains heterozygous SNPs (the load
+log reports many records "kept heterozygous").
+
+Cause: CNVkit derives each SNP's allele frequency from per-sample
+allele-*count* FORMAT fields, not from the genotype alone. It reads, in order
+of preference, ``AD`` (GATK, VarScan2), ``CLCAD2`` (Qiagen CLC), ``AO`` with
+``RO`` (FreeBayes), Strelka's per-base tier counts (``AU``/``CU``/``GU``/``TU``),
+or -- for an unpaired VCF with no per-sample genotypes -- the INFO ``AF``
+field. If a record has a genotype (``GT``) but *none* of these count fields,
+its allele frequency is unknown.
+
+Such sites are now treated as missing (NaN) rather than as a 0% alt-allele
+frequency, so they are excluded from the per-segment BAF instead of pinning it
+to 0. (Previously the unknown frequency was coerced to 0, which kept the het
+site and forced its mirrored BAF to 0; see issue #407.) If *all* het SNPs in a
+segment lack counts, that segment's ``baf`` is written as missing (NaN).
+
+The fix is to call variants with a tool that emits allele depths, or re-run the
+caller so that one of the fields above is present. For example, VarScan2 emits
+``AD``/``RD`` and VarDict/FreeBayes emit ``AD``/``AF``; a ``GT``-only VCF does
+not carry enough information for BAF.

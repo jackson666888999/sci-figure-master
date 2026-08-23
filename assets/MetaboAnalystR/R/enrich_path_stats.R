@@ -1,0 +1,1242 @@
+### Over-representation analysis using hypergeometric tests
+### The probability is calculated from obtaining the equal or higher number
+### of hits using 1-phyper. Since phyper is a cumulative probability,
+### to get P(X>=hit.num) => P(X>(hit.num-1))
+
+#'Calculate ORA score
+#'@description Calculate the over representation analysis score
+#'@usage CalculateOraScore(mSetObj=NA, nodeImp, method)
+#'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+#'@param nodeImp Indicate the pathway topology analysis, "rbc" for relative-betweeness centrality, 
+#'and "dgr" for out-degree centrality. 
+#'@param method is "fisher", "hyperg", or "mummi_like"
+#'@author Jeff Xia \email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+
+CalculateOraScore <- function(mSetObj=NA, nodeImp, method){
+
+  mSetObj <- .get.mSet(mSetObj);
+  # make a clean dataSet$cmpd data based on name mapping
+  # only valid kegg id will be used
+
+  nm.map <- GetFinalNameMap(mSetObj);
+  if(mSetObj$pathwaylibtype == "KEGG"){
+    valid.inx <- !(is.na(nm.map$kegg)| duplicated(nm.map$kegg));
+    ora.vec <- nm.map$kegg[valid.inx];
+  } else if(mSetObj$pathwaylibtype == "SMPDB"){
+    valid.inx <- !(is.na(nm.map$hmdbid)| duplicated(nm.map$hmdbid));
+    ora.vec <- nm.map$hmdbid[valid.inx];
+  }
+
+  q.size<-length(ora.vec);
+  if(all(is.na(ora.vec)) | q.size==0) {
+    if(mSetObj$pathwaylibtype == "KEGG"){
+      AddErrMsg("No valid KEGG compounds found!");
+    } else if(mSetObj$pathwaylibtype == "SMPDB"){
+      AddErrMsg("No valid SMPDB compounds found!");
+    }
+    return(0);
+  }
+ 
+  if(!.on.public.web & mSetObj$pathwaylibtype == "KEGG"){
+    mSetObj$api$oraVec <- ora.vec;
+    mSetObj$api$method <- method;
+    mSetObj$api$nodeImp <- nodeImp;
+
+    if(mSetObj$api$filter){
+      mSetObj$api$filterData <- mSetObj$dataSet$metabo.filter.kegg
+      
+      toSend <- list(mSet = mSetObj, libVersion = mSetObj$api$libVersion, libNm = mSetObj$api$libNm, filter = mSetObj$api$filter, nodeImp = mSetObj$api$nodeImp,
+                     method = mSetObj$api$method, oraVec = mSetObj$api$oraVec, filterData = mSetObj$api$filterData)
+    }else{
+      toSend <- list(mSet = mSetObj, libVersion = mSetObj$api$libVersion, libNm = mSetObj$api$libNm, filter = mSetObj$api$filter, nodeImp = mSetObj$api$nodeImp,
+                     method = mSetObj$api$method, oraVec = mSetObj$api$oraVec)
+    }
+ 
+    saveRDS(toSend, "tosend.rds")
+    return(my.ora.kegg());
+  }
+ 
+  current.mset <- current.kegglib$mset.list;
+  uniq.count <- current.kegglib$uniq.count;
+  
+  # check if need to be filtered against reference metabolome
+  # TODO: address the following filtering for SMPDB if needed
+  gd.sets <- names(current.mset);
+  if(mSetObj$dataSet$use.metabo.filter && !is.null(mSetObj$dataSet$metabo.filter.kegg)){
+    current.mset <- lapply(current.mset, function(x){x[x %in% mSetObj$dataSet$metabo.filter.kegg]});
+    
+    # remove those with length 0 (i.e. no members after filtering)
+    gd.sets <- names(current.mset)[lapply(current.mset, length) > 0];
+    current.mset <- current.mset[gd.sets];
+    mSetObj$analSet$ora.filtered.mset <- current.mset; 
+  }
+ 
+  set.size<-length(current.mset);
+  if(set.size < 2){
+    AddErrMsg("Cannot perform enrichment analysis on a single metabolite set!");
+    return(0);
+  }
+ 
+  # now perform enrichment analysis
+
+  # update data & parameters for ORA stats, based on suggestion
+  # https://github.com/xia-lab/MetaboAnalystR/issues/168
+  my.univ <- unique(unlist(current.mset, use.names=FALSE));
+  uniq.count <- length(my.univ);
+  ora.vec <- ora.vec[ora.vec %in% my.univ];
+  q.size <- length(ora.vec);   
+  if(q.size < 3){
+    AddErrMsg("Less than 3 metabolites left - too few to perform meaningful enrichment analysis!");
+    return(0);
+  }
+ 
+  hits <- lapply(current.mset, function(x){x[x %in% ora.vec]});
+  hit.num <-unlist(lapply(hits, function(x){length(x)}), use.names=FALSE);
+  set.num <- unlist(lapply(current.mset, length), use.names=FALSE);
+  
+  # deal with no hits
+  if(length(hits)==0){
+    AddErrMsg("No hits in the selected pathway library!");
+    return(0)
+  }
+
+
+  # prepare for the result table
+  res.mat<-matrix(0, nrow=set.size, ncol=8);
+  rownames(res.mat)<-names(current.mset);
+  colnames(res.mat)<-c("Total", "Expected", "Hits", "Raw p", "-log10(p)", "Holm adjust", "FDR", "Impact");
+  
+  if(nodeImp == "rbc"){
+    imp.list <- current.kegglib$rbc;
+    mSetObj$msgSet$topo.msg <- "Your selected node importance measure for topological analysis is `relative betweenness centrality`.";
+  }else{
+    imp.list <- current.kegglib$dgr;
+    mSetObj$msgSet$topo.msg <- "Your selected node importance measure for topological analysis is `out degree centrality`.";
+  }
+  imp.list <- imp.list[gd.sets];
+
+  res.mat[,1]<-set.num;
+  res.mat[,2]<-q.size*(set.num/uniq.count);
+  res.mat[,3]<-hit.num;
+  
+  if(method == "fisher"){
+    res.mat[,4] <- GetFisherPvalue(hit.num, q.size, set.num, uniq.count);
+    mSetObj$msgSet$rich.msg <- "The selected over-representation analysis method is `Fishers' exact test`.";
+  } else if(method == "hyperg"){
+    # use lower.tail = F for P(X>x)
+    res.mat[,4] <- phyper(hit.num-1, set.num, uniq.count-set.num, q.size, lower.tail=F);
+    mSetObj$msgSet$rich.msg <- "The selected over-representation analysis method is `Hypergeometric test`.";
+  } else if(method == "mummi_like"){
+    top.frac <- 0.10
+    if(!is.null(mSetObj$paramSet$pathqea.mummi.top.frac)){
+      tmp.frac <- suppressWarnings(as.numeric(mSetObj$paramSet$pathqea.mummi.top.frac))
+      if(!is.na(tmp.frac) && tmp.frac > 0 && tmp.frac <= 1){
+        top.frac <- tmp.frac
+      }
+    }
+
+    perm.num <- 100
+    if(!is.null(mSetObj$paramSet$pathqea.mummi.perm.num)){
+      tmp.perm <- suppressWarnings(as.integer(mSetObj$paramSet$pathqea.mummi.perm.num))
+      if(!is.na(tmp.perm) && tmp.perm >= 10){
+        perm.num <- tmp.perm
+      }
+    }
+
+    sig.n <- floor(length(ora.vec) * top.frac)
+    sig.n <- max(1, min(sig.n, length(ora.vec)))
+    sig.vec <- unique(ora.vec[seq_len(sig.n)])
+    sig.n <- length(sig.vec)
+
+    measured.set.num <- unlist(lapply(current.mset, function(x){length(intersect(x, ora.vec))}), use.names=FALSE)
+    obs.hits <- unlist(lapply(current.mset, function(x){length(intersect(x, sig.vec))}), use.names=FALSE)
+
+    res.mat[,2] <- sig.n * (measured.set.num / max(1, q.size))
+    res.mat[,3] <- obs.hits
+
+    obs.p <- rep(1, length(current.mset))
+    valid.inx <- which(measured.set.num > 0 & q.size > 0)
+    if(length(valid.inx) > 0){
+      obs.p[valid.inx] <- phyper(obs.hits[valid.inx]-1, measured.set.num[valid.inx], q.size-measured.set.num[valid.inx], sig.n, lower.tail=F)
+    }
+
+    perm.le.count <- rep(0L, length(current.mset))
+    if(perm.num > 0){
+      for(b in seq_len(perm.num)){
+        perm.sig <- sample(ora.vec, size=sig.n, replace=FALSE)
+        perm.hits <- unlist(lapply(current.mset, function(x){length(intersect(x, perm.sig))}), use.names=FALSE)
+        perm.p <- rep(1, length(current.mset))
+        if(length(valid.inx) > 0){
+          perm.p[valid.inx] <- phyper(perm.hits[valid.inx]-1, measured.set.num[valid.inx], q.size-measured.set.num[valid.inx], sig.n, lower.tail=F)
+        }
+        perm.le.count <- perm.le.count + as.integer(perm.p <= obs.p)
+      }
+    }
+    res.mat[,4] <- (perm.le.count + 1) / (perm.num + 1)
+    hit.num <- obs.hits
+    hits <- lapply(current.mset, function(x){intersect(x, sig.vec)})
+    mSetObj$msgSet$rich.msg <- paste0(
+      "The selected over-representation analysis method is `Mummichog`.\n\n",
+      "- Significant-feature cutoff: top `", round(top.frac * 100, 2), "%`\n",
+      "- Permutations: `", perm.num, "`"
+    );
+  } else{
+    AddErrMsg(paste0("Unknown over-representation analysis method: ", method));
+    return(0);
+  }
+  
+  res.mat[,5] <- -log10(res.mat[,4]);
+  
+  # adjust for multiple testing problems
+  res.mat[,6] <- p.adjust(res.mat[,4], "holm");
+  res.mat[,7] <- p.adjust(res.mat[,4], "fdr");
+  # calculate the sum of importance
+  res.mat[,8] <- mapply(function(x, y){sum(x[y])}, imp.list, hits);
+  
+  res.mat <- res.mat[hit.num>0, , drop=FALSE];
+  res.mat <- res.mat[!is.na(res.mat[,8]), , drop=FALSE];
+  
+  if(nrow(res.mat) > 1){
+    ord.inx <- order(res.mat[,4], res.mat[,8]);
+    res.mat <- res.mat[ord.inx,];
+  }
+  
+  mSetObj$analSet$ora.mat <- signif(res.mat,5);
+  mSetObj$analSet$ora.hits <- hits;
+  mSetObj$analSet$node.imp <- nodeImp;
+
+  save.mat <- mSetObj$analSet$ora.mat;
+
+  hit.inx <- match(rownames(save.mat), current.kegglib$path.ids);
+  rownames(save.mat) <- names(current.kegglib$path.ids)[hit.inx];
+  fast.write.csv(save.mat, file="pathway_results.csv");
+  ExportResultMatArrow(save.mat, "pathway_ora_result");
+  return(.set.mSet(mSetObj));
+}
+
+#'Export pathway names from ORA analysis
+#'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+#'@export
+GetORA.pathNames <- function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  hit.inx <- match(rownames(mSetObj$analSet$ora.mat), current.kegglib$path.ids);
+  return(names(current.kegglib$path.ids)[hit.inx]);
+}
+
+#'Calculate quantitative enrichment score
+#'@description Calculate quantitative enrichment score
+#'@usage CalculateQeaScore(mSetObj=NA, nodeImp, method)
+#'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+#'@param nodeImp Indicate the pathway topology analysis, "rbc" for relative-betweeness centrality, 
+#'and "dgr" for out-degree centrality. 
+#'@param method Indicate the pathway enrichment analysis, global test is "gt",
+#'global ancova is "ga", and mummichog-inspired rank enrichment is "mummi_like".
+#'@author Jeff Xia \email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+
+# contains three inner functions to be compatible with microservice
+CalculateQeaScore <- function(mSetObj=NA, nodeImp, method, covariates=NA){
+
+  mSetObj <- .get.mSet(mSetObj);
+
+  # Guard: ensure continuous cls is numeric, not factor
+  if(!is.null(mSetObj$dataSet$cls.type) && mSetObj$dataSet$cls.type == "cont" && is.factor(mSetObj$dataSet$cls)){
+    message("[QEA] Fixing cls: was factor with ", nlevels(mSetObj$dataSet$cls), " levels, converting to numeric");
+    mSetObj$dataSet$cls <- as.numeric(as.character(mSetObj$dataSet$cls));
+  }
+
+  nm.map <- GetFinalNameMap(mSetObj);
+  if(mSetObj$pathwaylibtype == "KEGG"){
+    valid.inx <- !(is.na(nm.map$kegg)| duplicated(nm.map$kegg));
+  } else if(mSetObj$pathwaylibtype == "SMPDB"){
+    valid.inx <- !(is.na(nm.map$hmdbid)| duplicated(nm.map$hmdbid));
+  }
+  nm.map <- nm.map[valid.inx,];
+  orig.nms <- nm.map$query;
+
+  kegg.inx <- match(colnames(mSetObj$dataSet$norm),orig.nms);
+  hit.inx <- !is.na(kegg.inx);
+  path.data<-mSetObj$dataSet$norm[,hit.inx];
+
+  if(mSetObj$pathwaylibtype == "KEGG"){
+    colnames(path.data) <- nm.map$kegg[kegg.inx[hit.inx]];
+  } else if(mSetObj$pathwaylibtype == "SMPDB"){
+    colnames(path.data) <- nm.map$hmdbid[kegg.inx[hit.inx]];
+  }
+
+  univ.p <- apply(as.matrix(path.data), 2, function(x) {
+    tmp <- try(lm(as.numeric(mSetObj$dataSet$cls)~x));
+    if(class(tmp) == "try-error") return(NA)
+    tmp<-anova(tmp); return(tmp[1,5]);
+  });
+  names(univ.p) <- colnames(path.data);
+
+  if(!.on.public.web & mSetObj$pathwaylibtype == "KEGG"){
+    mSetObj$api$nodeImp <- nodeImp;
+    mSetObj$api$method <- method;
+    mSetObj$api$pathDataColNms <- colnames(path.data)
+    path.data <- as.matrix(path.data)
+    dimnames(path.data) = NULL
+    mSetObj$api$pathData <- path.data;
+    mSetObj$api$univP <- as.numeric(univ.p);
+    mSetObj$api$cls <- mSetObj$dataSet$cls
+    if(mSetObj$api$filter){
+      mSetObj$api$filterData <- mSetObj$dataSet$metabo.filter.kegg
+      toSend <- list(mSet = mSetObj, libVersion = mSetObj$api$libVersion, libNm = mSetObj$api$libNm, filter = mSetObj$api$filter, nodeImp = mSetObj$api$nodeImp,
+                     method = mSetObj$api$method, pathData = mSetObj$api$pathData, pathDataColNms = mSetObj$api$pathDataColNms,
+                     filterData = mSetObj$api$filterData, univP = mSetObj$api$univP, cls = mSetObj$api$cls)
+    }else{
+      toSend <- list(mSet = mSetObj, libVersion = mSetObj$api$libVersion, libNm = mSetObj$api$libNm, filter = mSetObj$api$filter, nodeImp = mSetObj$api$nodeImp,
+                     method = mSetObj$api$method, pathData = mSetObj$api$pathData, pathDataColNms = mSetObj$api$pathDataColNms,
+                     univP = mSetObj$api$univP, cls = mSetObj$api$cls)
+    }
+    saveRDS(toSend, "tosend.rds");
+    if(!exists("my.pathway.qea")){
+      .load.scripts.on.demand("util_api.Rc");
+    }
+    return(my.pathway.qea());
+  }
+
+  current.mset <- current.kegglib$mset.list;
+  uniq.count <- current.kegglib$uniq.count;
+
+  if(mSetObj$dataSet$use.metabo.filter && !is.null(mSetObj$dataSet[["metabo.filter.kegg"]])){
+    current.mset<-lapply(current.mset, function(x) {x[x %in% mSetObj$dataSet$metabo.filter.kegg]});
+    mSetObj$analSet$qea.filtered.mset <- current.mset;
+    uniq.count <- length(unique(unlist(current.mset), use.names=FALSE));
+  }
+
+  hits <- lapply(current.mset, function(x) {x[x %in% colnames(path.data)]});
+  hit.inx <- unlist(lapply(hits, function(x) {length(x)}), use.names=FALSE) > 0;
+  hits <- hits[hit.inx];
+
+  if(length(hits)==0){
+    AddErrMsg("No hits in the selected pathway library!");
+    return(0)
+  }
+
+  if(nodeImp == "rbc"){
+    imp.list <- current.kegglib$rbc[hit.inx];
+    mSetObj$msgSet$topo.msg <- "Your selected node importance measure for topological analysis is `relative betweenness centrality`.";
+  }else{
+    imp.list <- current.kegglib$dgr[hit.inx];
+    mSetObj$msgSet$topo.msg <- "Your selected node importance measure for topological analysis is `out degree centrality`.";
+  }
+
+  imp.vec <- mapply(function(x, y){sum(x[y])}, imp.list, hits);
+  set.num<-unlist(lapply(current.mset[hit.inx], length), use.names=FALSE);
+
+  # Build covariate data if provided
+  has.cov <- !identical(covariates, NA) && length(covariates) > 0 && !is.na(covariates[1])
+  cov.df <- NULL
+  if (has.cov && !is.null(mSetObj$dataSet$meta.info)) {
+    cov.cols <- intersect(covariates, colnames(mSetObj$dataSet$meta.info))
+    if (length(cov.cols) > 0) {
+      cov.df <- mSetObj$dataSet$meta.info[rownames(path.data), cov.cols, drop = FALSE]
+      for (cn in colnames(cov.df)) {
+        if (is.factor(cov.df[[cn]]) || is.character(cov.df[[cn]])) cov.df[[cn]] <- as.factor(cov.df[[cn]])
+        else cov.df[[cn]] <- as.numeric(cov.df[[cn]])
+      }
+      message("[Pathway QEA] Covariates included: ", paste(cov.cols, collapse = ", "))
+    }
+  }
+
+  cov.label <- if (!is.null(cov.df)) paste0("\n- Covariates adjusted for: ```", paste(colnames(cov.df), collapse=", "), "```") else ""
+  if(method == "gt"){
+    mSetObj$msgSet$rich.msg <- paste0("The selected pathway enrichment analysis method is ```Globaltest```.",
+      " Both GlobalTest and GlobalAncova support built-in covariate adjustment within the statistical model, ",
+      "which is statistically more rigorous than adjusting the data separately before testing.\n\n",
+      "- Enrichment method: ```Globaltest```", cov.label);
+    bridge_in <- paste0(tempdir(), "/bridge_", paste0(sample(letters,6,replace=TRUE), collapse=""), "_in.qs")
+    bridge_out <- sub("_in.qs", "_out.qs", bridge_in)
+    ov_qs_save(list(cls=mSetObj$dataSet$cls, data=path.data, subsets=hits, cov.df=cov.df), bridge_in, preset = "fast")
+    on.exit(unlink(c(bridge_in, bridge_out)), add = TRUE)
+
+    run_func_via_microservice(
+      func = function(wd, bridge_in, bridge_out) {
+        setwd(wd)
+        require(globaltest)
+        input <- ov_qs_read(bridge_in)
+        if (!is.null(input$cov.df)) {
+          null.mat <- model.matrix(~ ., data = input$cov.df)
+          gt.obj <- globaltest::gt(input$cls, input$data, null = null.mat, subsets=input$subsets)
+        } else {
+          gt.obj <- globaltest::gt(input$cls, input$data, subsets=input$subsets)
+        }
+        gt.res <- globaltest::result(gt.obj)
+        ov_qs_save(gt.res[,c(5,1)], bridge_out, preset = "fast")
+      },
+      args = list(wd = getwd(), bridge_in = bridge_in, bridge_out = bridge_out),
+      timeout_sec = 300
+    )
+
+    qea.res <- if (file.exists(bridge_out)) ov_qs_read(bridge_out) else NULL
+  }else{
+    mSetObj$msgSet$rich.msg <- paste0("The selected pathway enrichment analysis method is ```GlobalAncova```.",
+      " Both GlobalTest and GlobalAncova support built-in covariate adjustment within the statistical model, ",
+      "which is statistically more rigorous than adjusting the data separately before testing.\n\n",
+      "- Enrichment method: ```GlobalAncova```", cov.label);
+    bridge_in2 <- paste0(tempdir(), "/bridge_", paste0(sample(letters,6,replace=TRUE), collapse=""), "_in.qs")
+    bridge_out2 <- sub("_in.qs", "_out.qs", bridge_in2)
+    ov_qs_save(list(cls=mSetObj$dataSet$cls, data=path.data, subsets=hits, cov.df=cov.df), bridge_in2, preset = "fast")
+    on.exit(unlink(c(bridge_in2, bridge_out2)), add = TRUE)
+
+    run_func_via_microservice(
+      func = function(wd, bridge_in, bridge_out) {
+        setwd(wd)
+        require(GlobalAncova)
+        input <- ov_qs_read(bridge_in)
+        if (!is.null(input$cov.df)) {
+          cov.mat <- model.matrix(~ ., data = input$cov.df)[, -1, drop = FALSE]
+          ga.out <- GlobalAncova::GlobalAncova(xx=t(input$data), group=input$cls, covars=cov.mat, test.genes=input$subsets, method="approx")
+        } else {
+          ga.out <- GlobalAncova::GlobalAncova(xx=t(input$data), group=input$cls, test.genes=input$subsets, method="approx")
+        }
+        ov_qs_save(ga.out[,c(1,3)], bridge_out, preset = "fast")
+      },
+      args = list(wd = getwd(), bridge_in = bridge_in2, bridge_out = bridge_out2),
+      timeout_sec = 300
+    )
+
+    qea.res <- if (file.exists(bridge_out2)) ov_qs_read(bridge_out2) else NULL
+  }
+
+  # Store intermediate data
+  mSetObj$analSet$qea.univp <- signif(univ.p,7);
+  mSetObj$analSet$node.imp <- nodeImp;
+  mSetObj$dataSet$norm.path <- path.data;
+  mSetObj$analSet$qea.hits <- hits;
+  mSetObj$analSet$imp.vec <- imp.vec;
+  mSetObj$analSet$set.num <- set.num;
+
+  # Process results (what .save.qea.score did)
+  if(is.null(qea.res)){
+    AddErrMsg("Pathway enrichment computation failed in isolated subprocess!");
+    return(0);
+  }
+  match.num <- qea.res[,1];
+  raw.p <- qea.res[,2];
+
+  log.p <- -log10(raw.p);
+  holm.p <- p.adjust(raw.p, "holm");
+  fdr.p <- p.adjust(raw.p, "fdr");
+
+  res.mat <- cbind(set.num, match.num, raw.p, log.p, holm.p, fdr.p, imp.vec);
+  rownames(res.mat)<-rownames(qea.res);
+  colnames(res.mat)<-c("Total Cmpd", "Hits", "Raw p", "-log10(p)", "Holm adjust", "FDR", "Impact");
+  res.mat <- res.mat[!is.na(res.mat[,7]), , drop=FALSE];
+
+  ord.inx<-order(res.mat[,3], -res.mat[,7]);
+  res.mat<-signif(res.mat[ord.inx,],5);
+  mSetObj$analSet$qea.mat <- res.mat;
+
+  hit.inx <- match(rownames(res.mat), current.kegglib$path.ids);
+  pathNames <- names(current.kegglib$path.ids)[hit.inx];
+  rownames(res.mat) <- pathNames;
+  fast.write.csv(res.mat, file="pathway_results.csv");
+  ExportResultMatArrow(res.mat, "pathway_qea_result");
+
+  mSetObj$analSet$qea.pathNames <- pathNames;
+  return(.set.mSet(mSetObj));
+}
+
+#'Export pathway names from QEA analysis
+#'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+#'@export
+GetQEA.pathNames <- function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  return(mSetObj$analSet$qea.pathNames);
+}
+
+#'Only works for human (hsa.rda) data
+#'@description Only works for human (hsa.rda) data
+#'2018 - works for ath, eco, mmu, sce
+#'@param kegg.ids Input the list of KEGG ids to add SMPDB links
+#'@author Jeff Xia \email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+#'
+SetupSMPDBLinks <- function(kegg.ids){
+  smpdb.vec <- names(current.kegglib$path.smps)[match(kegg.ids,current.kegglib$path.smps)];
+
+  lk.len <- length(smpdb.vec);
+
+  if(lk.len==0){return("");};
+
+  all.lks <- vector(mode="character", length=lk.len);
+  for(i in 1:lk.len){
+    lks <- strsplit(as.character(smpdb.vec[i]), "; ", fixed=TRUE)[[1]];
+    if(!is.na(lks[1])){
+      all.lks[i]<-paste("<a href=http://www.smpdb.ca/view/",lks," target=_new>SMP</a>", sep="", collapse="\n");
+    }
+  }
+  return(all.lks);
+}
+
+#'Only works for human (hsa.rda) data
+#'@description Only works for human (hsa.rda) data
+#'2018 - works for ath, eco, mmu, sce
+#'@param smpdb.ids Input the list of SMPD ids to add SMPDB links
+#'@author Jeff Xia \email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+#'
+SetupKEGGLinks <- function(smpdb.ids){
+  kegg.vec <- current.kegglib$path.keggs[match(smpdb.ids,names(current.kegglib$mset.list))]
+  lk.len <- length(kegg.vec);
+  all.lks <- vector(mode="character", length=lk.len);
+  for(i in 1:lk.len){
+    lks <- strsplit(kegg.vec[i], "; ", fixed=TRUE)[[1]];
+    if(!is.na(lks[1])){
+      all.lks[i] <- paste("<a href=http://www.genome.jp/kegg-bin/show_pathway?",lks," target=_new>KEGG</a>", sep="");
+      # all.lks[i]<-paste("<a href=http://pathman.smpdb.ca/pathways/",lks,"/pathway target=_new>SMP</a>", sep="", collapse="\n");
+    }
+  }
+  return(all.lks);
+}
+
+##############################################
+##############################################
+########## Utilities for web-server ##########
+##############################################
+##############################################
+
+#'Given a metset inx, return hmtl highlighted pathway cmpds
+#'@description Given a metset inx, return hmtl highlighted pathway cmpds
+#'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+#'@param msetNm Input the name of the metabolite set
+#'@author Jeff Xia \email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+#'@export
+#'
+GetHTMLPathSet <- function(mSetObj=NA, msetNm){
+  mSetObj <- .get.mSet(mSetObj);
+
+  if(!exists('current.kegglib')){
+    current.kegglib <<- ov_qs_read("current.kegglib.qs");
+  }
+
+  pathid <- current.kegglib$path.ids[msetNm]; 
+  mset <- current.kegglib$mset.list[[pathid]];
+  
+  hits <- NULL;
+  if(mSetObj$analSet$type=="pathora"){
+    hits <- mSetObj$analSet$ora.hits;
+  }else{
+    hits <- mSetObj$analSet$qea.hits;
+  }
+  
+  # highlighting with different colors
+  red.inx <- which(mset %in% hits[[pathid]]);
+  
+  # use actual cmpd names
+  nms <- names(mset);
+  nms[red.inx] <- paste("<font color=\"red\">", "<b>", nms[red.inx], "</b>", "</font>",sep="");
+  return(cbind(msetNm, paste(unique(nms), collapse="; ")));
+}
+
+#'Return matched compound/metabolite IDs for a pathway
+#'@description Return matched IDs (hits) for a selected pathway from pathway analysis results.
+#'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+#'@param msetNm Input pathway name or pathway ID
+#'@param id.type Output ID type: "native", "kegg", or "hmdb"
+#'@param uniqueOnly Return unique IDs only (default TRUE)
+#'@export
+GetMatchedPathCompoundIDs <- function(mSetObj=NA, msetNm, id.type="native", uniqueOnly=TRUE){
+  mSetObj <- .get.mSet(mSetObj);
+
+  path_key <- trimws(as.character(msetNm[1]))
+  if(missing(msetNm) || is.null(msetNm) || !nzchar(path_key)){
+    return(character(0));
+  }
+
+  # Mummichog / peak-set pathways store their own pathway list instead of
+  # relying on current.kegglib. Use that structure first when available.
+  if(!is.null(mSetObj$pathways) && !is.null(mSetObj$pathways$cpds)){
+    path_names <- mSetObj$pathways$name
+    path_ids <- mSetObj$pathways$id
+    path.inx <- which(!is.null(path_names) & path_names == path_key)
+    if(length(path.inx) == 0 && !is.null(path_ids)){
+      path.inx <- which(path_ids == path_key)
+    }
+    if(length(path.inx) == 0){
+      path.inx <- match(tolower(path_key), tolower(path_names))
+    }
+    if(length(path.inx) > 0 && !is.na(path.inx[1])){
+      path.inx <- path.inx[1]
+      hit.vec <- NULL
+      if(!is.null(mSetObj$path.hits)){
+        hit.vec <- mSetObj$path.hits[[path_key]]
+        if(is.null(hit.vec) && !is.null(path_names) && !is.null(path_names[path.inx])){
+          hit.vec <- mSetObj$path.hits[[path_names[path.inx]]]
+        }
+        if(is.null(hit.vec) && !is.null(path_ids) && !is.null(path_ids[path.inx])){
+          hit.vec <- mSetObj$path.hits[[path_ids[path.inx]]]
+        }
+      }
+      if(is.null(hit.vec)){
+        if(!is.null(mSetObj$input_cpdlist)){
+          hit.vec <- intersect(as.character(unlist(mSetObj$input_cpdlist, use.names = FALSE)), as.character(unlist(mSetObj$pathways$cpds[[path.inx]], use.names = FALSE)))
+        } else if(!is.null(mSetObj$total_matched_cpds)){
+          hit.vec <- intersect(as.character(unlist(mSetObj$total_matched_cpds, use.names = FALSE)), as.character(unlist(mSetObj$pathways$cpds[[path.inx]], use.names = FALSE)))
+        } else {
+          hit.vec <- character(0)
+        }
+      }
+
+      ids <- as.character(unname(hit.vec))
+      ids <- ids[!is.na(ids) & nzchar(ids)]
+      if(length(ids) == 0){
+        return(character(0))
+      }
+
+      id.type <- tolower(trimws(as.character(id.type[1])))
+      if(id.type == "kegg"){
+        ids <- toupper(ids)
+        ids <- sub("^CPD:", "", ids)
+        ids <- gsub(".*\\b(C[0-9]{5})\\b.*", "\\1", ids, perl=TRUE)
+        ids <- ids[grepl("^C[0-9]{5}$", ids)]
+      } else if(id.type == "hmdb"){
+        ids <- toupper(ids)
+        ids <- gsub(".*\\b(HMDB[0-9]+)\\b.*", "\\1", ids, perl=TRUE)
+        ids <- ids[grepl("^HMDB[0-9]+$", ids)]
+      }
+
+      if(isTRUE(uniqueOnly)){
+        ids <- unique(ids)
+      }
+      return(ids)
+    }
+  }
+
+  if(!exists('current.kegglib')){
+    current.kegglib <<- qs2::qs_read("current.kegglib.qs");
+  }
+
+  if(missing(msetNm) || is.null(msetNm) || !nzchar(path_key)){
+    return(character(0));
+  }
+
+  path.key <- path_key;
+  path.id <- "";
+
+  # Direct pathway ID (e.g. ko00010 / map00010 / hsa00010)
+  if(path.key %in% names(current.kegglib$mset.list)){
+    path.id <- path.key;
+  } else if(path.key %in% current.kegglib$path.ids){
+    # Pathway name -> ID via reverse match
+    hit.inx <- which(current.kegglib$path.ids == path.key)[1];
+    if(!is.na(hit.inx)) path.id <- names(current.kegglib$path.ids)[hit.inx];
+  } else {
+    # Usually path.ids is name -> id mapping
+    path.id <- as.character(current.kegglib$path.ids[path.key]);
+    if(is.na(path.id) || !nzchar(path.id)){
+      nm.inx <- match(tolower(path.key), tolower(names(current.kegglib$path.ids)));
+      if(!is.na(nm.inx)) path.id <- as.character(current.kegglib$path.ids[nm.inx]);
+    }
+  }
+
+  if(is.na(path.id) || !nzchar(path.id)){
+    return(character(0));
+  }
+
+  hits <- NULL;
+  if(mSetObj$analSet$type == "pathora"){
+    hits <- mSetObj$analSet$ora.hits;
+  } else {
+    hits <- mSetObj$analSet$qea.hits;
+  }
+
+  if(is.null(hits)){
+    return(character(0));
+  }
+
+  hit.vec <- hits[[path.id]];
+  if(is.null(hit.vec) && !is.null(hits[[path.key]])){
+    hit.vec <- hits[[path.key]];
+  }
+  if(is.null(hit.vec)){
+    return(character(0));
+  }
+
+  ids <- as.character(unname(hit.vec));
+  ids <- ids[!is.na(ids) & nzchar(ids)];
+  if(length(ids) == 0){
+    return(character(0));
+  }
+
+  id.type <- tolower(trimws(as.character(id.type[1])));
+  if(id.type == "kegg"){
+    ids <- toupper(ids);
+    ids <- sub("^CPD:", "", ids);
+    ids <- gsub(".*\\b(C[0-9]{5})\\b.*", "\\1", ids, perl=TRUE);
+    ids <- ids[grepl("^C[0-9]{5}$", ids)];
+  } else if(id.type == "hmdb"){
+    ids <- toupper(ids);
+    ids <- gsub(".*\\b(HMDB[0-9]+)\\b.*", "\\1", ids, perl=TRUE);
+    ids <- ids[grepl("^HMDB[0-9]+$", ids)];
+  }
+
+  if(isTRUE(uniqueOnly)){
+    ids <- unique(ids);
+  }
+  return(ids);
+}
+
+#'Build context-specific ReconMap subnetwork (SQLite-backed)
+#'@description Query reconmap.sqlite in R and return Cytoscape.js-compatible JSON for pathway context.
+#'Duplicate metabolite instances are kept as separate glyph nodes; `compoundToNodeIds` tracks grouping.
+#'@param mSetObj Input mSet object
+#'@param pathwayName Optional pathway name/ID; if empty, uses top result pathways
+#'@param dbPath Path to reconmap.sqlite
+#'@param maxPathways Number of top pathways used when pathwayName is empty
+#'@param maxSeedCompounds Max unique seed compound IDs used
+#'@param maxNodes Max nodes in returned subnetwork
+#'@export
+GetReconmapSubnetworkJSON <- function(mSetObj=NA, pathwayName="", dbPath="/home/zgy/reconmap.sqlite",
+                                      maxPathways=20, maxSeedCompounds=120, maxNodes=1200){
+  mSetObj <- .get.mSet(mSetObj);
+
+  if(!file.exists(dbPath)){
+    return('{"elements":{"nodes":[],"edges":[]},"meta":{"error":"reconmap.sqlite not found"}}');
+  }
+  if(!requireNamespace("DBI", quietly = TRUE) || !requireNamespace("RSQLite", quietly = TRUE)){
+    return('{"elements":{"nodes":[],"edges":[]},"meta":{"error":"DBI/RSQLite unavailable"}}');
+  }
+
+  esc <- function(x) gsub("'", "''", as.character(x), fixed = TRUE)
+  json_escape <- function(x) {
+    x <- as.character(x)
+    x <- gsub("\\\\", "\\\\\\\\", x)
+    x <- gsub("\"", "\\\\\"", x)
+    x <- gsub("\n", "\\\\n", x)
+    x <- gsub("\r", "\\\\r", x)
+    x <- gsub("\t", "\\\\t", x)
+    x
+  }
+  in_clause <- function(vec){
+    vec <- unique(vec[!is.na(vec) & nzchar(vec)])
+    if(length(vec) == 0) return("('')")
+    paste0("('", paste(vapply(vec, esc, character(1)), collapse = "','"), "')")
+  }
+  as_num <- function(x){
+    y <- suppressWarnings(as.numeric(x))
+    ifelse(is.na(y), 0, y)
+  }
+
+  pathwayName <- trimws(as.character(pathwayName)[1])
+  maxPathways <- max(1L, as.integer(maxPathways))
+  maxSeedCompounds <- max(1L, as.integer(maxSeedCompounds))
+  maxNodes <- max(50L, as.integer(maxNodes))
+
+  # 1) Collect seed KEGG compounds from pathway analysis.
+  seed.cids <- character(0)
+  if(nzchar(pathwayName)){
+    seed.cids <- GetMatchedPathCompoundIDs(mSetObj, pathwayName, id.type = "kegg", uniqueOnly = TRUE)
+  } else {
+    pnames <- character(0)
+    if(!is.null(mSetObj$analSet$ora.mat) && nrow(mSetObj$analSet$ora.mat) > 0){
+      pnames <- rownames(mSetObj$analSet$ora.mat)
+    } else if(!is.null(mSetObj$analSet$qea.mat) && nrow(mSetObj$analSet$qea.mat) > 0){
+      pnames <- rownames(mSetObj$analSet$qea.mat)
+    }
+    if(length(pnames) > 0){
+      pnames <- pnames[seq_len(min(length(pnames), maxPathways))]
+      seed.cids <- unique(unlist(lapply(pnames, function(pn){
+        GetMatchedPathCompoundIDs(mSetObj, pn, id.type = "kegg", uniqueOnly = TRUE)
+      }), use.names = FALSE))
+    }
+  }
+  seed.cids <- unique(toupper(seed.cids))
+  seed.cids <- seed.cids[grepl("^C\\d{5}$", seed.cids)]
+  if(length(seed.cids) > maxSeedCompounds){
+    seed.cids <- seed.cids[seq_len(maxSeedCompounds)]
+  }
+
+  if(length(seed.cids) == 0){
+    return('{"elements":{"nodes":[],"edges":[]},"meta":{"seedCompounds":0}}');
+  }
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), dbPath)
+  on.exit(try(DBI::dbDisconnect(con), silent = TRUE), add = TRUE)
+
+  # 2) Seed metabolite glyph nodes (multiple instances preserved).
+  q.seed <- paste0("SELECT DISTINCT node_id FROM node_kegg_compound WHERE cid IN ", in_clause(seed.cids))
+  seed.node.ids <- DBI::dbGetQuery(con, q.seed)$node_id
+  seed.node.ids <- unique(seed.node.ids[!is.na(seed.node.ids) & nzchar(seed.node.ids)])
+  if(length(seed.node.ids) == 0){
+    return('{"elements":{"nodes":[],"edges":[]},"meta":{"seedCompounds":', length(seed.cids), ',"seedNodes":0}}');
+  }
+
+  # 3) Expand one hop to enzymes, then one hop back to metabolites.
+  q.enz <- paste0(
+    "SELECT DISTINCT n.id AS id FROM node n ",
+    "JOIN edge e ON (n.id = e.source OR n.id = e.target) ",
+    "WHERE n.type='enzyme' AND (e.source IN ", in_clause(seed.node.ids), " OR e.target IN ", in_clause(seed.node.ids), ")"
+  )
+  enz.node.ids <- DBI::dbGetQuery(con, q.enz)$id
+  enz.node.ids <- unique(enz.node.ids[!is.na(enz.node.ids) & nzchar(enz.node.ids)])
+
+  q.met2 <- paste0(
+    "SELECT DISTINCT n.id AS id FROM node n ",
+    "JOIN edge e ON (n.id = e.source OR n.id = e.target) ",
+    "WHERE n.type='metabolite' AND (e.source IN ", in_clause(enz.node.ids), " OR e.target IN ", in_clause(enz.node.ids), ")"
+  )
+  met2.node.ids <- DBI::dbGetQuery(con, q.met2)$id
+  met2.node.ids <- unique(met2.node.ids[!is.na(met2.node.ids) & nzchar(met2.node.ids)])
+
+  node.ids <- unique(c(seed.node.ids, enz.node.ids, met2.node.ids))
+  if(length(node.ids) > maxNodes){
+    # keep all seed + enzymes first; then fill with metabolites.
+    keep <- unique(c(seed.node.ids, enz.node.ids))
+    remain <- setdiff(node.ids, keep)
+    if(length(keep) < maxNodes){
+      keep <- c(keep, remain[seq_len(min(length(remain), maxNodes - length(keep)))])
+    } else {
+      keep <- keep[seq_len(maxNodes)]
+    }
+    node.ids <- unique(keep)
+  }
+
+  # 4) Fetch nodes and annotations.
+  node.df <- DBI::dbGetQuery(con, paste0(
+    "SELECT id,type,name,species_id,reaction_id,x,y FROM node WHERE id IN ", in_clause(node.ids)
+  ))
+  cid.df <- DBI::dbGetQuery(con, paste0(
+    "SELECT node_id,cid FROM node_kegg_compound WHERE node_id IN ", in_clause(node.ids), " ORDER BY cid"
+  ))
+  rid.df <- DBI::dbGetQuery(con, paste0(
+    "SELECT node_id,rid FROM node_kegg_reaction WHERE node_id IN ", in_clause(node.ids), " ORDER BY rid"
+  ))
+  ec.df <- DBI::dbGetQuery(con, paste0(
+    "SELECT node_id,ec FROM node_ec_code WHERE node_id IN ", in_clause(node.ids), " ORDER BY ec"
+  ))
+
+  split_col <- function(df, key, val){
+    if(is.null(df) || nrow(df) == 0) return(list())
+    sp <- split(as.character(df[[val]]), as.character(df[[key]]))
+    lapply(sp, function(v) unique(v[!is.na(v) & nzchar(v)]))
+  }
+  node2cid <- split_col(cid.df, "node_id", "cid")
+  node2rid <- split_col(rid.df, "node_id", "rid")
+  node2ec <- split_col(ec.df, "node_id", "ec")
+
+  # 5) Fetch edges internal to selected nodes.
+  edge.df <- DBI::dbGetQuery(con, paste0(
+    "SELECT id,source,target,role,reaction_id,species_reference_id,species_id,stoichiometry ",
+    "FROM edge WHERE source IN ", in_clause(node.ids), " AND target IN ", in_clause(node.ids)
+  ))
+
+  # 6) Duplicate-instance map for UI dedup/grouping.
+  comp.map <- list()
+  if(nrow(cid.df) > 0){
+    split.ids <- split(as.character(cid.df$node_id), as.character(cid.df$cid))
+    for(k in names(split.ids)){
+      comp.map[[k]] <- unique(split.ids[[k]])
+    }
+  }
+
+  # 7) Build JSON manually (fast, explicit, predictable keys).
+  node.json <- character(0)
+  if(nrow(node.df) > 0){
+    for(i in seq_len(nrow(node.df))){
+      row <- node.df[i, ]
+      nid <- as.character(row$id)
+      ntype <- as.character(row$type)
+      cids <- node2cid[[nid]]; if(is.null(cids)) cids <- character(0)
+      rids <- node2rid[[nid]]; if(is.null(rids)) rids <- character(0)
+      ecs <- node2ec[[nid]]; if(is.null(ecs)) ecs <- character(0)
+      cids.json <- paste0("[", paste0("\"", json_escape(cids), "\"", collapse=","), "]")
+      rids.json <- paste0("[", paste0("\"", json_escape(rids), "\"", collapse=","), "]")
+      ecs.json <- paste0("[", paste0("\"", json_escape(ecs), "\"", collapse=","), "]")
+      node.json <- c(node.json, paste0(
+        "{\"data\":{",
+        "\"id\":\"", json_escape(nid), "\",",
+        "\"type\":\"", json_escape(ntype), "\",",
+        "\"name\":\"", json_escape(as.character(row$name)), "\",",
+        "\"speciesId\":\"", json_escape(as.character(row$species_id)), "\",",
+        "\"reactionId\":\"", json_escape(as.character(row$reaction_id)), "\",",
+        "\"keggCompoundIds\":", cids.json, ",",
+        "\"keggReactionIds\":", rids.json, ",",
+        "\"ecCodes\":", ecs.json,
+        "},\"position\":{",
+        "\"x\":", as_num(row$x), ",\"y\":", as_num(row$y),
+        "}}"
+      ))
+    }
+  }
+
+  edge.json <- character(0)
+  if(nrow(edge.df) > 0){
+    for(i in seq_len(nrow(edge.df))){
+      row <- edge.df[i, ]
+      edge.json <- c(edge.json, paste0(
+        "{\"data\":{",
+        "\"id\":\"", json_escape(as.character(row$id)), "\",",
+        "\"source\":\"", json_escape(as.character(row$source)), "\",",
+        "\"target\":\"", json_escape(as.character(row$target)), "\",",
+        "\"role\":\"", json_escape(as.character(row$role)), "\",",
+        "\"reactionId\":\"", json_escape(as.character(row$reaction_id)), "\",",
+        "\"speciesReferenceId\":\"", json_escape(as.character(row$species_reference_id)), "\",",
+        "\"speciesId\":\"", json_escape(as.character(row$species_id)), "\",",
+        "\"stoichiometry\":", as_num(row$stoichiometry),
+        "}}"
+      ))
+    }
+  }
+
+  comp.kv <- character(0)
+  if(length(comp.map) > 0){
+    for(k in names(comp.map)){
+      ids <- comp.map[[k]]
+      ids.json <- paste0("[", paste0("\"", json_escape(ids), "\"", collapse=","), "]")
+      comp.kv <- c(comp.kv, paste0("\"", json_escape(k), "\":", ids.json))
+    }
+  }
+
+  out <- paste0(
+    "{",
+    "\"elements\":{",
+    "\"nodes\":[", paste(node.json, collapse=","), "],",
+    "\"edges\":[", paste(edge.json, collapse=","), "]",
+    "},",
+    "\"compoundToNodeIds\":{", paste(comp.kv, collapse=","), "},",
+    "\"meta\":{",
+    "\"pathway\":\"", json_escape(pathwayName), "\",",
+    "\"seedCompounds\":", length(seed.cids), ",",
+    "\"seedGlyphNodes\":", length(seed.node.ids), ",",
+    "\"enzymeNodes\":", length(enz.node.ids), ",",
+    "\"totalNodes\":", nrow(node.df), ",",
+    "\"totalEdges\":", nrow(edge.df),
+    "}",
+    "}"
+  )
+  return(out)
+}
+
+GetORA.keggIDs <- function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  if(mSetObj$pathwaylibtype == "KEGG"){
+    kegg.vec <- rownames(mSetObj$analSet$ora.mat);
+    kegg.vec <- paste("<a href=http://www.genome.jp/kegg-bin/show_pathway?",kegg.vec," target=_new>KEGG</a>", sep="");
+  } else{ # pathwaylibtype == "HMDB"
+    return(SetupKEGGLinks(rownames(mSetObj$analSet$ora.mat)));
+  }
+  return(kegg.vec);
+}
+
+#'Only for human pathways (SMPDB)
+#'@description Only for human pathways + ath, eco, mmu & sce
+#'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+#'@author Jeff Xia \email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+GetORA.smpdbIDs <- function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  if(mSetObj$pathwaylibtype == "KEGG"){
+    return(SetupSMPDBLinks(rownames(mSetObj$analSet$ora.mat)));
+  } else{
+    hmdb.vec <- rownames(mSetObj$analSet$ora.mat);
+    all.lks <-paste("<a href=http://www.smpdb.ca/view/",hmdb.vec," target=_new>SMP</a>", sep="");
+    return(all.lks)
+  }
+}
+
+#'Only for human pathways (KEGG)
+#'@description Only for human pathways + ath, eco, mmu & sce
+#'@param mSetObj Input the name of the created mSetObj (see InitDataObjects)
+#'@author Jeff Xia \email{jeff.xia@mcgill.ca}
+#'McGill University, Canada
+#'License: GNU GPL (>= 2)
+GetQEA.keggIDs <- function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  if(mSetObj$pathwaylibtype == "KEGG"){
+    kegg.vec <- rownames(mSetObj$analSet$qea.mat);
+    kegg.vec <- paste("<a href=http://www.genome.jp/kegg-bin/show_pathway?",kegg.vec," target=_new>KEGG</a>", sep="");
+  } else{ # pathwaylibtype == "HMDB"
+    return(SetupKEGGLinks(rownames(mSetObj$analSet$qea.mat)));
+  }
+  return(kegg.vec);
+}
+
+GetQEA.smpdbIDs <- function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  if(mSetObj$pathwaylibtype == "KEGG"){
+    return(SetupSMPDBLinks(rownames(mSetObj$analSet$qea.mat)));
+  } else{
+    hmdb.vec <- rownames(mSetObj$analSet$qea.mat);
+    all.lks <-paste("<a href=http://www.smpdb.ca/view/",hmdb.vec," target=_new>SMP</a>", sep="");
+    return(all.lks)
+  }
+}
+
+GetOrgPathLbl <-function(mSetObj=NA){
+  org = read.csv(paste0(rpath ,"libs/orgpath.csv"))
+  return(org$label);
+}
+
+GetOrgPathVal <-function(mSetObj=NA){
+  org = read.csv(paste0(rpath ,"libs/orgpath.csv"))
+  return(org$id);
+}
+
+ComputePathHeatmap <-function(mSetObj=NA, libOpt, fileNm, type){
+   json.res <- "";
+   if(type == "pathqea"){
+        json.res <- ComputePathHeatmapTable(mSetObj, libOpt, fileNm);
+   }else{
+        json.res <- ComputePathHeatmapList(mSetObj, libOpt, fileNm);
+   }
+
+   json.mat <- rjson::toJSON(json.res);
+   sink(fileNm);
+   cat(json.mat);
+   sink();
+   AddMsg("Data is now ready for heatmap visualization!");
+   return(1);
+}
+
+ComputePathHeatmapTable <- function(mSetObj=NA, libOpt, fileNm){
+  mSetObj <- .get.mSet(mSetObj);
+  dataSet <- mSetObj$dataSet;
+  data <- t(dataSet$norm)
+  sig.ids <- rownames(data);
+  
+  res <- PerformFastUnivTests(mSetObj$dataSet$norm, mSetObj$dataSet$cls);
+
+  stat.pvals <- unname(as.vector(res[,2]));
+  t.stat <- unname(as.vector(res[,1]));
+  org <- unname(strsplit(libOpt,"_")[[1]][1])
+  mSetObj$org <- org
+  # scale each gene 
+  dat <- t(scale(t(data)));
+  
+  rankPval = order(as.vector(stat.pvals))
+  stat.pvals = stat.pvals[rankPval]
+  dat = dat[rankPval,]
+
+  t.stat = t.stat[rankPval]
+  
+  # now pearson and euclidean will be the same after scaleing
+  dat.dist <- dist(dat); 
+  
+  orig.smpl.nms <- colnames(dat);
+  orig.gene.nms <- rownames(dat);
+  
+  # do clustering and save cluster info
+  # convert order to rank (score that can used to sort) 
+  if(nrow(dat)> 1){
+    dat.dist <- dist(dat);
+    gene.ward.ord <- hclust(dat.dist, "ward.D")$order;
+    gene.ward.rk <- match(orig.gene.nms, orig.gene.nms[gene.ward.ord]);
+    gene.ave.ord <- hclust(dat.dist, "ave")$order;
+    gene.ave.rk <- match(orig.gene.nms, orig.gene.nms[gene.ave.ord]);
+    gene.single.ord <- hclust(dat.dist, "single")$order;
+    gene.single.rk <- match(orig.gene.nms, orig.gene.nms[gene.single.ord]);
+    gene.complete.ord <- hclust(dat.dist, "complete")$order;
+    gene.complete.rk <- match(orig.gene.nms, orig.gene.nms[gene.complete.ord]);
+    
+    dat.dist <- dist(t(dat));
+    smpl.ward.ord <- hclust(dat.dist, "ward.D")$order;
+    smpl.ward.rk <- match(orig.smpl.nms, orig.smpl.nms[smpl.ward.ord])
+    smpl.ave.ord <- hclust(dat.dist, "ave")$order;
+    smpl.ave.rk <- match(orig.smpl.nms, orig.smpl.nms[smpl.ave.ord])
+    smpl.single.ord <- hclust(dat.dist, "single")$order;
+    smpl.single.rk <- match(orig.smpl.nms, orig.smpl.nms[smpl.single.ord])
+    smpl.complete.ord <- hclust(dat.dist, "complete")$order;
+    smpl.complete.rk <- match(orig.smpl.nms, orig.smpl.nms[smpl.complete.ord])
+  }else{
+    # force not to be single element vector which will be scaler
+    #stat.pvals <- matrix(stat.pvals);
+    gene.ward.rk <- gene.ave.rk <- gene.single.rk <- gene.complete.rk <- matrix(1);
+    smpl.ward.rk <- smpl.ave.rk <- smpl.single.rk <- smpl.complete.rk <- 1:ncol(dat);
+  }
+  
+  gene.cluster <- list(
+    ward = gene.ward.rk,
+    average = gene.ave.rk,
+    single = gene.single.rk,
+    complete = gene.complete.rk,
+    pval = stat.pvals,
+    stat = t.stat
+  );
+  
+  sample.cluster <- list(
+    ward = smpl.ward.rk,
+    average = smpl.ave.rk,
+    single = smpl.single.rk,
+    complete = smpl.complete.rk
+  );
+  
+  # prepare meta info    
+  # 1) convert meta.data info numbers
+  # 2) match number to string (factor level)
+  meta <- data.frame(dataSet$cls);
+  grps <- "Condition"
+  nmeta <- meta.vec <- NULL;
+  uniq.num <- 0;
+  for (i in 1:ncol(meta)){
+    cls <- meta[,i];
+    grp.nm <- grps[i];
+    meta.vec <- c(meta.vec, as.character(cls))
+    # make sure each label are unqiue across multiple meta data
+    ncls <- paste(grp.nm, as.numeric(cls)); # note, here to retain ordered factor
+    nmeta <- c(nmeta, ncls);
+  }
+  
+  # convert back to numeric 
+  nmeta <- as.numeric(as.factor(nmeta))+99;
+  unik.inx <- !duplicated(nmeta)   
+  
+  # get corresponding names
+  meta_anot <- meta.vec[unik.inx]; 
+  names(meta_anot) <- nmeta[unik.inx]; # name annotatation by their numbers
+  
+  nmeta <- matrix(nmeta, ncol=ncol(meta), byrow=F);
+  colnames(nmeta) <- grps;
+  
+  # for each gene/row, first normalize and then tranform real values to 30 breaks 
+  res <- apply(dat, 1, function(x){as.numeric(cut(x, breaks=30))});
+  
+  # note, use {} will lose order; use [[],[]] to retain the order
+  
+  gene.id = orig.gene.nms; if(length(gene.id) ==1) { gene.id <- matrix(gene.id) };
+  json.res <- list(
+    data.type = dataSet$type,
+    gene.id = gene.id,
+    gene.entrez = gene.id,
+    gene.name = gene.id,
+    gene.cluster = gene.cluster,
+    sample.cluster = sample.cluster,
+    sample.names = orig.smpl.nms,
+    meta = data.frame(nmeta),
+    meta.anot = meta_anot,
+    data = res,
+    org = org
+  );
+  
+  mSetObj$dataSet$hm_peak_names = gene.id
+  mSetObj$dataSet$gene.cluster = gene.cluster
+  
+  .set.mSet(mSetObj)
+  return(json.res);
+}
+
+ComputePathHeatmapList <- function(mSetObj=NA, libOpt, fileNm){
+
+  mSetObj <- .get.mSet(mSetObj);
+  # make a clean dataSet$cmpd data based on name mapping
+  # only valid kegg id will be used
+  
+  nm.map <- GetFinalNameMap(mSetObj);
+  if(mSetObj$pathwaylibtype == "KEGG"){
+    valid.inx <- !(is.na(nm.map$kegg)| duplicated(nm.map$kegg));
+    ora.vec <- mSetObj$dataSet$cmpd[valid.inx];
+  } else if(mSetObj$pathwaylibtype == "SMPDB"){
+    valid.inx <- !(is.na(nm.map$hmdbid)| duplicated(nm.map$hmdbid));
+    ora.vec <- mSetObj$dataSet$cmpd[valid.inx];
+  }
+
+  exp.vec <- rep(0, length(ora.vec));
+  dataSet <- mSetObj$dataSet
+  dataSet$prot.mat <- data.frame(datalist1=exp.vec)
+  rownames(dataSet$prot.mat) <- ora.vec
+
+  sig.ids <- rownames(dataSet$prot.mat);
+  gene.symbols=sig.ids
+  stat.pvals <- dataSet$prot.mat[,1]
+  
+  expval <- 0
+  expval <- sum(dataSet$prot.mat)
+  
+  # scale each gene 
+  dat <- dataSet$prot.mat
+  
+  # now pearson and euclidean will be the same after scaleing
+  dat.dist <- dist(dat); 
+  
+  orig.smpl.nms <- colnames(dat);
+  orig.gene.nms <- rownames(dat);
+  
+  # prepare meta info    
+  # 1) convert meta.data info numbers
+  # 2) match number to string (factor level)
+  
+  grps <- "datalist1"
+  cls <- "datalist1"
+  
+  # convert back to numeric 
+  
+  # for each gene/row, first normalize and then tranform real values to 30 breaks
+  if(expval !=0){
+    dat_pos <- as.matrix(dat[sign(dat[,1]) == 1,])
+    dat_neg <- as.matrix(dat[sign(dat[,1]) == -1,])
+    if(nrow(dat_pos) == 0){
+      res <- apply(unname(dat), 2, function(x){
+        y =log(abs(x)) + 0.000001
+        16-as.numeric(cut(y, breaks=15))
+      });
+    }else if(nrow(dat_neg) == 0){
+      res <- apply(unname(dat), 2, function(x){
+        y =log(x) + 0.000001
+        15+as.numeric(cut(y, breaks=15))
+      });
+    }else{
+      res_pos <- apply(unname(dat_pos), 2, function(x){
+        y =log(x) + 0.000001
+        as.numeric(cut(y, breaks=15))+15
+      });
+      res_neg <- apply(unname(dat_neg), 2, function(x){
+        y =log(abs(x)) + 0.000001
+        16 - as.numeric(cut(y, breaks=15))
+      });
+      res <- rbind(res_pos, res_neg);
+    }
+  }else{
+    zero.inx <- dataSet$prot.mat == 0
+    res <- dataSet$prot.mat;
+    res[zero.inx] <- 31
+  }
+  
+  res_list <- list()
+  for(i in 1:nrow(res)){
+    res_list[[i]] <- unname(list(res[i,1]))
+  }
+  
+  # note, use {} will lose order; use [[],[]] to retain the order
+  
+  nmeta <- list(100)
+  nmeta.anot <- list()
+  
+  nmeta.anot["datalist1"] <- nmeta[1]
+  
+  nmeta <- list(nmeta)
+  names(nmeta) <- "datalists"
+  
+  org <- unname(strsplit(libOpt,"_")[[1]][1])
+  mSetObj$org <- org
+  json.res <- list(
+    data.type = "singlelist", 
+    gene.id = gene.symbols,
+    gene.entrez = sig.ids,
+    gene.name = gene.symbols,
+    gene.cluster = 1,
+    sample.cluster = 1,
+    sample.names = list("datalist1"),
+    meta = nmeta,
+    meta.anot = nmeta.anot,
+    data = res_list,
+    expval = expval,
+    org = org
+  );
+  .set.mSet(mSetObj)
+  return(json.res);
+}

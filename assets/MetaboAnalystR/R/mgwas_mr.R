@@ -1,0 +1,1787 @@
+##################################################
+## R script for MR
+## Description: GO/Pathway ORA 
+## Author: Jeff Xia, jeff.xia@mcgill.ca
+###################################################
+
+PerformSnpFiltering <- function(mSetObj=NA, ldclumpOpt,ldProxyOpt, ldProxies, ldThresh, pldSNPs, mafThresh, harmonizeOpt, steigerOpt,opengwas_jwt_key = ""){
+      mSetObj <- .get.mSet(mSetObj);
+      #record
+      mSetObj$dataSet$snp_filter_params <- list(
+      ldclumpOpt=ldclumpOpt,
+      ldProxyOpt=ldProxyOpt,
+      ldProxies=ldProxies,
+      ldThresh=ldThresh,
+      pldSNPs=pldSNPs,
+      mafThresh=mafThresh,
+      harmonizeOpt=harmonizeOpt)
+       res1 <- 0;
+
+      err.vec <<- "";
+      if(.on.public.web & (opengwas_jwt_key == "")){
+        opengwas_jwt_key <- "" #readOpenGWASKey();
+      }
+      if(!exists("tableView.proc",mSetObj$dataSet)){
+          mSetObj$dataSet$tableView.proc <- mSetObj$dataSet$tableView
+          mSetObj$dataSet$tableView.bak <- mSetObj$dataSet$tableView
+       }
+      exposure.dat <- mSetObj$dataSet$tableView;
+      exposure.dat <- exposure.dat[,c("P-value", "Chr", "SE","Beta","BP","HMDB","SNP","A1","A2","EAF","Common Name", "metabolites", "genes", "gene_id", "URL", "PMID", "pop_code", "biofluid","sample")]
+      colnames(exposure.dat) <- c("pval.exposure","chr.exposure","se.exposure","beta.exposure","pos.exposure","id.exposure","SNP","effect_allele.exposure","other_allele.exposure","eaf.exposure","exposure", "metabolites", "genes", "gene_id", "URL", "PMID", "pop_code", "biofluid","samplesize.exposure")
+      exposure.snp <- mSetObj$dataSet$tableView.proc$SNP;
+      outcome.id <- mSetObj$dataSet$outcome$id;
+    if(is.na(mSetObj[["dataSet"]][["outcome"]][["sample_size"]]) & steigerOpt =="use_steiger"){
+        AddErrMsg(paste0("Steiger filtering failed due to missing of outcome sample size. Please choose another outcome dataset or skip steiger filtering"))
+             return(c(-2, -2));
+    }
+    
+      # do LD clumping
+      if(ldclumpOpt!="no_ldclump"){
+        exposure.dat <- clump_data_local_ld(exposure.dat);
+        exposure.snp <- exposure.dat$SNP;
+        res1 <- nrow(mSetObj$dataSet$exposure)-nrow(exposure.dat);
+        AddMsg(paste0("LD clumping removed SNP#", res1));
+      }else{
+        AddMsg(paste0("No LD clumping performed."));
+      }
+      # mSetObj$dataSet$exposure.ldp <- mSetObj$dataSet$dat;
+
+     exposure.dat$row <- rownames(exposure.dat)
+      mSetObj$dataSet$exposure.ldp <- exposure.dat;
+      # now obtain summary statistics for all available outcomes
+      if(ldProxyOpt == "no_proxy"){
+         ldProxies <- F;
+         pldSNPs <- F;
+         AddMsg(paste0("No LD proxy used."));
+      }else{
+         ldProxies <- T;
+         pldSNPs <- T;
+      }
+      captured_messages <<- "";
+      require('magrittr');
+      if(ldProxies & ((ldThresh != 0.8) | (mafThresh != 0.3))){
+        cat("Perform remote access... \n")
+        outcome.dat <- capture_messages(TwoSampleMR::extract_outcome_data(snps=exposure.snp, outcomes = outcome.id, proxies = as.logical(ldProxies),
+                                                    rsq = ldThresh, palindromes=as.numeric(as.logical(pldSNPs)), maf_threshold=mafThresh, opengwas_jwt = opengwas_jwt_key));
+      } else {
+        # use precomputed local database query
+        outcome.dat <- extractGwasDB(snps=exposure.snp, outcomes = outcome.id, proxies = as.logical(ldProxies));
+      }
+      last_msg <- captured_messages[length(captured_messages)];
+      #print(last_msg);
+      
+      if(length(grep("Server error: 502", captured_messages)) > 0 || length(grep("Failed to retrieve results from server", captured_messages))){
+            AddErrMsg(paste0(last_msg));
+            return(c(-2, -2));
+      }
+      if(is.null(outcome.dat) | nrow(outcome.dat) == 0){
+            AddErrMsg(paste0("The selected combination of SNP(s) and disease outcome yielded no available data."))
+            return(c(-2, -2));
+      }
+      
+   
+
+      mSetObj$dataSet$outcome.dat <- outcome.dat;
+      # do harmonization  
+      dat <- TwoSampleMR::harmonise_data(mSetObj$dataSet$exposure.ldp, outcome.dat, action = as.numeric(harmonizeOpt));
+      dat <- dat[!duplicated(dat$row),]
+      rownames(dat) <- dat$row
+      res = length(which(!dat$mr_keep))+(nrow(mSetObj$dataSet$tableView)-nrow(dat))
+      nr = nrow(dat)
+
+      if(steigerOpt=="use_steiger"){
+       dat$samplesize.exposure <- sapply(dat$samplesize.exposure, function(x) eval(parse(text = x)))
+       dat$samplesize.outcome <- mSetObj$dataSet$outcome$sample_size
+      
+       nms_rw <- row.names(dat)
+       dat <- TwoSampleMR::steiger_filtering(dat)
+       row.names(dat) <- nms_rw
+
+       #print(dat$steiger_dir)
+       dat<-dat[dat$steiger_dir,]
+       dat$steiger_pval <- signif(dat$steiger_pval, digits = 4)
+       res = c(res,(nr - nrow(dat)))
+       }else{
+         res = c(res,0)
+
+      }
+       dat$ifCheck = !grepl(", ",dat$metabolites)
+       dat= dat[order(dat$ifCheck,dat$pval.exposure,decreasing = T),]
+       mSetObj$dataSet$harmonized.dat <- dat;
+       # update tableView to reflect filtered SNPs (only keep mr_keep=TRUE rows)
+       surviving.rows <- rownames(dat[dat$mr_keep, ]);
+
+       mSetObj$dataSet$tableView <- mSetObj$dataSet$tableView[surviving.rows, ];
+     if(!exists("tableView.orig",   mSetObj$dataSet)){
+        mSetObj$dataSet$tableView.orig <- dat
+        mSetObj$dataSet$exposure.ldp.org <-  exposure.dat
+       mSetObj$dataSet$outcome.dat.org <- outcome.dat
+       }
+      #print(rownames(dat))
+      .set.mSet(mSetObj)
+  
+      return(res);
+}
+
+readOpenGWASKey <- function(){
+    if(.on.public.web){
+        if(file.exists("/home/zgy/opengwas_api_keys.csv")){
+            df <- read.csv("/home/zgy/opengwas_api_keys.csv");
+        }else if(file.exists("/Users/lzy/sqlite/opengwas_api_keys.csv")){
+            df <- read.csv("/Users/lzy/sqlite/opengwas_api_keys.csv");
+        }else{
+            df <- read.csv("/home/glassfish/opengwas_api_keys.csv");
+        }
+        idx <- sample(1:nrow(df),1)
+        cat("Using ", df$owner, "'s open gwas key...\n")
+        this_key <- df$Key[1]
+        expDate <- df$expDate
+        diff_date <- as.Date(expDate, "%Y/%m/%d") - Sys.Date()
+        diff_date <- as.integer(diff_date)
+        #cat("diff_date ===> ", diff_date, "\n")
+        #cat("this_key  ===> ", this_key, "\n")
+        if(diff_date>0){
+            return(this_key)
+        } else {
+            return("")
+        }        
+    } else {
+        return("")
+    }
+}
+
+extractGwasDB <- function(snps=exposure.snp, outcomes = outcome.id, proxies = as.logical(ldProxies)){
+  
+   cat("Processing into extractGwasDB from local \n")
+   ld_gwas <- if(nzchar(Sys.getenv("OMICS_LIB_DIR",""))) paste0(sub("/+$","",Sys.getenv("OMICS_LIB_DIR","")), "/") else "";
+   if(nzchar(ld_gwas) && file.exists(paste0(ld_gwas, "openGWAS_nonProxy.sqlite"))){  # shared sqlite library directory
+        database_path <- paste0(ld_gwas, "openGWAS_nonProxy.sqlite");
+        database_path2 <- paste0(ld_gwas, "openGWAS_withProxy.sqlite");
+   }else if(nzchar(ld_gwas) && file.exists(paste0(ld_gwas, "openGWAS_withProxy.sqlite"))){
+        # The large (23 GB) non-proxy panel is optional and not installed here:
+        # fall back to the withProxy panel shipped in the standard bundle for both
+        # the primary and the proxy query (they point at the same file).
+        database_path <- paste0(ld_gwas, "openGWAS_withProxy.sqlite");
+        database_path2 <- paste0(ld_gwas, "openGWAS_withProxy.sqlite");
+   }else if(file.exists("/Users/lzy/sqlite/openGWAS_nonProxy.sqlite")){
+        database_path <- "/Users/lzy/sqlite/openGWAS_nonProxy.sqlite";
+        database_path2 <- "/Users/lzy/sqlite/openGWAS_withProxy.sqlite"
+   }else if(file.exists("/Users/xialab/Dropbox/sqlite")){
+        database_path <- "/Users/xialab/Dropbox/sqlite/openGWAS_nonProxy.sqlite";
+        database_path2 <- "/Users/xialab/Dropbox/sqlite/openGWAS_withProxy.sqlite";
+   }else if(file.exists("/home/zgy/sqlite/openGWAS_nonProxy.sqlite")){
+        database_path <- "/home/zgy/sqlite/openGWAS_nonProxy.sqlite";
+        database_path2 <- "/home/zgy/sqlite/openGWAS_withProxy.sqlite";
+   }else{
+        database_path <- "/home/glassfish/sqlite/openGWAS_nonProxy.sqlite"
+        database_path2 <- "/home/glassfish/sqlite/openGWAS_withProxy.sqlite"
+   }
+
+  require("DBI")
+  require("RSQLite")
+  res_list <- list()
+  # Generic step for gwas results
+  outcome.idx <- paste0("\'", outcomes, "\'")
+  con <- dbConnect(RSQLite::SQLite(), database_path)
+  query_stat <- paste0("SELECT * FROM ", outcome.idx)
+  res <- dbGetQuery(con, query_stat)
+  # Two panel layouts: the non-proxy panel keeps per-outcome tables lean and stores
+  # the outcome metadata in a separate outcome_meta_table (cbind'd on below). The
+  # withProxy panel (used as the fallback primary when non-proxy isn't installed)
+  # carries those metadata columns inline in each per-outcome table and has no
+  # outcome_meta_table, so detect the layout rather than assume the meta table.
+  has_meta_table <- DBI::dbExistsTable(con, "outcome_meta_table")
+  if(has_meta_table){
+    meta_res <- dbGetQuery(con, "SELECT * FROM outcome_meta_table")
+  }
+  dbDisconnect(con)
+
+  res_dt1 <- res[res$SNP %in% snps,]
+  if(has_meta_table){
+    meta_dt <- meta_res[meta_res$id.outcome == outcomes,]
+    # When none of the exposure SNPs are present in this outcome panel, res_dt1 has 0
+    # rows while meta_dt has 1 — cbind() then dies with "arguments imply differing
+    # number of rows: 0, 1" (surfaced to the user as the generic "SNP filtering failed;
+    # check your R connection"). Drop meta_dt to 0 rows so the result is a well-formed
+    # EMPTY frame; the caller's `nrow(outcome.dat) == 0` guard then reports
+    # "The selected combination of SNP(s) and disease outcome yielded no available data."
+    if(nrow(res_dt1) == 0){
+      meta_dt <- meta_dt[0, , drop = FALSE]
+    }
+    res_outcome_dt <- cbind(res_dt1, meta_dt)
+  } else {
+    # withProxy fat layout: per-outcome table already carries the meta columns.
+    res_outcome_dt <- res_dt1
+  }
+  
+  if(proxies && !identical(database_path, database_path2)){
+    con <- dbConnect(RSQLite::SQLite(), database_path2)
+    query_stat2 <- paste0("SELECT * FROM ", outcome.idx)
+    res2 <- dbGetQuery(con, query_stat2)
+    dbDisconnect(con)
+    
+    res_dt2 <- res2[res2$SNP %in% snps,]
+    if(nrow(res_dt2)==0){
+      return(res_outcome_dt)
+    }
+    res_outcome_dt2 <- res_dt2[,colnames(res_outcome_dt)];
+    res_outcome_dt <- rbind(res_outcome_dt, res_outcome_dt2)
+  }
+  return(res_outcome_dt)
+}
+
+
+PerformMRAnalysis <- function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  dat <- mSetObj$dataSet$harmonized.dat[mSetObj$dataSet$harmonized.dat$ifCheck,]
+     
+  #4. perform mr
+  method.type <- mSetObj$dataSet$methodType;
+  #mr.res <- TwoSampleMR::mr(dat, method_list = method.type);
+  mr.res <- mr_modified(dat, method_list = method.type);
+  #rownames(mr.res) <- mr.res$method;
+  #Analysing 'HMDB0000042' on 'ebi-a-GCST007799'
+  # Heterogeneity tests
+  mr_heterogeneity.res <- TwoSampleMR::mr_heterogeneity(dat);
+  # Cochran's Q needs >= 2 SNPs per method; with a single instrument (or too few)
+  # mr_heterogeneity() returns an empty / 0-column data.frame and the fixed column
+  # selections below (e.g. [6:8], [5:8]) would error. Coerce to the canonical
+  # 8-column structure with 0 rows, so heterogeneity is reported as unavailable
+  # ("-") instead of crashing the whole MR run.
+  if(!is.data.frame(mr_heterogeneity.res) || ncol(mr_heterogeneity.res) < 8){
+    mr_heterogeneity.res <- data.frame(id.exposure=character(0), id.outcome=character(0),
+        outcome=character(0), exposure=character(0), method=character(0),
+        Q=numeric(0), Q_df=numeric(0), Q_pval=numeric(0), stringsAsFactors=FALSE);
+  }
+  #rownames(mr_heterogeneity.res) <- mr_heterogeneity.res$method;
+  fast.write.csv(mr_heterogeneity.res, file="mr_heterogeneity_results.csv", row.names=FALSE);
+  #"Q"           "Q_df"        "Q_pval"
+  mSetObj$dataSet$mr.hetero_mat <- round(data.matrix(mr_heterogeneity.res[6:8]),3) 
+  
+  # Test for directional horizontal pleiotropy
+  mr_pleiotropy_test.res <- TwoSampleMR::mr_pleiotropy_test(dat);
+  # MR-Egger intercept (directional pleiotropy) needs >= 3 SNPs; coerce an empty
+  # result to the canonical 7-column structure with 0 rows so the [5:7] selections
+  # and merges below don't error for a single-instrument MR.
+  if(!is.data.frame(mr_pleiotropy_test.res) || ncol(mr_pleiotropy_test.res) < 7){
+    mr_pleiotropy_test.res <- data.frame(id.exposure=character(0), id.outcome=character(0),
+        outcome=character(0), exposure=character(0), egger_intercept=numeric(0),
+        se=numeric(0), pval=numeric(0), stringsAsFactors=FALSE);
+  }
+  fast.write.csv(mr_pleiotropy_test.res, file="mr_pleiotropy_results.csv", row.names=FALSE);
+  mr.hetero.num <- mr_heterogeneity.res[5:8];
+  mr.res.num <- mr.res[4:9];
+  mr.pleio.num <- mr_pleiotropy_test.res[5:7];
+  # Assigning a scalar to $method errors on a 0-row frame ("replacement has 1 row,
+  # data has 0"), which occurs when pleiotropy wasn't computable (too few SNPs).
+  if(nrow(mr.pleio.num) > 0){ mr.pleio.num$method <- "MR Egger"; } else { mr.pleio.num$method <- character(0); }
+  merge1 <- merge(mr.res.num, mr.hetero.num, by="method", all.x=TRUE);
+  merge2 <- merge(merge1, mr.pleio.num, by="method", all.x=TRUE);
+  #rownames(merge2) <- merge2$method;
+  method.vec <- merge2$method;
+  exposure.vec <- merge2$exposure;
+  merge2$exposure <- NULL;
+  #print(head(merge2));
+  merge2 <- signif(merge2[2:11], 5);
+  merge2[is.na(merge2)] <- "-";
+  merge2$method <- method.vec
+  merge2$exposure <- exposure.vec
+  merge2 <- merge2[order(merge2$exposure, merge2$method), ]
+  mSetObj$dataSet$mr_results_merge <- merge2
+  mSetObj$dataSet$mr.pleio_mat <- signif(data.matrix(mr_pleiotropy_test.res[5:7]),5)
+  mSetObj$dataSet$mr_results <- mr.res;
+  fast.write.csv(mr.res, file="mr_results.csv", row.names=FALSE);
+  mSetObj$dataSet$mr_dat <- dat;
+  mSetObj$dataSet$mr.res_mat <- signif(data.matrix(mr.res[6:9]), 5) #"nsnp","b","se","pval" 
+
+  res_single <- TwoSampleMR::mr_singlesnp(dat, all_method = method.type);
+  mSetObj$dataSet$mr_res_single <- res_single;
+  res_loo <- TwoSampleMR::mr_leaveoneout(dat);
+  mSetObj$dataSet$mr_res_loo <- res_loo;
+
+  #print(head(merge2))
+  .set.mSet(mSetObj);
+  if(.on.public.web){
+    return(1);
+  }else{
+    return(current.msg);
+  }
+}
+
+capture_messages <- function(expr) {
+  withCallingHandlers(expr, message = function(m) {
+    # Append the message to the global variable
+    captured_messages <<- c(captured_messages, conditionMessage(m))
+    #invokeRestart("muffleMessage")
+  })
+}
+
+
+GetMRRes.rowNames<-function(mSetObj=NA){
+  #save.image("GetMRRes.rowNames.RData")
+  mSetObj <- .get.mSet(mSetObj);
+  nms <- rownames(mSetObj$dataSet$mr_results_merge);
+  if(is.null(nms)){
+    return("NA");
+  }
+  return (nms);
+}
+
+GetMRRes.mat<-function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  return(mSetObj$dataSet$mr_results_merge);
+}
+
+GetHeteroRes.rowNames<-function(mSetObj=NA){
+  #save.image("GetHeteroRes.rowNames.RData")
+  mSetObj <- .get.mSet(mSetObj);
+  nms <- rownames(mSetObj$dataSet$mr.hetero_mat);
+  if(is.null(nms)){
+    return("NA");
+  }
+  return (nms);
+}
+
+GetHeteroRes.mat<-function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  return(mSetObj$dataSet$mr.hetero_mat);
+}
+
+GetPleioRes.mat<-function(mSetObj=NA){
+  mSetObj <- .get.mSet(mSetObj);
+  return(mSetObj$dataSet$mr.pleio_mat);
+}
+
+GetMRMat<-function(mSetObj=NA, type){
+  # type<<-type;
+  # save.image("GetMRMat.RData")
+  mSetObj <- .get.mSet(mSetObj);
+  if(type == "single"){
+    sig.mat <- mSetObj$dataSet$mr_res_single;
+  }else if(type == "loo"){
+    sig.mat <- mSetObj$dataSet$mr_res_loo;
+  }else{
+    sig.mat <- mSetObj$dataSet$mr_results;
+  }
+  return(CleanNumber(signif(as.matrix(sig.mat),5)));
+}
+
+GetMRMatRowNames<-function(mSetObj=NA, type){
+  mSetObj <- .get.mSet(mSetObj);
+  if(type == "single"){
+    return(rownames(mSetObj$dataSet$mr_res_single));
+  }else if(type == "loo"){
+    return(rownames(mSetObj$dataSet$mr_res_loo));
+  }else{
+    return(rownames(mSetObj$dataSet$mr_results))
+  }
+}
+
+GetMRMatColNames<-function(mSetObj=NA, type){
+  mSetObj <- .get.mSet(mSetObj);
+  if(type == "single"){
+    return(colnames(mSetObj$dataSet$mr_res_single));
+  }else if(type == "loo"){
+    return(colnames(mSetObj$dataSet$mr_res_loo));
+  }else{
+    return(colnames(mSetObj$dataSet$mr_results))
+  }
+}
+
+PlotScatter <- function(mSetObj = NA, exposure, imgName, format = "png", dpi = default.dpi, width = NA) {
+  mSetObj <- .get.mSet(mSetObj)
+  
+  mr.res <- mSetObj$dataSet$mr_results
+  mr.dat <- mSetObj$dataSet$mr_dat
+  
+  if(format == "png"){
+    imgName <- paste0(imgName, "dpi", dpi, ".", format)
+  }else{
+    imgName <- paste0(imgName, "dpi", dpi, ".", format)
+  }
+  if (is.na(width)) {
+    w <- 10
+  } else if (width == 0) {
+    w <- 7
+  } else {
+    w <- width
+  }
+  h <- w*4/5;
+
+  # Ensure width/height are in inches (not pixels) for all formats.
+  if (!is.na(w) && w > 50) {
+    w <- w / 72
+    h <- h / 72
+  }
+  
+  # Record img
+  imageName <- imgName
+  names(imageName) <- exposure
+  if(is.null(mSetObj$imgSet$mr_scatter_plot)){
+    mSetObj$imgSet$mr_scatter_plot <- imageName
+  } else {
+    mSetObj$imgSet$mr_scatter_plot <- c(mSetObj$imgSet$mr_scatter_plot, imageName)
+  }  
+  mSetObj$imgSet$current.img <- imgName
+  
+  plot <- .mr_scatterPlot(mr.res, mr.dat, exposure)
+  Cairo::Cairo(file = imgName, unit = "in", dpi = dpi, width = w, height = h, type = format, bg = "white")
+  print(plot)
+  dev.off()
+  
+  .set.mSet(mSetObj)
+  if (.on.public.web) {
+    return(1)
+  }
+}
+
+.mr_scatterPlot <- function(mr_results, dat, exposure) {
+  library("ggplot2")
+  library("patchwork")
+  
+  exposure_data <- dat[dat$exposure == exposure, ]
+  if (nrow(exposure_data) < 2 || sum(exposure_data$mr_keep) == 0) {
+    return(NULL)
+  }
+  
+  exposure_data <- exposure_data[exposure_data$mr_keep, ]
+  exposure_data$beta.exposure.sign <- ifelse(exposure_data$beta.exposure < 0, -1, 1)
+  exposure_data$beta.exposure <- abs(exposure_data$beta.exposure)
+  exposure_data$beta.outcome <- exposure_data$beta.outcome * exposure_data$beta.exposure.sign
+  exposure_data <- exposure_data[order(exposure_data$beta.exposure), ] # Order by beta.exposure
+  mrres_exposure <- mr_results[mr_results$exposure == exposure, ]
+  mrres_exposure$a <- 0
+  
+  # MR Egger regression
+  if ("MR Egger" %in% mrres_exposure$method) {
+    temp <- TwoSampleMR::mr_egger_regression(exposure_data$beta.exposure, exposure_data$beta.outcome, exposure_data$se.exposure, exposure_data$se.outcome, default_parameters())
+    mrres_exposure$a[mrres_exposure$method == "MR Egger"] <- temp$b_i
+  }
+  
+  if ("MR Egger (bootstrap)" %in% mrres_exposure$method) {
+    temp <- TwoSampleMR::mr_egger_regression_bootstrap(exposure_data$beta.exposure, exposure_data$beta.outcome, exposure_data$se.exposure, exposure_data$se.outcome, default_parameters())
+    mrres_exposure$a[mrres_exposure$method == "MR Egger (bootstrap)"] <- temp$b_i
+  }
+  
+  
+p <- ggplot(exposure_data, aes(x = beta.exposure, y = beta.outcome)) +
+  geom_errorbar(aes(ymin = beta.outcome - se.outcome, ymax = beta.outcome + se.outcome), colour = "grey", width = 0) +
+  geom_errorbarh(aes(xmin = beta.exposure - se.exposure, xmax = beta.exposure + se.exposure), colour = "grey", height = 0) +
+  geom_point() +
+  geom_abline(data = mrres_exposure, aes(intercept = a, slope = b, colour = method), show.legend = TRUE) +
+  scale_colour_manual(values = c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928")) +
+  labs(colour = "MR Test", x = paste("SNP effect on", exposure), y = "Outcome effect") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    legend.direction = "vertical",
+    guides(colour = guide_legend(ncol = 1)),
+    text = element_text(size = 14),
+    axis.title.x = element_text(margin = margin(t = 15)),
+    axis.title.y = element_text(margin = margin(r = 15)),
+
+    # --- Changes for grid and box ---
+    # Remove major and minor grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+
+    # Add a box around the plot area (the axis lines)
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.5) # You can adjust linewidth as needed
+  )
+
+  return(p)
+}
+
+PlotForest <- function(mSetObj = NA, exposure, imgName, format = "png", dpi = default.dpi, width = NA) {
+  mSetObj <- .get.mSet(mSetObj)
+  
+  mr.res_single <- mSetObj$dataSet$mr_res_single
+  if(format == "png"){
+  imgName <- paste0(imgName, "dpi", dpi, ".", format)
+    }else{
+  imgName <- paste0(imgName, "dpi", dpi, ".", format)
+  }
+  if (is.na(width)) {
+    w <- 8
+  } else if (width == 0) {
+    w <- 7
+  } else {
+    w <- width
+  }
+  h <- w
+
+  # Ensure width/height are in inches (not pixels) for all formats.
+  if (!is.na(w) && w > 50) {
+    w <- w / 72
+    h <- h / 72
+  }
+  
+  # Record img
+  imageName <- imgName
+  names(imageName) <- exposure
+  if(is.null(mSetObj$imgSet$mr_scatter_plot)){
+    mSetObj$imgSet$mr_forest_plot <- imgName
+  } else {
+    mSetObj$imgSet$mr_forest_plot <- c(mSetObj$imgSet$mr_forest_plot, imageName)
+  }  
+  mSetObj$imgSet$current.img <- imgName
+  
+  plot <- .mr_forestPlot(mr.res_single, exposure)
+  Cairo::Cairo(file = imgName, unit = "in", dpi = dpi, width = w, height = h, type = format, bg = "white")
+  print(plot)
+  dev.off()
+  
+  .set.mSet(mSetObj)
+  if (.on.public.web) {
+    return(1)
+  }
+}
+
+.mr_forestPlot <- function(singlesnp_results, exposure, exponentiate = FALSE) {
+  library(ggplot2)
+  
+  singlesnp_results$up <- singlesnp_results$b + 1.96 * singlesnp_results$se
+  singlesnp_results$lo <- singlesnp_results$b - 1.96 * singlesnp_results$se
+  singlesnp_results$tot <- ifelse(grepl("^All -", singlesnp_results$SNP), 1, 0.01)
+  
+  if (exponentiate) {
+    singlesnp_results$b <- exp(singlesnp_results$b)
+    singlesnp_results$up <- exp(singlesnp_results$up)
+    singlesnp_results$lo <- exp(singlesnp_results$lo)
+  }
+  
+  exposure_data <- singlesnp_results[singlesnp_results$exposure == exposure, ]
+  exposure_data <- exposure_data[order(exposure_data$b), ] # Order by beta.exposure
+ 
+exposure_data$SNP <- gsub("\\(", "\n(",exposure_data$SNP)
+  
+p <- ggplot(exposure_data, aes(y = SNP, x = b)) +
+  geom_vline(xintercept = ifelse(exponentiate, 1, 0), linetype = "dotted") +
+  geom_errorbarh(aes(xmin = lo, xmax = up, size = as.factor(tot), colour = as.factor(tot)), height = 0) +
+  geom_point(aes(colour = as.factor(tot))) +
+  scale_colour_manual(values = c("black", "red")) +
+  scale_size_manual(values = c(0.3, 1)) +
+  labs(y = "", x = "MR effect size") +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    text = element_text(size = 14),
+
+    # Remove major and minor grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+
+    # Add a box around the plot area (axis lines)
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.5), # Adjust linewidth as needed
+
+    # Increase margins for axis labels
+    axis.title.x = element_text(margin = margin(t = 15)), # Adds space above the x-axis label
+    axis.title.y = element_text(margin = margin(r = 15))  # Adds space to the right of the y-axis label
+  )
+  
+  return(p)
+}
+
+PlotLeaveOneOut <- function(mSetObj = NA, exposure, imgName, format = "png", dpi = default.dpi, width = NA) {
+  mSetObj <- .get.mSet(mSetObj)
+  
+  mr.res_loo <- mSetObj$dataSet$mr_res_loo
+  if(format == "png"){
+    imgName <- paste0(imgName, "dpi", dpi, ".", format)
+  } else {
+    imgName <- paste0(imgName, "dpi", dpi, ".", format)
+  }
+  if (is.na(width)) {
+    w <- 8
+  } else if (width == 0) {
+    w <- 7
+  } else {
+    w <- width
+  }
+  h <- w
+
+  # Ensure width/height are in inches (not pixels) for all formats.
+  if (!is.na(w) && w > 50) {
+    w <- w / 72
+    h <- h / 72
+  }
+  
+  # Record img
+  imageName <- imgName
+  names(imageName) <- exposure
+  if(is.null(mSetObj$imgSet$mr_scatter_plot)){
+    mSetObj$imgSet$mr_leaveoneout_plot <- imgName
+  } else {
+    mSetObj$imgSet$mr_leaveoneout_plot <- c(mSetObj$imgSet$mr_leaveoneout_plot, imageName)
+  } 
+  
+  mSetObj$imgSet$current.img <- imgName
+  
+  plot <- .mr_looPlot(mr.res_loo, exposure)
+  Cairo::Cairo(file = imgName, unit = "in", dpi = dpi, width = w, height = h, type = format, bg = "white")
+  print(plot)
+  dev.off()
+  
+  .set.mSet(mSetObj)
+  if (.on.public.web) {
+    return(1)
+  }
+}
+
+.mr_looPlot <- function(leaveoneout_results, exposure) {
+  requireNamespace("ggplot2", quietly = TRUE)
+  
+  leaveoneout_results$up <- leaveoneout_results$b + 1.96 * leaveoneout_results$se
+  leaveoneout_results$lo <- leaveoneout_results$b - 1.96 * leaveoneout_results$se
+  leaveoneout_results$tot <- ifelse(leaveoneout_results$SNP == "All", 1, 0.01)
+  
+  exposure_data <- leaveoneout_results[leaveoneout_results$exposure == exposure, ]
+  exposure_data <- exposure_data[order(exposure_data$b), ] #
+
+
+p <- ggplot(exposure_data, aes(y = SNP, x = b)) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  geom_errorbarh(aes(xmin = lo, xmax = up, size = as.factor(tot), colour = as.factor(tot)), height = 0) +
+  geom_point(aes(colour = as.factor(tot))) +
+  scale_colour_manual(values = c("black", "red")) +
+  scale_size_manual(values = c(0.3, 1)) +
+  labs(y = "", x = "MR leave-one-out sensitivity analysis") +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    text = element_text(size = 14),
+
+    # Remove major and minor grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+
+    # Add a box around the plot area (axis lines)
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.5), # Adjust linewidth as needed
+
+    # Increase margins for axis labels
+    axis.title.x = element_text(margin = margin(t = 15)), # Adds space above the x-axis label
+    axis.title.y = element_text(margin = margin(r = 15))  # Adds space to the right of the y-axis label
+  )
+  
+  return(p)
+
+}
+
+PlotFunnel <- function(mSetObj = NA, exposure, imgName, format = "png", dpi = default.dpi, width = NA) {
+  mSetObj <- .get.mSet(mSetObj)
+  
+  mr.res_single <- mSetObj$dataSet$mr_res_single
+  if(format == "png"){
+    imgName <- paste0(imgName, "dpi", dpi, ".", format)
+  }else{
+    imgName <- paste0(imgName, "dpi", dpi, ".", format)
+  }
+  if (is.na(width)) {
+    w <- 7
+  } else if (width == 0) {
+    w <- 7
+  } else {
+    w <- width
+  }
+  h <- w
+
+  # Ensure width/height are in inches (not pixels) for all formats.
+  if (!is.na(w) && w > 50) {
+    w <- w / 72
+    h <- h / 72
+  }
+  
+  # Record img
+  imageName <- imgName
+  names(imageName) <- exposure
+  if(is.null(mSetObj$imgSet$mr_scatter_plot)){
+    mSetObj$imgSet$mr_funnel_plot <- imgName
+  } else {
+    mSetObj$imgSet$mr_funnel_plot <- c(mSetObj$imgSet$mr_funnel_plot, imageName)
+  }
+  mSetObj$imgSet$current.img <- imgName
+  
+  plot <- .mr_funnelPlot(mr.res_single, exposure)
+  Cairo::Cairo(file = imgName, unit = "in", dpi = dpi, width = w, height = h, type = format, bg = "white")
+  print(plot)
+  dev.off()
+  
+  .set.mSet(mSetObj)
+  if (.on.public.web) {
+    return(1)
+  }
+}
+
+.mr_funnelPlot <- function(singlesnp_results, exposure) {
+  library(ggplot2)
+  
+  # Modify the SNP column
+  singlesnp_results$SNP <- gsub("All - ", "", singlesnp_results$SNP)
+  am <- unique(grep("All", singlesnp_results$SNP, value = TRUE))
+  am <- gsub("All - ", "", am)
+  
+  exposure_data <- singlesnp_results[singlesnp_results$exposure == exposure, ]
+  exposure_data <- exposure_data[order(exposure_data$b), ] # Order by beta.exposure 
+  
+p <- ggplot(exposure_data, aes(y = 1/se, x = b)) +
+  geom_point(shape = 21, size = 3, fill = "lightgrey") + # Modified geom_point
+  geom_vline(data = subset(exposure_data, SNP %in% am), aes(xintercept = b, colour = SNP)) +
+  scale_colour_manual(values = c("#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99",
+                                 "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a",
+                                 "#ffff99", "#b15928")) +
+  labs(y = expression(1 / SE[IV]), x = expression(beta[IV]), colour = "MR Method") +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "right",
+    legend.direction = "vertical",
+    text = element_text(size = 14),
+    axis.title.x = element_text(margin = margin(t = 15)),
+    axis.title.y = element_text(margin = margin(r = 15)),
+
+    # --- Changes for grid, box, and points ---
+    # Remove major and minor grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+
+    # Add a box around the plot area (the axis lines)
+    panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.5) # Adjust linewidth as needed
+  )
+  
+  return(p)
+}
+
+
+mr_modified <- function (dat, 
+                         parameters = default_parameters(), 
+                         method_list = subset(mr_method_list(), use_by_default)$obj) 
+{
+  library(TwoSampleMR)
+  mr_raps_modified <- function (b_exp, b_out, se_exp, se_out,parameters) 
+  {
+    out <- try(suppressMessages(mr.raps::mr.raps(b_exp, b_out, se_exp, se_out,
+                                                 over.dispersion = parameters$over.dispersion, 
+                                                 loss.function = parameters$loss.function,
+                                                 diagnosis = FALSE)),
+               silent = T)
+    
+    # The estimated overdispersion parameter is very small. Consider using the simple model without overdispersion
+    # When encountering such warning, change the over.dispersion as 'FASLE'
+    
+    if ('try-error' %in% class(out))
+    {
+      output = list(b = NA, se = NA, pval = NA, nsnp = NA)
+    }
+    else
+    {
+      output = list(b = out$beta.hat, se = out$beta.se, 
+                    pval = pnorm(-abs(out$beta.hat/out$beta.se)) * 2, nsnp = length(b_exp))
+    }
+    return(output)
+  }
+  
+  method_list_modified <- stringr::str_replace_all(method_list, "mr_raps","mr_raps_modified")
+  
+  mr_tab <- plyr::ddply(dat, c("id.exposure", "id.outcome"),function(x1)
+  {
+    x <- subset(x1, mr_keep)
+    
+    if (nrow(x) == 0) {
+      message("No SNPs available for MR analysis of '", x1$id.exposure[1], "' on '", x1$id.outcome[1], "'")
+      return(NULL)
+    }
+    else {
+      message("Analysing '", x1$id.exposure[1], "' on '", x1$id.outcome[1], "'")
+    }
+    res <- lapply(method_list_modified, function(meth)
+    {
+      get(meth)(x$beta.exposure, x$beta.outcome, x$se.exposure, x$se.outcome, parameters)
+    }
+    )
+    
+    methl <- mr_method_list()
+    mr_tab <- data.frame(outcome = x$outcome[1], exposure = x$exposure[1], 
+                         method = methl$name[match(method_list, methl$obj)], 
+                         nsnp = sapply(res, function(x) x$nsnp), 
+                         b = sapply(res, function(x) x$b), 
+                         se = sapply(res, function(x) x$se), 
+                         pval = sapply(res, function(x) x$pval))
+    
+    mr_tab <- subset(mr_tab, !(is.na(b) & is.na(se) & is.na(pval)))
+    
+    return(mr_tab)
+  }
+  )
+  return(mr_tab)
+}
+
+
+QueryLiteratureMelodiPresto <- function(exposure, outcome) {
+ mir.resu <<- data.frame();
+
+  mSetObj <- .get.mSet(mSetObj);
+  endpoint <- "/overlap/"
+  params <- list(
+    x = exposure,
+    y = outcome
+  )
+
+  # --- Shared project-wide cache: all users benefit from cached results ---
+  cache_dir <- paste0(rpath, "/libs/melodi_cache");
+  if(!dir.exists(cache_dir)) dir.create(cache_dir, recursive=TRUE);
+  cache_key <- paste(sort(c(exposure, outcome)), collapse="|");
+  cache_hash <- substr(digest::digest(cache_key, algo="md5"), 1, 12);
+  cache_file <- file.path(cache_dir, paste0("metab_lit_", cache_hash, ".rds"));
+
+  lit_df <- NULL;
+  if(file.exists(cache_file)) {
+    print(paste0("[QueryLiteratureMelodiPresto] Loading from cache: ", cache_file));
+    lit_df <- tryCatch(readRDS(cache_file), error = function(e) NULL);
+  }
+
+  if(is.null(lit_df)) {
+    lit_df <- query_melodipresto(route = endpoint, params = params, mode = "raw", method = "POST")
+    # Save to shared cache
+    if(!is.null(lit_df)) {
+      tryCatch(saveRDS(lit_df, file=cache_file), error = function(e) {
+        print(paste0("Warning: could not write cache: ", e$message));
+      });
+    }
+  }
+
+  if(is.null(lit_df)){
+
+mSetObj$dataSet$path <- data.frame();
+
+    .set.mSet(mSetObj);
+    return(0);
+  }
+  hit.num <- nrow(lit_df);
+  if (hit.num == 0) {
+    current.msg <<- "No hits found in the literarure evidence database.";
+    print(current.msg);
+    return(0);
+  } else{
+    # Q1 term    set_x
+    # Q1 subject    subject_name_x
+    # Q1 predicate   predicate_x
+    # Q1 object    object_name_x **********
+    # Q1 pval       pval_x
+    # Q1 pmid       pmids_x
+    # Q2 subject    subject_name_y **********
+    # Q2 predicate    predicate_y
+    # Q2 object    object_name_y
+    # Q2 pval    pval_y
+    # Q2 pmid    pmids_y
+    # Q2 term    set_y
+    #An overlap is taken to be cases where the object of a triple from the set of ‘x’ queries overlaps with a subject from the set of ‘y’ queries    
+    res <- as.data.frame(lit_df[ , c("set_x","subject_name_x", "predicate_x", "pval_x","pmids_x" , "object_name_x", "predicate_y","object_name_y","pval_y","pmids_y","set_y")]);
+    res$pval_x <- signif(res$pval_x, digits = 5);
+    res$pval_y <- signif(res$pval_y, digits = 5);
+
+    colnames(res) <- c("Exposure","Exposure_Subject","Exposure_Predicate", "Exposure_Pval","Exposure_PMIDs",  "Overlap", "Outcome_Predicate", "Outcome_Object", "Outcome_Pval", "Outcome_PMIDs","Outcome");
+    fast.write.csv(res, file="mr_lit_evidence.csv", row.names=FALSE);
+    res <- res[order(res$Outcome_Pval),];
+    mSetObj$dataSet$mr2lit <- res; # for table display
+    # 4 types of edges
+    #exposure -> s1 subject
+    edge1 <- data.frame(Name1=(res$Exposure), ID1=(paste(res$Exposure,"exposure", sep="_")), Name2=res$Exposure_Subject, ID2=paste(res$Exposure_Subject, "e_subject", sep="_"), Predicate=rep("", nrow(res)),  pmid=res$Exposure_PMIDs, stringsAsFactors = FALSE);
+    exp.ids <<- edge1[,"ID1"];
+    expsbj.ids <<- edge1[,"ID2"];
+    #s2 object -> outcome
+    edge2 <- data.frame(Name1=res$Outcome_Object, ID1=paste(res$Outcome_Object, "o_object", sep="_"), Name2=res$Outcome, ID2=paste(res$Outcome,"outcome",sep="_"), Predicate=rep("", nrow(res)),pmid=res$Outcome_PMIDs, stringsAsFactors = FALSE);
+    outobj.ids <<- edge2[,"ID1"]
+    out.ids <<- edge2[,"ID2"];
+    #s1 subject - s1 predicate -> s1 object
+    edge3 <- data.frame(Name1=res$Exposure_Subject, ID1=paste(res$Exposure_Subject,"e_subject", sep="_"), Name2=res$Overlap, ID2=paste(res$Overlap,"overlap",sep="_"), Predicate=res$Exposure_Predicate, pmid=res$Exposure_PMIDs, stringsAsFactors = FALSE);
+    expsbj.ids <<- edge3[,"ID1"];
+    overlap.ids <<- edge3[,"ID2"];
+    # s2 subject - s2 predicate -> s2 object
+    edge4 <- data.frame(Name1=res$Overlap, ID1=paste(res$Overlap, "overlap", sep="_"), Name2=res$Outcome_Object, ID2=paste(res$Outcome_Object, "o_object", sep="_"), Predicate=res$Outcome_Predicate,pmid=res$Outcome_PMIDs, stringsAsFactors = FALSE);
+    outobj.ids <<- edge4[,"ID2"]
+    edges.all <- list(mir.resu, edge1, edge2, edge3, edge4);
+    #edges.all <- list(mir.resu, edge3, edge4);
+    mir.resu <- do.call("rbind", edges.all);
+   
+
+my.edges <- as.data.frame(mir.resu[, c(1,3,5,6)])
+colnames(my.edges)[1:4] <- c("from", "to", "predicate", "pmid")
+library(igraph)
+# Create the graph with edge attributes
+mir.graph <- simplify(
+  graph_from_data_frame(
+    my.edges,
+    directed = TRUE,
+    vertices = NULL
+  ),
+  edge.attr.comb = "first"  # keep first value for duplicated edges
+)
+
+from = unique(res$Exposure)
+to= unique(res$Outcome)
+paths <- all_shortest_paths(mir.graph, from, to)$res;
+
+if(length(paths) == 0){
+mSetObj$dataSet$path <- data.frame();
+
+    .set.mSet(mSetObj);
+return(0) 
+}
+
+
+path_info <- lapply(paths, function(path) {
+  nodes <- names(path)  # vertex names
+  # Get edges along the path as pairs (i to i+1)
+  edge_ids <- sapply(seq_along(nodes)[-length(nodes)], function(i) {
+    get.edge.ids(mir.graph, vp = c(nodes[i], nodes[i+1]), directed = TRUE)
+  })
+  # Get all pmids from those edges
+  pmids <- E(mir.graph)$pmid[edge_ids]
+  # Collapse edge list into path string
+  path_str <- paste(nodes, collapse = " → ")
+  # Collapse pmids (optionally unique or sorted)
+  pmid_str <- paste(unique(unlist(strsplit(pmids, " "))), collapse = ", ")
+  
+  data.frame(
+    path = path_str,
+    pmids = pmid_str,
+    stringsAsFactors = FALSE
+  )
+})
+
+# Combine all into one data frame
+path_df <- do.call(rbind, path_info)
+
+
+mSetObj$dataSet$path <- path_df
+
+    .set.mSet(mSetObj);
+    if(.on.public.web){
+      return(1);
+    }else{
+      return(current.msg);
+    }
+  }
+}
+
+
+
+query_melodipresto <- function(route, params = NULL,
+                             mode = c("raw", "table"),
+                             method = c("GET", "POST"),
+                             retry_times = 3,
+                             retry_pause_min = 1) {
+  #route<<-route;
+  #params<<-params;
+  #print(mode);
+  #print(method);
+  #retry_times<<-retry_times;
+  #retry_pause_min<<-retry_pause_min;
+  #save.image("query_melodipresto.RData")
+  mode <- match.arg(mode)
+  method <- match.arg(method)
+  if (method == "GET") {
+    method_func <- api_get_request
+  } else if (method == "POST") {
+    method_func <- api_post_request
+  }
+  res <- api_request(
+    route = route, params = params, mode = mode, method = method_func,
+    retry_times = retry_times, retry_pause_min = retry_pause_min
+  )
+if(length(res[["data"]])==0){
+  return(NULL)
+}
+
+  l <- list();
+  library(magrittr)
+  for (i in 1:length(res$data)){
+    l[[i]] <- res$data[[i]] %>% 
+      tibble::as_tibble()
+  }
+  df <- do.call("rbind", l);
+}
+
+
+
+api_post_request <- function(route, params,
+                             retry_times, retry_pause_min) {
+  #route<<-route;
+  #params<<-params;
+  #retry_times<<-retry_times;
+  #retry_pause_min<<-retry_pause_min;
+  #save.image("api_post_request.RData")
+  #api_url <- "https://api.epigraphdb.org";
+  api_url <- "https://melodi-presto.mrcieu.ac.uk/api"
+  url <- glue::glue("{api_url}{route}");
+  library(magrittr) # for pipe operation %>% 
+  # Are the requests for CI usage
+  epigraphdb.ci = Sys.getenv(x = "CI", unset = c(CI = "false")) %>%
+    as.logical()
+  is_ci <- getOption("epigraphdb.ci") %>%
+    as.character() %>%
+    tolower()
+  config <- c(httr::add_headers(.headers = c("client-type" = "R", "ci" = is_ci)), httr::config(ssl_verifypeer = FALSE, ssl_verifyhost = FALSE))
+  # body <- jsonlite::toJSON(params, auto_unbox = TRUE) # this is for epigraphdb query
+  body <- jsonlite::toJSON(params);
+  response <- httr::RETRY(
+    "POST",
+    url = url, body = body, config = config,
+    times = retry_times, pause_min = retry_pause_min
+  )
+  stop_for_status(response, context = list(params = params, url = url))
+  response
+}
+
+api_request <- function(route, params,
+                        mode = c("table", "raw"),
+                        method = method,
+                        retry_times, retry_pause_min) {
+ 
+  mode <- match.arg(mode)
+  response <- do.call(method, args = list(
+    route = route, params = params,
+    retry_times = retry_times, retry_pause_min = retry_pause_min
+  ))
+  if (mode == "table") {
+    return(flatten_response(response))
+  }
+  library(magrittr) # for pipe operation %>% 
+  response %>% httr::content(as = "parsed", encoding = "utf-8")
+}
+
+
+#####################################
+## AlphaGenome Variant Effect API  ##
+#####################################
+
+QueryAlphaGenome <- function(api_key="") {
+  mSetObj <- .get.mSet(mSetObj);
+
+  # Use mr_dat — the exact SNPs used in MR analysis and shown in result plots
+  dat <- mSetObj$dataSet$mr_dat;
+  if(is.null(dat) || nrow(dat) == 0) {
+    current.msg <<- "No MR analysis data available for AlphaGenome analysis.";
+    mSetObj$dataSet$alphagenome_results <- data.frame();
+    .set.mSet(mSetObj);
+    return(0);
+  }
+
+  # Further filter to mr_keep (allele-compatible SNPs actually used in MR)
+  if("mr_keep" %in% colnames(dat)) {
+    dat <- dat[dat$mr_keep, ];
+  }
+
+  if(nrow(dat) == 0) {
+    current.msg <<- "No kept SNPs available for AlphaGenome analysis.";
+    mSetObj$dataSet$alphagenome_results <- data.frame();
+    .set.mSet(mSetObj);
+    return(0);
+  }
+
+  # Deduplicate by SNP ID (mr_dat may have duplicates from multi-exposure)
+  dat <- dat[!duplicated(dat$SNP), ];
+  print(paste0("[QueryAlphaGenome] Querying ", nrow(dat), " SNPs: ", paste(dat$SNP, collapse=", ")));
+
+  # Build request body from mr_dat
+  snp_list <- lapply(1:nrow(dat), function(i) {
+    chr_val <- dat$chr.exposure[i];
+    if(!grepl("^chr", chr_val)) {
+      chr_val <- paste0("chr", chr_val);
+    }
+    list(
+      snp_id = as.character(dat$SNP[i]),
+      chromosome = chr_val,
+      position = as.integer(dat$pos.exposure[i]),
+      ref_allele = as.character(dat$other_allele.exposure[i]),
+      alt_allele = as.character(dat$effect_allele.exposure[i]),
+      gene = ifelse(is.na(dat$genes[i]) || dat$genes[i] == "", "N/A", as.character(dat$genes[i]))
+    )
+  });
+
+  ag_results <- query_alphagenome_api(snp_list, api_key);
+
+  if(is.null(ag_results) || length(ag_results) == 0) {
+    current.msg <<- "AlphaGenome API returned no results.";
+    mSetObj$dataSet$alphagenome_results <- data.frame();
+    .set.mSet(mSetObj);
+    return(0);
+  }
+
+  safe_str <- function(x, fallback="N/A") {
+    if(is.null(x) || is.na(x) || x == "") return(fallback);
+    return(as.character(x));
+  }
+
+  result_df <- do.call(rbind, lapply(ag_results, function(r) {
+    data.frame(
+      SNP = safe_str(r$snp_id),
+      Positional_Gene = safe_str(r$gene),
+      Target_Gene = safe_str(r$target_gene),
+      Gene_Type = safe_str(r$gene_type),
+      Effect_Type = safe_str(r$output_type),
+      Tissue = safe_str(r$tissue),
+      Score = ifelse(is.null(r$raw_score), "N/A", as.character(signif(r$raw_score, 4))),
+      Quantile = ifelse(is.null(r$quantile_score), "N/A", as.character(signif(r$quantile_score, 4))),
+      Interpretation = safe_str(r$interpretation),
+      stringsAsFactors = FALSE
+    )
+  }));
+
+  # Filter: keep only rows with quantile >= 0.5 (upper half)
+  AG_QUANTILE_THRESHOLD <- 0.5;
+  quantile_vals <- suppressWarnings(as.numeric(result_df$Quantile));
+  keep <- !is.na(quantile_vals) & quantile_vals >= AG_QUANTILE_THRESHOLD;
+  result_df_filtered <- result_df[keep, ];
+  print(paste0("[QueryAlphaGenome] ", nrow(result_df), " total rows, ", nrow(result_df_filtered),
+               " rows with quantile >= ", AG_QUANTILE_THRESHOLD));
+
+  if(nrow(result_df_filtered) == 0) {
+    print("[QueryAlphaGenome] No rows above threshold, keeping all results for reference.");
+    result_df_filtered <- result_df;  # fallback: show all if nothing passes
+  }
+
+  tryCatch({
+    fast.write.csv(result_df_filtered, file="alphagenome_results.csv", row.names=FALSE);
+  }, error=function(e) {
+    print(paste0("Warning: could not write alphagenome_results.csv: ", e$message));
+  });
+  mSetObj$dataSet$alphagenome_results <- result_df_filtered;
+  .set.mSet(mSetObj);
+
+  if(.on.public.web) {
+    return(nrow(result_df_filtered));
+  } else {
+    return(nrow(result_df_filtered));
+  }
+}
+
+
+query_alphagenome_api <- function(snp_list, api_key="") {
+  # Call AlphaGenome Python script directly (on-demand, no always-running service)
+
+  # Determine Python executable and script paths
+  local_root <- "/Users/lzy/NetBeansProjects/MetaboAnalyst";
+
+  if(dir.exists(local_root)) {
+    # Local dev environment
+    python_bin <- file.path(local_root, "alphagenome_venv", "bin", "python3");
+    script_path <- file.path(local_root, "alphagenome_score.py");
+  } else {
+    # Server deployment
+    python_bin <- "/opt/alphagenome/venv/bin/python3";
+    script_path <- "/opt/alphagenome/alphagenome_score.py";
+  }
+
+  if(!file.exists(script_path)) {
+    current.msg <<- paste0("AlphaGenome script not found: ", script_path);
+    print(current.msg);
+    return(NULL);
+  }
+
+  if(!file.exists(python_bin)) {
+    current.msg <<- paste0("Python not found: ", python_bin);
+    print(current.msg);
+    return(NULL);
+  }
+
+  # Write input/output JSON files in R working directory (RServe sets this per session)
+  ts <- as.integer(Sys.time());
+  input_file <- file.path(getwd(), paste0("ag_input_", ts, ".json"));
+  output_file <- file.path(getwd(), paste0("ag_output_", ts, ".json"));
+
+  tryCatch({
+    input_json <- jsonlite::toJSON(snp_list, auto_unbox=TRUE);
+    print(paste0("[AlphaGenome] Writing input to: ", input_file));
+    con <- file(input_file, "w");
+    writeLines(as.character(input_json), con);
+    close(con);
+
+    # Build command: python3 script.py input.json output.json [api_key]
+    cmd_args <- c(script_path, input_file, output_file);
+    if(nchar(api_key) > 0) {
+      cmd_args <- c(cmd_args, api_key);
+    }
+
+    print(paste0("[AlphaGenome] Running: ", python_bin, " ", paste(cmd_args[1:2], collapse=" "), " ..."));
+
+    # Execute Python script
+    output <- system2(python_bin, args=cmd_args, stdout=TRUE, stderr=TRUE);
+    status <- attr(output, "status");
+    print(paste0("[AlphaGenome] Exit status: ", ifelse(is.null(status), "0", status)));
+    if(length(output) > 0) {
+      print(paste0("[AlphaGenome] Output: ", paste(utils::head(output, 10), collapse="\n")));
+    }
+
+    if(!is.null(status) && status != 0) {
+      current.msg <<- paste0("AlphaGenome script failed (exit ", status, "): ",
+                              paste(output, collapse="\n"));
+      print(current.msg);
+      return(NULL);
+    }
+
+    # Read output JSON
+    if(!file.exists(output_file)) {
+      current.msg <<- "AlphaGenome script did not produce output file.";
+      print(current.msg);
+      return(NULL);
+    }
+
+    results <- jsonlite::fromJSON(output_file, simplifyVector=FALSE);
+    print(paste0("[AlphaGenome] Got ", length(results), " results."));
+    return(results);
+
+  }, error=function(e) {
+    current.msg <<- paste0("AlphaGenome execution failed: ", e$message);
+    print(paste0("[AlphaGenome] ERROR: ", e$message));
+    return(NULL);
+  }, finally={
+    # Clean up temp files
+    if(file.exists(input_file)) file.remove(input_file);
+    if(file.exists(output_file)) file.remove(output_file);
+  })
+}
+
+
+GetAlphaGenomeRowNames <- function() {
+  mSetObj <- .get.mSet(mSetObj);
+  res <- mSetObj$dataSet$alphagenome_results;
+  if(is.null(res) || !is.data.frame(res) || nrow(res)==0) {
+    return(NULL);
+  }
+  return(as.character(1:nrow(res)));
+}
+
+
+GetAlphaGenomeCol <- function(colInx) {
+  mSetObj <- .get.mSet(mSetObj);
+  res <- mSetObj$dataSet$alphagenome_results;
+  if(is.null(res) || !is.data.frame(res) || nrow(res)==0) {
+    return(NULL);
+  }
+  col <- as.character(res[, colInx]);
+  col[is.na(col) | col == ""] <- "N/A";
+  return(col);
+}
+
+
+
+GetGeneLitRowNames <- function() {
+  mSetObj <- .get.mSet(mSetObj);
+  res <- mSetObj$dataSet$gene_disease_lit;
+  if(is.null(res) || !is.data.frame(res) || nrow(res)==0) {
+    return(NULL);
+  }
+  return(as.character(1:nrow(res)));
+}
+
+GetGeneLitCol <- function(colInx) {
+  mSetObj <- .get.mSet(mSetObj);
+  res <- mSetObj$dataSet$gene_disease_lit;
+  if(is.null(res) || !is.data.frame(res) || nrow(res)==0) {
+    return(NULL);
+  }
+  col <- as.character(res[, colInx]);
+  col[is.na(col) | col == ""] <- "N/A";
+  return(col);
+}
+
+
+########################################
+## Gene-Disease Literature (batch)    ##
+########################################
+
+# Query MELODI-Presto for gene→disease literature evidence
+# Uses a SINGLE API call with all AG gene names as x, disease as y
+# Stores result in mSetObj$dataSet$gene_disease_lit
+QueryGeneLiterature <- function(disease) {
+  mSetObj <- .get.mSet(mSetObj);
+
+  # Get unique gene names from AlphaGenome results above threshold
+  ag_res <- mSetObj$dataSet$alphagenome_results;
+  if(is.null(ag_res) || !is.data.frame(ag_res) || nrow(ag_res) == 0) {
+    print("[QueryGeneLiterature] No AlphaGenome results, skipping");
+    mSetObj$dataSet$gene_disease_lit <- data.frame();
+    .set.mSet(mSetObj);
+    return(0);
+  }
+
+  AG_QUANTILE_THRESHOLD <- 0.5;
+  q_vals <- suppressWarnings(as.numeric(ag_res$Quantile));
+  keep <- !is.na(q_vals) & q_vals >= AG_QUANTILE_THRESHOLD;
+  ag_filtered <- ag_res[keep, ];
+
+  # Collect search terms: real gene names + positional genes from MR data
+  genes <- unique(as.character(ag_filtered$Target_Gene));
+  genes <- genes[!is.na(genes) & genes != "" & genes != "N/A"];
+  # Filter out ENSEMBL IDs (ENSG...) — they won't be in PubMed text
+  genes <- genes[!grepl("^ENSG[0-9]+$", genes)];
+
+  # Also add positional genes from MR data (the gene where the SNP sits)
+  dat <- mSetObj$dataSet$mr_dat;
+  if(!is.null(dat) && is.data.frame(dat) && nrow(dat) > 0) {
+    pos_genes <- unique(as.character(dat$genes));
+    pos_genes <- pos_genes[!is.na(pos_genes) & pos_genes != "" & pos_genes != "N/A"];
+    genes <- unique(c(genes, pos_genes));
+  }
+
+  # Map AlphaGenome effect types to searchable biological terms
+  # These won't have Target_Gene but represent chromatin/epigenetic effects
+  effect_type_terms <- c(
+    "histone modification",
+    "chromatin accessibility",
+    "transcription factor binding",
+    "gene expression regulation"
+  );
+
+  # Combine: gene names + effect type biological terms
+  search_terms <- unique(c(genes, effect_type_terms));
+
+  if(length(search_terms) == 0) {
+    print("[QueryGeneLiterature] No search terms, skipping");
+    mSetObj$dataSet$gene_disease_lit <- data.frame();
+    .set.mSet(mSetObj);
+    return(0);
+  }
+
+  print(paste0("[QueryGeneLiterature] Querying ", length(search_terms),
+               " terms against disease: ", disease));
+  print(paste0("[QueryGeneLiterature] Terms: ", paste(search_terms, collapse=", ")));
+
+  # --- Shared project-wide cache: all users benefit from cached results ---
+  cache_dir <- paste0(rpath, "/libs/melodi_cache");
+  if(!dir.exists(cache_dir)) dir.create(cache_dir, recursive=TRUE);
+  cache_key <- paste(sort(c(search_terms, disease)), collapse="|");
+  cache_hash <- substr(digest::digest(cache_key, algo="md5"), 1, 12);
+  cache_file <- file.path(cache_dir, paste0("gene_lit_", cache_hash, ".rds"));
+
+  res <- NULL;
+  if(file.exists(cache_file)) {
+    print(paste0("[QueryGeneLiterature] Loading from cache: ", cache_file));
+    res <- tryCatch(readRDS(cache_file), error = function(e) {
+      print(paste0("[QueryGeneLiterature] Cache read error: ", e$message));
+      NULL;
+    });
+  }
+
+  if(is.null(res) || nrow(res) == 0) {
+    # No cache — call MELODI-Presto API
+    endpoint <- "/overlap/";
+    params <- list(
+      x = search_terms,
+      y = disease
+    );
+
+    lit_df <- tryCatch({
+      query_melodipresto(route = endpoint, params = params, mode = "raw", method = "POST");
+    }, error = function(e) {
+      print(paste0("[QueryGeneLiterature] API error: ", e$message));
+      NULL;
+    });
+
+    if(is.null(lit_df) || nrow(lit_df) == 0) {
+      print("[QueryGeneLiterature] No results from MELODI-Presto");
+      mSetObj$dataSet$gene_disease_lit <- data.frame();
+      .set.mSet(mSetObj);
+      return(0);
+    }
+
+    # Format result
+    res <- as.data.frame(lit_df[, c("set_x", "subject_name_x", "predicate_x",
+                                     "pval_x", "pmids_x", "object_name_x",
+                                     "predicate_y", "object_name_y",
+                                     "pval_y", "pmids_y", "set_y")]);
+    res$pval_x <- signif(res$pval_x, digits = 5);
+    res$pval_y <- signif(res$pval_y, digits = 5);
+    colnames(res) <- c("Gene", "Gene_Subject", "Gene_Predicate",
+                        "Gene_Pval", "Gene_PMIDs", "Overlap",
+                        "Disease_Predicate", "Disease_Object",
+                        "Disease_Pval", "Disease_PMIDs", "Disease");
+
+    # Save to shared cache
+    tryCatch({
+      saveRDS(res, file=cache_file);
+      print(paste0("[QueryGeneLiterature] Cached to: ", cache_file));
+    }, error=function(e) {
+      print(paste0("Warning: could not write cache: ", e$message));
+    });
+  }
+
+  print(paste0("[QueryGeneLiterature] Found ", nrow(res), " gene-disease links"));
+  print(paste0("[QueryGeneLiterature] Genes with hits: ",
+               paste(unique(res$Gene), collapse=", ")));
+
+  # Also save as gene_disease_literature.csv for user download
+  tryCatch({
+    fast.write.csv(res, file="gene_disease_literature.csv", row.names=FALSE);
+  }, error=function(e) {
+    print(paste0("Warning: could not write gene_disease_literature.csv: ", e$message));
+  });
+
+  mSetObj$dataSet$gene_disease_lit <- res;
+  .set.mSet(mSetObj);
+  return(nrow(res));
+}
+
+
+########################################
+## Evidence Comparison Summary        ##
+########################################
+
+BuildEvidenceComparison <- function() {
+  mSetObj <- .get.mSet(mSetObj);
+
+  AG_QUANTILE_THRESHOLD <- 0.5;
+
+  # Use mr_dat — same SNPs as result page plots
+  dat <- mSetObj$dataSet$mr_dat;
+  if(is.null(dat) || nrow(dat) == 0) {
+    mSetObj$dataSet$evidence_comparison <- data.frame();
+    .set.mSet(mSetObj);
+    return(0);
+  }
+
+  # Further filter to mr_keep
+  if("mr_keep" %in% colnames(dat)) {
+    dat <- dat[dat$mr_keep, ];
+  }
+  if(nrow(dat) == 0) {
+    mSetObj$dataSet$evidence_comparison <- data.frame();
+    .set.mSet(mSetObj);
+    return(0);
+  }
+
+  # ---- Original metabolite-disease literature PMIDs ----
+  mr2lit <- mSetObj$dataSet$mr2lit;
+  metab_pmids <- c();
+  if(!is.null(mr2lit) && is.data.frame(mr2lit) && nrow(mr2lit) > 0) {
+    for(cn in c("Exposure_PMIDs", "Outcome_PMIDs")) {
+      if(cn %in% colnames(mr2lit)) {
+        raw <- as.character(mr2lit[[cn]]);
+        raw <- raw[!is.na(raw) & raw != ""];
+        # PMIDs may be space-separated or comma-separated
+        all_ids <- unlist(strsplit(raw, "[, ]+"));
+        all_ids <- trimws(all_ids);
+        all_ids <- all_ids[all_ids != ""];
+        metab_pmids <- c(metab_pmids, all_ids);
+      }
+    }
+    metab_pmids <- unique(metab_pmids);
+    print(paste0("[BuildEvidenceComparison] Metabolite-disease PMIDs: ", length(metab_pmids)));
+  }
+
+  # ---- Gene-disease literature: from QueryGeneLiterature() batch call ----
+  gene_lit <- mSetObj$dataSet$gene_disease_lit;
+  has_gene_lit <- !is.null(gene_lit) && is.data.frame(gene_lit) && nrow(gene_lit) > 0;
+
+  # Build lookup: gene/term -> list of overlap concepts + PMIDs + shared PMIDs
+  # Key is UPPERCASED, underscores replaced with spaces (MELODI-Presto returns
+  # set_x as lowercase with underscores, e.g. "chromatin_accessibility")
+  gene_lit_lookup <- list();
+  if(has_gene_lit) {
+    for(i in 1:nrow(gene_lit)) {
+      g <- toupper(gsub("_", " ", as.character(gene_lit$Gene[i])));
+      overlap <- as.character(gene_lit$Overlap[i]);
+      gene_pmid_str <- as.character(gene_lit$Gene_PMIDs[i]);
+      dis_pmid_str <- as.character(gene_lit$Disease_PMIDs[i]);
+      if(is.na(g) || g == "") next;
+      if(is.null(gene_lit_lookup[[g]])) {
+        gene_lit_lookup[[g]] <- list(overlaps=c(), pmids=c(), shared_pmids=c());
+      }
+      if(!is.na(overlap) && overlap != "") {
+        gene_lit_lookup[[g]]$overlaps <- unique(c(gene_lit_lookup[[g]]$overlaps, overlap));
+      }
+      # Collect all PMIDs from gene-disease literature
+      for(ps in c(gene_pmid_str, dis_pmid_str)) {
+        if(!is.na(ps) && ps != "") {
+          ids <- trimws(unlist(strsplit(ps, "[, ]+")));
+          ids <- ids[ids != ""];
+          gene_lit_lookup[[g]]$pmids <- unique(c(gene_lit_lookup[[g]]$pmids, ids));
+        }
+      }
+    }
+    # Find PMID overlap with metabolite-disease literature
+    for(g in names(gene_lit_lookup)) {
+      shared <- intersect(gene_lit_lookup[[g]]$pmids, metab_pmids);
+      gene_lit_lookup[[g]]$shared_pmids <- shared;
+    }
+    print(paste0("[BuildEvidenceComparison] Gene-disease literature: ",
+                 length(gene_lit_lookup), " genes with hits: ",
+                 paste(names(gene_lit_lookup), collapse=", ")));
+    for(g in names(gene_lit_lookup)) {
+      print(paste0("  ", g, ": ", length(gene_lit_lookup[[g]]$overlaps), " overlaps, ",
+                    length(gene_lit_lookup[[g]]$pmids), " PMIDs, ",
+                    length(gene_lit_lookup[[g]]$shared_pmids), " shared PMIDs"));
+    }
+  } else {
+    print("[BuildEvidenceComparison] No gene-disease literature available");
+  }
+
+  snps <- unique(dat$SNP);
+  rows <- list();
+
+  for(snp in snps) {
+    snp_dat <- dat[dat$SNP == snp, ][1,];
+
+    # MR info
+    mr_beta_num <- suppressWarnings(as.numeric(snp_dat$beta.exposure));
+    mr_pval_num <- suppressWarnings(as.numeric(snp_dat$pval.exposure));
+    mr_beta <- ifelse(is.na(mr_beta_num), "N/A", as.character(signif(mr_beta_num, 4)));
+    mr_pval <- ifelse(is.na(mr_pval_num), "N/A", as.character(signif(mr_pval_num, 3)));
+    mr_gene <- ifelse(is.na(snp_dat$genes) || snp_dat$genes == "", "N/A", as.character(snp_dat$genes));
+    has_mr <- !is.na(mr_pval_num) && mr_pval_num < 0.05;
+
+    # AlphaGenome evidence — one row per gene/effect above threshold
+    ag_res <- mSetObj$dataSet$alphagenome_results;
+    added_ag_rows <- FALSE;
+
+    if(!is.null(ag_res) && is.data.frame(ag_res) && nrow(ag_res) > 0) {
+      snp_ag <- ag_res[ag_res$SNP == snp, ];
+      if(nrow(snp_ag) > 0) {
+        all_quantiles <- suppressWarnings(as.numeric(snp_ag$Quantile));
+        above_thresh <- !is.na(all_quantiles) & all_quantiles >= AG_QUANTILE_THRESHOLD;
+        snp_ag_filtered <- snp_ag[above_thresh, ];
+
+        if(nrow(snp_ag_filtered) > 0) {
+          for(j in 1:nrow(snp_ag_filtered)) {
+            tg <- as.character(snp_ag_filtered$Target_Gene[j]);
+            et <- as.character(snp_ag_filtered$Effect_Type[j]);
+            q_val <- suppressWarnings(as.numeric(snp_ag_filtered$Quantile[j]));
+            q_str <- as.character(signif(q_val, 4));
+
+            # Display label: gene name if available, otherwise effect type
+            if(is.na(tg) || tg == "N/A" || tg == "") {
+              ag_label <- et;
+            } else {
+              ag_label <- tg;
+            }
+
+            # Check gene-disease literature: direct MELODI-Presto evidence
+            # gene_lit_lookup keys: gene names (e.g. "HNF4G") and bio terms
+            #   (e.g. "HISTONE MODIFICATION").  Each key has its OWN PMIDs.
+            #
+            # Priority: look up by the ROW-SPECIFIC identifier first:
+            #   1) If AG Gene/Effect is an effect type → use the mapped bio term
+            #   2) If AG Gene/Effect is a real gene name → use that gene
+            #   3) Fallback to positional gene ONLY if nothing else matched
+            # This ensures each row gets its own PMIDs, not the positional gene's.
+
+            et_term_map <- list(
+              "CHIP_HISTONE" = "HISTONE MODIFICATION",
+              "CHIP_TF"      = "TRANSCRIPTION FACTOR BINDING",
+              "DNASE"        = "CHROMATIN ACCESSIBILITY",
+              "ATAC"         = "CHROMATIN ACCESSIBILITY",
+              "CAGE"         = "GENE EXPRESSION REGULATION",
+              "PROCAP"       = "GENE EXPRESSION REGULATION",
+              "RNA_SEQ"      = "GENE EXPRESSION REGULATION"
+            );
+
+            gene_pmid_raw <- "";
+            shared_pmid_raw <- "";
+
+            if(has_gene_lit) {
+              matched_key <- NULL;
+
+              # Determine what this row represents based on ag_label
+              # ag_label = tg (target gene) when tg is available, else et (effect type)
+              has_target_gene <- !is.na(tg) && tg != "N/A" && tg != "";
+              is_ensembl <- has_target_gene && grepl("^ENSG[0-9]+", tg);
+              row_shows_effect <- !has_target_gene;  # ag_label = effect type
+
+              if(row_shows_effect && !is.na(et) && toupper(et) %in% names(et_term_map)) {
+                # Row displays as effect type (CHIP_HISTONE, DNASE, etc.)
+                # Look up by the biological term
+                bio_term <- et_term_map[[toupper(et)]];
+                if(!is.null(gene_lit_lookup[[bio_term]])) {
+                  matched_key <- bio_term;
+                }
+              } else if(has_target_gene && !is_ensembl) {
+                # Row displays a specific target gene (ZFHX4, LINC01109, etc.)
+                # Look up by that gene name
+                tg_key <- toupper(tg);
+                if(!is.null(gene_lit_lookup[[tg_key]])) {
+                  matched_key <- tg_key;
+                }
+              }
+
+              # NO fallback to positional gene.
+              # AG Gene PMIDs must be specific to this row's gene/effect.
+              # If no literature found for the specific gene/effect, show "No".
+
+              # Extract PMIDs from the matched key
+              if(!is.null(matched_key)) {
+                entry <- gene_lit_lookup[[matched_key]];
+                all_pmids <- entry$pmids;
+                shared_pmids <- entry$shared_pmids;
+                if(length(all_pmids) > 0) {
+                  gene_pmid_raw <- paste(unique(all_pmids), collapse=", ");
+                }
+                if(length(shared_pmids) > 0) {
+                  shared_pmid_raw <- paste(unique(shared_pmids), collapse=", ");
+                }
+              }
+            }
+
+            # Overall: integrate MR + variant effect + literature + PMID overlap
+            if(has_mr && shared_pmid_raw != "" && q_val > 0.9) {
+              overall <- "Strong: MR + shared PMIDs + strong effect";
+            } else if(has_mr && shared_pmid_raw != "") {
+              overall <- "Strong: MR + shared PMIDs";
+            } else if(has_mr && gene_pmid_raw != "" && q_val > 0.9) {
+              overall <- "Strong: MR + gene-disease lit + strong effect";
+            } else if(has_mr && gene_pmid_raw != "") {
+              overall <- "Supported: MR + gene-disease lit";
+            } else if(has_mr && q_val > 0.9) {
+              overall <- "Supported: MR + strong effect";
+            } else if(has_mr && q_val > 0.75) {
+              overall <- "Moderate: MR + moderate effect";
+            } else if(has_mr) {
+              overall <- "Weak: MR + weak effect";
+            } else {
+              overall <- "Insufficient evidence";
+            }
+
+            rows[[length(rows) + 1]] <- data.frame(
+              SNP = snp,
+              Positional_Gene = mr_gene,
+              MR_Beta = mr_beta,
+              MR_Pval = mr_pval,
+              AG_Gene_Effect = ag_label,
+              Quantile = q_str,
+              Gene_PMIDs = gene_pmid_raw,
+              Shared_PMIDs = shared_pmid_raw,
+              Overall = overall,
+              stringsAsFactors = FALSE
+            );
+            added_ag_rows <- TRUE;
+          }
+        }
+      }
+    }
+
+    # If no AG rows above threshold for this SNP, add one summary row
+    if(!added_ag_rows) {
+      overall <- if(has_mr) "MR only" else "Insufficient evidence";
+      rows[[length(rows) + 1]] <- data.frame(
+        SNP = snp,
+        Positional_Gene = mr_gene,
+        MR_Beta = mr_beta,
+        MR_Pval = mr_pval,
+        AG_Gene_Effect = "No effect above threshold",
+        Quantile = "N/A",
+        Gene_PMIDs = "",
+        Shared_PMIDs = "",
+        Overall = overall,
+        stringsAsFactors = FALSE
+      );
+    }
+  }
+
+  result_df <- do.call(rbind, rows);
+  tryCatch({
+    fast.write.csv(result_df, file="evidence_comparison.csv", row.names=FALSE);
+  }, error=function(e) {
+    print(paste0("Warning: could not write evidence_comparison.csv: ", e$message));
+  });
+  mSetObj$dataSet$evidence_comparison <- result_df;
+  .set.mSet(mSetObj);
+  return(nrow(result_df));
+}
+
+
+GetComparisonRowNames <- function() {
+  mSetObj <- .get.mSet(mSetObj);
+  res <- mSetObj$dataSet$evidence_comparison;
+  if(is.null(res) || !is.data.frame(res) || nrow(res)==0) {
+    return(NULL);
+  }
+  return(as.character(1:nrow(res)));
+}
+
+
+GetComparisonCol <- function(colInx) {
+  mSetObj <- .get.mSet(mSetObj);
+  res <- mSetObj$dataSet$evidence_comparison;
+  if(is.null(res) || !is.data.frame(res) || nrow(res)==0) {
+    return(NULL);
+  }
+  col <- as.character(res[, colInx]);
+  col[is.na(col) | col == ""] <- "N/A";
+  return(col);
+}
+
+
+UpdateSNPEntries <- function(col.id, method, value, action, expnm="") {
+  #save.image("updateentries.RData");
+   mSetObj <- .get.mSet(mSetObj)
+
+   tab <- mSetObj$dataSet$harmonized.dat
+   nms <- rownames(tab)
+ 
+
+  colm <- tab[[col.id]]
+ 
+if(method == "contain"){
+  hits <- grepl(value, colm, ignore.case = TRUE) ;
+}else if(method == "match"){
+  hits <- tolower(colm) %in% tolower(value) ;
+}else{ # at least
+  if(is.numericable(value)){
+    
+    col.val <- as.numeric(colm);  
+    hits <- (col.val > as.numeric(value)) 
+    return("NA");
+  }
+  
+  }
+
+if(action == "keep"){
+  hits = !hits;
+}else{
+  hits = hits;
+}
+ 
+if(sum(hits) > 0){
+   tab <- tab[!hits,]
+   #row.ids <- rownames(tab);
+   mSetObj$dataSet$harmonized.dat <- tab
+ 
+   #nms<-nms[!nms %in% rownames(tab)]
+   # tableView.proc <- tableView.proc[!rownames( tableView.proc) %in% nms,]
+   # mSetObj$dataSet$tableView.proc <- tableView.proc
+
+  .set.mSet(mSetObj);
+   return(which(hits));
+}else{
+  return("NA");
+}
+
+}
+ 
+is.numericable <- function(x) {
+  !is.na(suppressWarnings(as.numeric(x)))
+}
+
+
+ResetSNPEntries  <- function(expnm="") {
+  
+  mSetObj <- .get.mSet(mSetObj) 
+  mSetObj$dataSet$harmonized.dat <-   mSetObj$dataSet$tableView.orig
+  mSetObj$dataSet$exposure.ldp <- mSetObj$dataSet$exposure.ldp.org
+  mSetObj$dataSet$outcome.dat <-   mSetObj$dataSet$outcome.dat.org
+  if(exists("tableView.bak", mSetObj$dataSet)){
+    mSetObj$dataSet$tableView <- mSetObj$dataSet$tableView.bak
+  }
+  return(.set.mSet(mSetObj));
+  
+}
+
+CheckSNPs <- function(){
+   mSetObj <- .get.mSet(mSetObj)
+   dat <- mSetObj$dataSet$harmonized.dat
+   if(any(dat$ifCheck)){
+    return(1)
+  }else{
+    return(0)
+  }
+
+}

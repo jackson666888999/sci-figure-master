@@ -1,0 +1,669 @@
+"""RNA expression levels quantified per gene.
+
+Process per-gene expression levels, or the equivalent, by cohort.
+"""
+
+import logging
+
+import numpy as np
+import pandas as pd
+from scipy.stats import gmean
+
+from skgenome import tabio
+
+from .cnary import CopyNumArray as CNA
+from .fix import center_by_window
+
+NULL_LOG2_COVERAGE = -5
+
+
+def before(char):
+    """Create a function that extracts the substring before a delimiter character.
+
+    This is a higher-order function (closure) that creates and returns a new
+    function. The returned function takes a string and returns the portion of
+    the string before the first occurrence of the specified delimiter character.
+
+    Parameters
+    ----------
+    char : str
+        The delimiter character to split on.
+
+    Returns
+    -------
+    function
+        A function that takes a string and returns the substring before the
+        first occurrence of `char`. If `char` is not in the string, returns
+        the entire string.
+
+    Examples
+    --------
+    >>> get_base = before(".")
+    >>> get_base("ENSG00000001.5")
+    'ENSG00000001'
+    >>> get_base("simple")
+    'simple'
+    """
+
+    def selector(string):
+        return string.split(char, 1)[0]
+
+    return selector
+
+
+def filter_probes(sample_counts, min_sample_fraction=0.5):
+    """Filter probes to only include high-quality, transcribed genes.
+
+    The human genome has ~25,000 protein coding genes, yet the RSEM output
+    includes ~58,000 rows. Some of these rows correspond to read counts over
+    control probes (e.g.  spike-in sequences). Some rows correspond to poorly
+    mapped genes in contigs that have not been linked to the 24 chromosomes
+    (e.g. HLA region). Others correspond to pseudo-genes and non-coding genes.
+    For the purposes of copy number inference, these rows are best removed.
+
+    A gene is retained when it has a detectable transcript (count >= 1) in at
+    least ``min_sample_fraction`` of the samples. This is expressed as a
+    quantile threshold rather than a literal sample count: the gene's
+    ``(1 - min_sample_fraction)`` quantile of per-sample counts must be >= 1.
+
+    Parameters
+    ----------
+    sample_counts : pandas.DataFrame
+        Per-gene (rows) read counts across samples (columns).
+    min_sample_fraction : float, optional
+        Minimum fraction of samples in which a gene must be expressed for it to
+        be retained, in [0, 1]. The default 0.5 reproduces the historical
+        ``median(counts) >= 1`` rule bit-exact (the median is the 0.5 quantile).
+        Lower values are more permissive, which is appropriate for single-cell
+        or otherwise sparse cohorts where most genes are expressed in fewer than
+        half of cells.
+    """
+    if not 0.0 <= min_sample_fraction <= 1.0:
+        raise ValueError(
+            f"min_sample_fraction must be in [0, 1], got {min_sample_fraction!r}"
+        )
+    if sample_counts.empty:
+        # Nothing to filter; DataFrame.quantile(axis=1) raises on an empty frame
+        # whereas the legacy median(axis=1) returned an empty result.
+        return sample_counts
+    # The (1 - f) quantile >= 1 means at least fraction f of samples express the
+    # gene. At f=0.5 this is the median, preserving the legacy behavior exactly.
+    gene_quantiles = sample_counts.quantile(1.0 - min_sample_fraction, axis=1)
+    is_mostly_transcribed = gene_quantiles >= 1.0
+    logging.info(
+        "Dropping %d / %d genes expressed in fewer than %g%% of input samples",
+        (~is_mostly_transcribed).sum(),
+        len(is_mostly_transcribed),
+        100 * min_sample_fraction,
+    )
+    return sample_counts[is_mostly_transcribed]
+
+
+def load_gene_info(gene_resource, corr_fname, default_r=0.1):
+    """Read gene info from BioMart, and optionally TCGA, into a dataframe.
+
+    RSEM only outputs the Ensembl ID. We have used the BioMART tool in Ensembl
+    to export a list of all Ensembl genes with a RefSeq mRNA (meaning it is high
+    quality, curated, and bona fide gene) and resides on chromosomes 1-22, X, or
+    Y. The tool also outputs the GC content of the gene, chromosomal coordinates
+    of the gene, and HUGO gene symbol.
+
+    The bundled hg38 table lives at ``data/ensembl-gene-info.hg38.tsv``; for
+    other reference genomes, build an equivalent table from a BioMart export
+    with the ``cnv_gene_info.py`` script. The first line is the column header;
+    an optional leading ``#`` comment line is ignored.
+    """
+    # Load the gene info file and clean up column names
+    # Original columns:
+    # "Gene stable ID" -- Ensembl ID
+    # "Gene % GC content"
+    # "Chromosome/scaffold name"
+    # "Gene start (bp)"
+    # "Gene end (bp)"
+    # "Gene name"
+    # "NCBI gene ID"
+    # "Transcript length (including UTRs and CDS)"
+    # "Transcript support level (TSL)"
+    info_col_names = [
+        "gene_id",
+        "gc",
+        "chromosome",
+        "start",
+        "end",
+        "gene",
+        "entrez_id",
+        "tx_length",
+        "tx_support",
+    ]
+    gene_info = pd.read_csv(
+        gene_resource,
+        sep="\t",
+        header=0,
+        names=info_col_names,
+        comment="#",
+        converters={
+            "gene_id": before("."),
+            "tx_support": tsl2int,
+            "gc": lambda x: float(x) / 100,
+        },
+    ).sort_values("gene_id")
+    logging.info("Loaded %s with shape: %s", gene_resource, gene_info.shape)
+    # The gene resource is a user-supplied export, typically from BioMart, and
+    # its coordinates go straight into the .cnr this command writes. Repair a
+    # reversed row here, as `skgenome.tabio.read` does for every other file
+    # another tool wrote, so that `import-rna` cannot emit a .cnr that CNVkit
+    # then refuses to read back.
+    tabio.repair_inverted_intervals(gene_info, gene_resource)
+
+    if corr_fname:
+        corr_table = load_cnv_expression_corr(corr_fname)
+
+        gi_corr = gene_info.join(corr_table, on="entrez_id", how="left")
+        if not gi_corr["gene_id"].is_unique:
+            unique_idx = gi_corr.groupby("gene_id").apply(dedupe_ens_hugo)
+            gi_corr = gi_corr.loc[unique_idx]
+
+        # DBG verify that the tables were aligned correctly
+        #  for colname in ('pearson_r', 'spearman_r', 'kendall_t'):
+        #      print("In column", colname, "length", len(gi_corr),
+        #            ", have", gi_corr[colname].count(), "not-NA,",
+        #            (gi_corr[colname] > 0.1).sum(), ">0.1",
+        #            ", max value", np.nanmax(gi_corr[colname]))
+
+        if not gene_info["entrez_id"].is_unique:
+            # Treat untraceable entrez_id duplicates (scarce at this point, ~15)
+            # as unknown correlation, i.e. default, as if not in TCGA
+            entrez_dupes_idx = tuple(locate_entrez_dupes(gi_corr))
+            logging.info(
+                "Resetting %d ambiguous genes' correlation coefficients to default %f",
+                len(entrez_dupes_idx),
+                default_r,
+            )
+            gi_corr.loc[entrez_dupes_idx, ("pearson_r", "spearman_r", "kendall_t")] = (
+                default_r
+            )
+
+        # Genes w/o TCGA info get default correlation 0.1 (= .5*corr.median())
+        gene_info = gi_corr.fillna(
+            {
+                "pearson_r": default_r,
+                "spearman_r": default_r,
+                "kendall_t": default_r,
+            }
+        )
+
+    elif not gene_info["gene_id"].is_unique:
+        # Simpler deduplication, not using TCGA fields
+        unique_idx = gene_info.groupby("gene_id").apply(dedupe_ens_no_hugo)
+        gene_info = gene_info.loc[unique_idx]
+
+    logging.info("Trimmed gene info table to shape: %s", gene_info.shape)
+    assert gene_info["gene_id"].is_unique
+    gene_info["entrez_id"] = gene_info["entrez_id"].fillna(0).astype("int")
+    return gene_info.set_index("gene_id")
+
+
+def load_cnv_expression_corr(fname):
+    """Load CNV-expression correlation coefficients from a file.
+
+    Reads a tab-delimited file containing correlation coefficients between
+    copy number variation and gene expression levels. This file is typically
+    generated by the cnv_expression_correlate.py script from matched CNV and
+    expression data, such as from TCGA cohorts.
+
+    Parameters
+    ----------
+    fname : str
+        Path to the correlation coefficients file. The file must be
+        tab-delimited with 'Entrez_Gene_Id' as a column that will be used
+        as the index.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame indexed by Entrez Gene ID, containing correlation
+        coefficient columns (e.g., 'pearson_r', 'spearman_r', 'kendall_t').
+
+    See Also
+    --------
+    load_gene_info : Loads and merges gene info with correlation data
+    """
+    shared_key = "Entrez_Gene_Id"
+    table = pd.read_csv(
+        fname, sep="\t", na_filter=False, dtype={shared_key: int}
+    ).set_index(shared_key)
+    logging.info("Loaded %s with shape: %s", fname, table.shape)
+    return table
+
+
+def tsl2int(tsl):
+    """Convert an Ensembl Transcript Support Level (TSL) code to an integer.
+
+    The code has the format "tsl([1-5]|NA)".
+
+    See: https://www.ensembl.org/info/genome/genebuild/transcript_quality_tags.html
+    """
+    if tsl in (np.nan, "", "tslNA"):
+        return 0
+    # Remove "tsl" prefix
+    assert tsl.startswith("tsl")
+    value = tsl.removeprefix("tsl")
+    # Remove possible suffix " (assigned to previous version _)"
+    if len(value) > 2:
+        value = value[:2].rstrip()
+    if value == "NA":
+        return 0
+    return int(value)
+
+
+def dedupe_ens_hugo(dframe):
+    """Emit the "best" index from a group of the same Ensembl ID.
+
+    The RSEM gene rows are the data of interest, and they're associated with
+    Ensembl IDs to indicate the transcribed gene being measured in each row.
+    The BioMart table of gene info can have duplicate rows for Ensembl ID, which
+    would cause duplicate rows in RSEM import if joined naively.  So, we need to
+    select a single row for each group of "gene info" rows with the same Ensembl
+    ID (column 'gene_id').
+
+    The keys we can use for this are:
+
+    - Entrez ID ('entrez_id')
+    - Ensembl gene name ('gene')
+    - Entrez gene name ('hugo_gene')
+
+    Entrez vs. Ensembl IDs and gene names are potentially many-to-many, e.g.
+    CALM1/2/3. However, if we also require that the Ensembl and HUGO gene names
+    match within a group, that (usually? always?) results in a unique row
+    remaining.
+
+    (Example: CALM1/2/3 IDs are many-to-many, but of the 3 Entrez IDs associated
+    with Ensembl's CALM1, only 1 is called CALM1 in the Entrez/corr. table.)
+
+    Failing that (no matches or multiple matches), prefer a lower Entrez ID,
+    because well-characterized, protein-coding genes tend to have been
+    discovered and accessioned first.
+    """
+    if len(dframe) == 1:
+        return dframe.index[0]
+    match_gene = dframe[dframe["gene"] == dframe["hugo_gene"]]
+    if len(match_gene) == 1:
+        return match_gene.index[0]
+    if len(match_gene) > 1:
+        # Take lowest Entrez ID of the matched
+        return dedupe_tx(match_gene)
+    # No matching names -> lowest Entrez ID key
+    return dedupe_tx(dframe)
+
+
+def dedupe_ens_no_hugo(dframe):
+    """Deduplicate Ensembl ID using Entrez ID but not HUGO gene name."""
+    if len(dframe) == 1:
+        return dframe.index[0]
+    return dedupe_tx(dframe)
+
+
+def dedupe_tx(dframe):
+    """Deduplicate table rows to select one transcript length per gene.
+
+    Choose the lowest-number Entrez ID and the transcript with the greatest
+    support (primarily) and length (secondarily).
+
+    This is done at the end of Ensembl ID deduplication, after filtering on gene
+    names and for single-row tables.
+
+    Returns an integer row index corresponding to the original table.
+    """
+    # NB: Transcripts are many-to-1 vs. Ensembl ID, not Entrez ID, so each
+    # unique Entrez ID here will have the same collection of transcripts
+    # associated with it.
+    return dframe.sort_values(
+        ["entrez_id", "tx_support", "tx_length"],
+        ascending=[True, False, False],
+        na_position="last",
+    ).index[0]
+
+
+def locate_entrez_dupes(dframe):
+    """In case the same Entrez ID was assigned to multiple Ensembl IDs.
+
+    Use HUGO vs. HGNC name again, similar to `dedupe_hugo`, but instead of
+    emiting the indices of the rows to keep, emit the indices of the extra rows
+    -- their correlation values will then be filled in with a default value
+    (np.nan or 0.1).
+
+    It will then be as if those genes hadn't appeared in the TCGA tables at all,
+    i.e. CNV-expression correlation is unknown, but all entries are still
+    retained in the BioMart table (gene_info).
+    """
+    for _key, group in dframe.groupby("entrez_id"):
+        if len(group) == 1:
+            continue
+        match_gene_idx = group["gene"] == group["hugo_gene"]
+        match_gene_cnt = match_gene_idx.sum()
+        if match_gene_cnt == 1:
+            yield from group.index[~match_gene_idx]
+        else:
+            # Keep the lowest Ensemble ID (of the matched, if any)
+            keepable = group[match_gene_idx] if match_gene_cnt else group
+            idx_to_keep = keepable.sort_values("gene_id").index.to_numpy()[0]
+            for idx in group.index:
+                if idx != idx_to_keep:
+                    yield idx
+
+
+def align_gene_info_to_samples(
+    gene_info, sample_counts, tx_lengths, normal_ids, normalize_method="polish"
+):
+    """Align columns and sort.
+
+    Also calculate weights and add to gene_info as 'weight', along with
+    transcript lengths as 'tx_length'. ``normalize_method`` selects the
+    read-depth normalization strategy; see :func:`normalize_read_depths`.
+    """
+    logging.debug(
+        "Dimensions: gene_info=%s, sample_counts=%s",
+        gene_info.shape,
+        sample_counts.shape,
+    )
+    sc, gi = sample_counts.align(gene_info, join="inner", axis=0)
+
+    # Check that alignment resulted in some genes
+    if len(gi) == 0:
+        raise ValueError(
+            "No genes in common between sample data and gene resource file. "
+            f"Sample data has {len(sample_counts)} genes, "
+            f"gene resource has {len(gene_info)} genes. "
+            "Check that gene IDs match between your input files and gene resource. "
+            "Sample gene IDs (first 5): "
+            + ", ".join(sample_counts.index[:5].tolist())
+            + "; "
+            "Gene resource IDs (first 5): " + ", ".join(gene_info.index[:5].tolist())
+        )
+
+    gi = gi.sort_values(by=["chromosome", "start"])
+    sc = sc.loc[gi.index]
+
+    if tx_lengths is not None:
+        # Replace the existing tx_lengths from gene_resource
+        # (RSEM results have this, TCGA gene counts don't)
+        gi["tx_length"] = tx_lengths.loc[gi.index]
+
+    # Validate transcript lengths before any calculations
+    if (gi["tx_length"] <= 0).any():
+        n_invalid = (gi["tx_length"] <= 0).sum()
+        logging.warning(
+            "Found %d genes with invalid transcript length (<= 0); filtering these out",
+            n_invalid,
+        )
+        valid_idx = gi["tx_length"] > 0
+        gi = gi[valid_idx]
+        sc = sc.loc[gi.index]
+        if len(gi) == 0:
+            raise ValueError(
+                "All genes have invalid transcript lengths (<= 0). "
+                "Check your gene resource file or RSEM output."
+            )
+
+    # Calculate per-gene weights similarly to cnvlib.fix
+    # NB: chrX doesn't need special handling because with X-inactivation,
+    # expression should be similar in male and female samples, i.e. neutral is 0
+    logging.info("Weighting genes with below-average read counts")
+    gene_counts = sc.median(axis=1)
+    weights = [np.sqrt((gene_counts / gene_counts.quantile(0.75)).clip(upper=1))]
+
+    logging.info("Calculating normalized gene read depths")
+    sample_depths_log2 = normalize_read_depths(
+        sc.divide(gi["tx_length"], axis=0),
+        normal_ids,
+        normalize_method=normalize_method,
+    )
+
+    logging.info("Weighting genes by spread of read depths")
+    gene_spreads = sample_depths_log2.std(axis=1)
+    weights.append(gene_spreads)
+
+    corr_weights = []
+    for corr_col in ("spearman_r", "pearson_r", "kendall_t"):
+        if corr_col in gi:
+            logging.info("Weighting genes by %s correlation coefficient", corr_col)
+            corr_weights.append(gi[corr_col].values)
+    if corr_weights:
+        weights.append(np.vstack(corr_weights).mean(axis=0))
+
+    weight = gmean(np.vstack(weights), axis=0)
+    # Guard against degenerate cohorts: if every per-gene weight collapses to
+    # zero (e.g. zero cross-sample spread from uniform counts -> gmean is 0)
+    # or any NaN leaks into the weights (numpy's .max() does NOT skip NaN),
+    # ``weight / weight.max()`` would emit a RuntimeWarning and produce NaN.
+    # Fall back to uniform weights instead.
+    max_weight = weight.max()
+    if not np.isfinite(max_weight) or max_weight <= 0:
+        logging.warning(
+            "Per-gene weights are degenerate (max=%s); using uniform weights",
+            max_weight,
+        )
+        gi["weight"] = 1.0
+    else:
+        gi["weight"] = weight / max_weight
+    logging.debug(" --> final zeros: %d / %d", (gi["weight"] == 0).sum(), len(gi))
+    return gi, sc, sample_depths_log2
+
+
+def normalize_read_depths(sample_depths, normal_ids, normalize_method="polish"):
+    """Normalize per-gene read depths within and across samples.
+
+    Parameters
+    ----------
+    sample_depths : pandas.DataFrame
+        Per-gene (rows) read depths (counts / transcript length) across samples
+        (columns).
+    normal_ids : sequence of str
+        Column names of the control (normal) samples used to anchor the
+        baseline. Empty for the no-control case.
+    normalize_method : {"polish", "size-factors"}, optional
+        Normalization strategy. ``"polish"`` (default) is the historical
+        4-iteration multiplicative median polish followed by a normal-median
+        anchor; see :func:`_polish_normalize`. ``"size-factors"`` estimates
+        DESeq2-style median-of-ratios size factors from the control set only and
+        anchors each control with a leave-one-out peer median; see
+        :func:`_size_factor_normalize`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Per-gene log2 ratios, one column per sample.
+    """
+    if sample_depths.to_numpy().sum() <= 0:
+        raise ValueError(
+            "Sample read depths sum to zero or less. "
+            f"Input shape: {sample_depths.shape}, "
+            f"sum: {sample_depths.to_numpy().sum()}, "
+            f"all values zero: {(sample_depths == 0).all().all()}, "
+            f"has inf: {np.isinf(sample_depths.to_numpy()).any()}, "
+            f"has nan: {sample_depths.isna().any().any()}. "
+            "This likely indicates a problem with gene alignment or transcript lengths."
+        )
+    if normal_ids:
+        missing = pd.Index(normal_ids).difference(sample_depths.columns)
+        if len(missing):
+            raise ValueError(f"Normal sample IDs not in samples: {list(missing)}")
+    sample_depths = sample_depths.fillna(0)
+    if normalize_method == "polish":
+        normalized = _polish_normalize(sample_depths, normal_ids)
+    elif normalize_method == "size-factors":
+        normalized = _size_factor_normalize(sample_depths, normal_ids)
+    else:
+        raise ValueError(
+            f"Unknown normalize method {normalize_method!r}; "
+            "expected 'polish' or 'size-factors'"
+        )
+    # Finally, convert normalized read depths to log2 scale
+    return safe_log2(normalized, NULL_LOG2_COVERAGE)
+
+
+def _polish_normalize(sample_depths, normal_ids):
+    """Historical multiplicative median polish with a normal-median anchor.
+
+    Four iterations alternately rescale each sample by its 75th-percentile depth
+    (TCGA-style upper-quartile normalization) and re-center each gene on the
+    median across *all* samples; then, when controls are given, divide each gene
+    by the median of the control samples. This forces every gene's cohort median
+    to 1, so intermediate values depend on cohort composition and a single
+    control reduces to a self-divide. The ``size-factors`` method avoids both
+    properties.
+    """
+    for _i in range(4):
+        # By-sample: 75%ile among all genes
+        q3 = sample_depths.quantile(0.75)
+        sample_depths /= q3
+        # By-gene: median among all samples
+        sm = sample_depths.median(axis=1)
+        sample_depths = sample_depths.divide(sm, axis=0)
+    if normal_ids:
+        # Use normal samples as a baseline: divide normalized (1=neutral) values
+        # by the per-gene median across the control samples.
+        normal_avg = sample_depths.loc[:, list(normal_ids)].median(axis=1)
+        sample_depths = sample_depths.divide(normal_avg, axis=0).clip(lower=0)
+    return sample_depths
+
+
+def _size_factor_normalize(sample_depths, normal_ids):
+    """DESeq2-style size factors with leave-one-out normal anchoring.
+
+    The reference set is the control samples when ``normal_ids`` is non-empty,
+    otherwise the full cohort. Per-sample size factors are the median across
+    genes of each sample's depth divided by the reference geometric mean
+    (DESeq2 "median of ratios"; Love, Huber & Anders, *Genome Biol* 2014), which
+    is robust to a large minority of copy-number-altered genes -- the property
+    the cohort-wide polish lacks. Genes with a zero in any reference sample are
+    excluded from size-factor estimation, as in DESeq2.
+
+    Each sample is divided by its size factor, then expressed as a log2 ratio
+    against the per-gene median of the size-factor-normalized controls. Controls
+    are anchored leave-one-out (against the median of their *peers*) so a
+    control's own .cnr retains QC signal rather than collapsing to zero. With a
+    single control this reduces to a self-divide (warned upstream in
+    :func:`cnvlib.import_rna.do_import_rna`). Because the per-gene reference
+    cancels any per-gene constant, both the size factors and the final ratios are
+    invariant to transcript length.
+    """
+    # 1. DESeq2 median-of-ratios size factors from the reference set.
+    normal_cols = list(normal_ids)
+    ref_cols = normal_cols if normal_cols else list(sample_depths.columns)
+    ref = sample_depths[ref_cols]
+    # Only genes detected in every reference sample inform the size factors.
+    usable = (ref > 0).all(axis=1)
+    geomean = np.exp(np.log(ref.loc[usable]).mean(axis=1))
+    # Each sample's size factor = median over usable genes of depth / geomean.
+    size_factors = sample_depths.loc[usable].divide(geomean, axis=0).median(axis=0)
+    # Size factors are undefined when too few genes are detected across all
+    # controls (no usable genes -> all NaN, or a sample too sparse for a positive
+    # median). Fall back to no library-size scaling for those samples, and surface
+    # it -- silent degradation is a clinical-output hazard.
+    degenerate = ~(np.isfinite(size_factors) & (size_factors > 0))
+    if degenerate.any():
+        logging.warning(
+            "size-factors: %d/%d sample(s) had an undefined or non-positive size "
+            "factor (too few genes detected across all controls); using no "
+            "library-size scaling for them",
+            int(degenerate.sum()),
+            len(size_factors),
+        )
+        size_factors = size_factors.where(~degenerate, 1.0)
+    norm = sample_depths.divide(size_factors, axis=1)
+
+    # 2. Anchor against the size-factor-normalized baseline. ``norm`` is a fresh
+    # frame and is mutated in place below; the per-gene baselines are taken from
+    # ``normal_norm`` (an independent copy of the controls) before any mutation,
+    # so anchoring is order-independent.
+    if not normal_cols:
+        baseline = norm.median(axis=1).replace(0, np.nan)
+        return norm.divide(baseline, axis=0)
+
+    normal_norm = norm[normal_cols]
+    normal_col_set = set(normal_cols)
+    # Tumors: divide by the per-gene median across all controls.
+    baseline = normal_norm.median(axis=1).replace(0, np.nan)
+    tumor_cols = [c for c in norm.columns if c not in normal_col_set]
+    if tumor_cols:
+        norm[tumor_cols] = norm[tumor_cols].divide(baseline, axis=0)
+    # Controls: leave-one-out -- anchor each to the median of its peers. With a
+    # lone control there are no peers, so it self-divides to a flat ~0 .cnr.
+    for col in normal_cols:
+        peers = normal_norm.drop(columns=col)
+        loo = peers.median(axis=1) if peers.shape[1] else normal_norm[col]
+        norm[col] = norm[col] / loo.replace(0, np.nan)
+    return norm
+
+
+def safe_log2(values, min_log2):
+    """Transform values to log2 scale, safely handling zeros.
+
+    Parameters
+    ----------
+    values : np.array
+        Absolute-scale values to transform. Should be non-negative.
+    min_log2 : float
+        Assign input zeros this log2-scaled value instead of -inf. Rather than
+        hard-clipping, input values near 0 (especially below 2^min_log2) will be
+        squeezed a bit above `min_log2` in the log2-scale output.
+    """
+    absolute_shift = 2**min_log2
+    return np.log2(values + absolute_shift)
+
+
+def attach_gene_info_to_cnr(sample_counts, sample_data_log2, gene_info, read_len=100):
+    """Join gene info to each sample's log2 expression ratios.
+
+    Add the Ensembl gene info to the aggregated gene expected read counts,
+    dropping genes that are not in the Ensembl table
+    I.e., filter probes down to those genes that have names/IDs in the gene
+    resource table.
+
+    Split out samples to individual .cnr files, keeping (most) gene info.
+    """
+    gi_cols = ["chromosome", "start", "end", "gene", "gc", "tx_length", "weight"]
+    cnr_info = gene_info.loc[:, gi_cols].copy()
+    cnr_info["gene"] = cnr_info["gene"].fillna("-")
+    # Fill NA fields with the lowest finite value in the same row.
+    # Only use NULL_LOG2_COVERAGE if all samples are NA / zero-depth.
+    gene_minima = sample_data_log2.min(axis=1, skipna=True)
+    # If a gene has NaN across all samples, fill with NULL_LOG2_COVERAGE
+    gene_minima = gene_minima.fillna(NULL_LOG2_COVERAGE)
+    assert not gene_minima.hasnans, gene_minima.head()
+    for (sample_id, sample_col), (_sid_log2, sample_log2) in zip(
+        sample_counts.items(), sample_data_log2.items(), strict=True
+    ):
+        tx_len = cnr_info.tx_length
+        sample_depth = (read_len * sample_col / tx_len).rename("depth")
+        sample_log2 = sample_log2.fillna(gene_minima).rename("log2")
+        cdata = pd.concat([cnr_info, sample_depth, sample_log2], axis=1).reset_index(
+            drop=True
+        )
+        cnr = CNA(cdata, {"sample_id": sample_id})
+        cnr.sort_columns()
+        yield cnr
+
+
+def correct_cnr(cnr, do_gc, do_txlen, max_log2, diploid_parx_genome):
+    """Apply bias corrections & smoothing.
+
+    - Biases: 'gc', 'length'
+    - Smoothing: rolling triangle window using weights.
+    """
+    cnr.center_all(diploid_parx_genome=diploid_parx_genome)
+    # Biases, similar to stock CNVkit
+    if any((do_gc, do_txlen)):
+        if do_gc and "gc" in cnr:
+            cnr = center_by_window(cnr, 0.1, cnr["gc"])
+        if do_txlen and "tx_length" in cnr:
+            cnr = center_by_window(cnr, 0.1, cnr["tx_length"])
+        # Re-center after bias correction. Carry diploid_parx_genome through:
+        # GC/transcript-length window correction is invariant to a uniform
+        # pre-shift, so without it the earlier center_all(diploid_parx_genome)
+        # is silently undone and the flag becomes a no-op.
+        cnr.center_all(diploid_parx_genome=diploid_parx_genome)
+    if max_log2:
+        cnr[cnr["log2"] > max_log2, "log2"] = max_log2
+    return cnr

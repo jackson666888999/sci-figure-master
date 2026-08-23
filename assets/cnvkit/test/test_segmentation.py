@@ -1,0 +1,900 @@
+#!/usr/bin/env python
+"""Tests for segmentation commands (Python-side integration)."""
+
+import logging
+import os
+import shutil
+import tempfile
+import unittest
+import warnings
+
+import pytest
+
+logging.basicConfig(level=logging.ERROR, format="%(message)s")
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+import numpy as np
+import pandas as pd
+import pysam
+from conftest import linecount
+
+import cnvlib
+from cnvlib import (
+    access,
+    antitarget,
+    autobin,
+    batch,
+    bintest,
+    call,
+    cluster,
+    cmdutil,
+    cnary,
+    commands,
+    core,
+    coverage,
+    diagram,
+    export,
+    fix,
+    heatmap,
+    import_rna,
+    importers,
+    metrics,
+    parallel,
+    params,
+    plots,
+    purity,
+    reference,
+    reports,
+    samutil,
+    scatter,
+    segfilters,
+    segmentation,
+    segmetrics,
+    smoothing,
+    vary,
+)
+from skgenome import GenomicArray as GA
+from skgenome import tabio
+
+
+class SegmentationTests(unittest.TestCase):
+    """Tests for segmentation commands."""
+
+    def test_segment_warns_on_missing_sample_id(self):
+        """A CopyNumArray with no sample_id emits one warning and falls back to
+        the literal 'None' as the segment ID. The CLI never reaches this --
+        read() derives sample_id from the input filename -- but the raw
+        in-memory API can construct an array without one.
+        """
+        cnarr = cnvlib.read("formats/amplicon.cnr")
+        cnarr.meta.pop("sample_id", None)
+        self.assertIsNone(cnarr.sample_id)
+        with self.assertLogs(level="WARNING") as cm:
+            segmentation.do_segmentation(cnarr, "haar")
+        self.assertTrue(any("sample_id" in line for line in cm.output))
+
+    def test_segment_no_warning_when_sample_id_present(self):
+        """The missing-sample_id warning stays silent when sample_id is set."""
+        cnarr = cnvlib.read("formats/amplicon.cnr")
+        self.assertIsNotNone(cnarr.sample_id)
+        with self.assertLogs(level="INFO") as cm:
+            segmentation.do_segmentation(cnarr, "haar")
+        self.assertFalse(any("no sample_id" in line.lower() for line in cm.output))
+
+    def test_segment(self):
+        """The 'segment' command."""
+        cnarr = cnvlib.read("formats/amplicon.cnr")
+        n_chroms = cnarr.chromosome.nunique()
+        # NB: R methods are in another script; haar is pure-Python
+        segments = segmentation.do_segmentation(cnarr, "haar")
+        self.assertGreater(len(segments), n_chroms)
+        self.assertTrue((segments.start < segments.end).all())
+        segments = segmentation.do_segmentation(
+            cnarr, "haar", threshold=0.0001, skip_low=True
+        )
+        self.assertGreater(len(segments), n_chroms)
+        self.assertTrue((segments.start < segments.end).all())
+        # haar segmentation with variants unions depth+BAF breakpoints;
+        # see test_haar_vcf_detects_copy_neutral_loh for the LOH behavior.
+        # Here just confirm it runs and yields valid segments.
+        varr = tabio.read("formats/na12878_na12882_mix.vcf", "vcf")
+        segments = segmentation.do_segmentation(cnarr, "haar", variants=varr)
+        self.assertGreater(len(segments), n_chroms)
+        self.assertTrue((segments.start < segments.end).all())
+
+    def test_segment_haar_no_duplicate_segments(self):
+        """haar must not emit duplicate or overlapping segments (#1125).
+
+        Re-segmenting the regression fixture 9_2 with haar previously produced
+        pairs of segments sharing identical (chromosome, start, end) bounds:
+        do_segmentation splits by chromosome arm, segment_haar re-splits an arm
+        on internal gaps, and pd.concat left duplicate index labels so
+        transfer_fields' by-label endpoint stretch collapsed distinct segments
+        onto the full-arm span. Assert unique, non-overlapping intervals.
+        """
+        cnarr = cnvlib.read("formats/regression/p2-9_2.cnr")
+        segments = segmentation.do_segmentation(cnarr, "haar")
+        df = segments.data
+        # No two segments share the same interval.
+        dupes = df.duplicated(subset=["chromosome", "start", "end"], keep=False)
+        self.assertFalse(
+            dupes.any(),
+            f"duplicate segment intervals:\n"
+            f"{df.loc[dupes, ['chromosome', 'start', 'end']]}",
+        )
+        # Every segment is well-formed and segments do not overlap within a
+        # chromosome (sorted by start, each begins at or after the prior end).
+        self.assertTrue((df["start"] < df["end"]).all())
+        for chrom, grp in df.groupby("chromosome"):
+            ordered = grp.sort_values("start")
+            prev_ends = ordered["end"].shift(1)
+            overlap = ordered["start"] < prev_ends
+            self.assertFalse(overlap.any(), f"overlapping segments on {chrom}")
+
+    @pytest.mark.slow
+    def test_segment_hmm(self):
+        """The 'segment' command with HMM methods."""
+        # Test all HMM method variants on one file
+        cnarr = cnvlib.read("formats/amplicon.cnr")
+        n_chroms = cnarr.chromosome.nunique()
+        # NB: R methods are in another script; haar is pure-Python
+        segments = segmentation.do_segmentation(cnarr, "hmm")
+        self.assertGreater(len(segments), n_chroms)
+        self.assertTrue((segments.start < segments.end).all())
+        segments = segmentation.do_segmentation(cnarr, "hmm-tumor", skip_low=True)
+        self.assertGreater(len(segments), n_chroms)
+        self.assertTrue((segments.start < segments.end).all())
+        segments = segmentation.do_segmentation(cnarr, "hmm-germline")
+        self.assertGreater(len(segments), n_chroms)
+        self.assertTrue((segments.start < segments.end).all())
+        varr = tabio.read("formats/na12878_na12882_mix.vcf", "vcf")
+        segments = segmentation.do_segmentation(cnarr, "hmm", variants=varr)
+        self.assertGreater(len(segments), n_chroms)
+        # Verify default HMM also works on a different dataset
+        cnarr2 = cnvlib.read("formats/p2-20_1.cnr")
+        n_chroms2 = cnarr2.chromosome.nunique()
+        segments = segmentation.do_segmentation(cnarr2, "hmm")
+        self.assertGreater(len(segments), n_chroms2)
+        self.assertTrue((segments.start < segments.end).all())
+
+    @pytest.mark.slow
+    def test_segment_parallel(self):
+        """The 'segment' command, in parallel."""
+        cnarr = cnvlib.read("formats/amplicon.cnr")
+        psegments = segmentation.do_segmentation(cnarr, "haar", processes=2)
+        ssegments = segmentation.do_segmentation(cnarr, "haar", processes=1)
+        self.assertEqual(psegments.data.shape, ssegments.data.shape)
+        self.assertEqual(len(psegments.meta), len(ssegments.meta))
+        # Parallel and serial must agree on segment boundaries and values, not
+        # just shape -- a chromosome-ordering or result-assembly bug would slip
+        # past a shape-only check.
+        psorted = psegments.data.sort_values(["chromosome", "start"]).reset_index(
+            drop=True
+        )
+        ssorted = ssegments.data.sort_values(["chromosome", "start"]).reset_index(
+            drop=True
+        )
+        self.assertEqual(list(psorted["chromosome"]), list(ssorted["chromosome"]))
+        np.testing.assert_array_equal(
+            psorted["start"].to_numpy(), ssorted["start"].to_numpy()
+        )
+        np.testing.assert_array_equal(
+            psorted["end"].to_numpy(), ssorted["end"].to_numpy()
+        )
+        np.testing.assert_allclose(
+            psorted["log2"].to_numpy(), ssorted["log2"].to_numpy(), atol=1e-9
+        )
+
+    def test_segment_empty_input(self):
+        """Test segmentation with empty CNR input (issue #970)."""
+        # Create an empty CNA with proper structure (header only)
+        empty_data = pd.DataFrame(
+            columns=["chromosome", "start", "end", "gene", "log2"]
+        )
+        empty_cnarr = cnvlib.cnary.CopyNumArray(empty_data, {"sample_id": "test"})
+
+        # Test with serial processing
+        segments = segmentation.do_segmentation(empty_cnarr, "haar", processes=1)
+        self.assertEqual(len(segments), 0)
+        self.assertListEqual(
+            list(segments.data.columns), list(empty_cnarr.data.columns)
+        )
+
+        # Test with parallel processing
+        psegments = segmentation.do_segmentation(empty_cnarr, "haar", processes=2)
+        self.assertEqual(len(psegments), 0)
+
+        # Test with save_dataframe=True
+        segments_df, rstr = segmentation.do_segmentation(
+            empty_cnarr, "haar", processes=1, save_dataframe=True
+        )
+        self.assertEqual(len(segments_df), 0)
+        self.assertEqual(rstr, "")
+
+    def test_threshold_zero_not_overridden(self):
+        """threshold=0.0 is honored, not treated as 'unset'.
+
+        'if not threshold' replaced the valid value 0.0 with the method default;
+        'if threshold is None' keeps it.
+        """
+        cnarr = cnvlib.read("formats/amplicon.cnr")
+        with self.assertLogs(level="INFO") as cm:
+            segmentation.do_segmentation(cnarr, "haar", threshold=0.0, processes=1)
+        msg = " ".join(cm.output)
+        self.assertIn("significance threshold 0.0,", msg)
+        self.assertNotIn("0.0001", msg)
+
+    def test_haar_vcf_detects_copy_neutral_loh(self):
+        """`-m haar --vcf` unions depth+BAF breakpoints -> catches copy-neutral
+        LOH (flat depth, BAF shift), and adds a 'baf' column."""
+        n = 120
+        rng = np.random.default_rng(0)
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * n,
+                    "start": np.arange(n) * 1000,
+                    "end": np.arange(n) * 1000 + 1000,
+                    "gene": "-",
+                    "log2": rng.normal(0.0, 0.05, n),  # flat depth, no CN change
+                    "weight": np.ones(n),
+                }
+            )
+        )
+        # Het SNPs: balanced (minor/depth=0.5) first half, LOH (0.3) second half
+        alt = np.concatenate([np.full(60, 15.0), np.full(60, 9.0)])
+        varr = vary.VariantArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * n,
+                    "start": np.arange(n) * 1000 + 500,
+                    "end": np.arange(n) * 1000 + 501,
+                    "ref": ["A"] * n,
+                    "alt": ["G"] * n,
+                    "zygosity": np.full(n, 0.5),
+                    "alt_count": alt,
+                    "depth": np.full(n, 30.0),
+                    "alt_freq": alt / 30.0,
+                }
+            )
+        )
+        # Depth-only: flat -> no BAF breakpoint, no 'baf' column
+        depth_only = segmentation.do_segmentation(cnarr, "haar")
+        self.assertNotIn("baf", depth_only.data.columns)
+        # Joint: the BAF shift at bin 60 must introduce a breakpoint there
+        joint = segmentation.do_segmentation(cnarr, "haar", variants=varr)
+        self.assertIn("baf", joint.data.columns)
+        self.assertGreater(len(joint), len(depth_only))
+        boundaries = set(joint.start.tolist()) | set(joint.end.tolist())
+        self.assertTrue(
+            any(55000 <= b <= 65000 for b in boundaries),
+            f"expected a breakpoint near the BAF shift (~60000); got {sorted(boundaries)}",
+        )
+
+    def test_haar_vcf_without_allele_info_falls_back(self):
+        """`-m haar --vcf` on a VCF lacking AF and AD/DP must not crash; it
+        falls back to depth-only segmentation."""
+        n = 30
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * n,
+                    "start": np.arange(n) * 1000,
+                    "end": np.arange(n) * 1000 + 1000,
+                    "gene": "-",
+                    "log2": np.zeros(n),
+                    "weight": np.ones(n),
+                }
+            )
+        )
+        # Genotype-only VCF: het zygosity, but no alt_freq / alt_count / depth
+        varr = vary.VariantArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * 10,
+                    "start": np.arange(10) * 100,
+                    "end": np.arange(10) * 100 + 1,
+                    "ref": ["A"] * 10,
+                    "alt": ["G"] * 10,
+                    "zygosity": np.full(10, 0.5),
+                }
+            )
+        )
+        seg = segmentation.do_segmentation(cnarr, "haar", variants=varr)
+        self.assertGreater(len(seg), 0)
+        self.assertTrue((seg.start < seg.end).all())
+
+
+class TransferFieldsTests(unittest.TestCase):
+    """Tests for transfer_fields and do_segmentation NaN handling."""
+
+    def test_transfer_fields_nan_gene(self):
+        """transfer_fields handles NaN gene names without crashing (issue #900)."""
+        n = 10
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * n,
+                    "start": np.arange(0, n * 1000, 1000),
+                    "end": np.arange(1000, n * 1000 + 1000, 1000),
+                    "gene": ["GeneA", float("nan"), "GeneB"] * 3 + [float("nan")],
+                    "log2": np.zeros(n),
+                    "depth": np.ones(n) * 100.0,
+                    "weight": np.ones(n),
+                }
+            )
+        )
+        # One segment covering all bins
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"],
+                    "start": [0],
+                    "end": [n * 1000],
+                    "gene": ["-"],
+                    "log2": [0.0],
+                    "probes": [n],
+                    "weight": [0.0],
+                }
+            )
+        )
+        result = segmentation.transfer_fields(segarr, cnarr)
+        gene_val = result["gene"].iat[0]
+        self.assertIsInstance(gene_val, str)
+        self.assertNotIn("nan", gene_val.lower())
+        self.assertIn("GeneA", gene_val)
+        self.assertIn("GeneB", gene_val)
+
+    def test_transfer_fields_genes_near_segment_end(self):
+        """Genes from bins near a segment's end are kept in its label (#688).
+
+        Uses the reported EGFR geometry: bins at chr7:55,018,770-55,019,423
+        fall inside the segment chr7:54,246,732-55,031,592 (well before its
+        end), and more EGFR bins fall in the adjacent segment. EGFR must appear
+        in *both* segment labels -- the original report dropped it from the
+        first, where the gene-bearing bins sit near the segment's end.
+        """
+        bins = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr7"] * 6,
+                    "start": [
+                        54246732,
+                        54800000,
+                        55018770,
+                        55019096,
+                        55032092,
+                        55088166,
+                    ],
+                    "end": [54300000, 54900000, 55019096, 55019423, 55032193, 55088469],
+                    "gene": ["VSTM2A", "SEC61G", "EGFR", "EGFR", "EGFR", "EGFR"],
+                    "log2": np.zeros(6),
+                    "depth": np.ones(6) * 100.0,
+                    "weight": np.ones(6),
+                }
+            )
+        )
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr7", "chr7"],
+                    "start": [54246732, 55032092],
+                    "end": [55031592, 55365525],
+                    "gene": ["-", "-"],
+                    "log2": [0.0, 0.0],
+                    "probes": [4, 2],
+                    "weight": [0.0, 0.0],
+                }
+            )
+        )
+        result = segmentation.transfer_fields(segarr, bins)
+        self.assertIn("EGFR", result["gene"].iat[0])
+        self.assertIn("VSTM2A", result["gene"].iat[0])
+        self.assertIn("EGFR", result["gene"].iat[1])
+
+    def test_transfer_fields_nan_weights(self):
+        """transfer_fields handles NaN bin weights without NaN in .cns output."""
+        n = 10
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * n,
+                    "start": np.arange(0, n * 1000, 1000),
+                    "end": np.arange(1000, n * 1000 + 1000, 1000),
+                    "gene": ["GeneA"] * n,
+                    "log2": np.zeros(n),
+                    "depth": np.ones(n) * 100.0,
+                    "weight": [
+                        1.0,
+                        np.nan,
+                        1.0,
+                        np.nan,
+                        1.0,
+                        1.0,
+                        np.nan,
+                        1.0,
+                        1.0,
+                        1.0,
+                    ],
+                }
+            )
+        )
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"],
+                    "start": [0],
+                    "end": [n * 1000],
+                    "gene": ["-"],
+                    "log2": [0.0],
+                    "probes": [n],
+                    "weight": [0.0],
+                }
+            )
+        )
+        result = segmentation.transfer_fields(segarr, cnarr)
+        # Segment weight must not be NaN
+        self.assertFalse(np.isnan(result["weight"].iat[0]))
+        # Should be the sum of non-NaN weights (7.0)
+        self.assertAlmostEqual(result["weight"].iat[0], 7.0)
+        # Depth should be valid (weighted mean of non-NaN bins)
+        self.assertFalse(np.isnan(result["depth"].iat[0]))
+
+        # All-NaN weights: segment weight should be 0, depth should be 0
+        cnarr_allnan = cnarr.copy()
+        cnarr_allnan["weight"] = np.nan
+        result2 = segmentation.transfer_fields(segarr.copy(), cnarr_allnan)
+        self.assertEqual(result2["weight"].iat[0], 0.0)
+        self.assertEqual(result2["depth"].iat[0], 0.0)
+
+    def test_transfer_fields_stretches_every_chromosome(self):
+        """Each chromosome's boundary segments cover that chromosome's bins.
+
+        The HMM methods segment the whole genome in one call, so transfer_fields
+        receives a multi-chromosome table. Stretching only the global first and
+        last segment would leave every other chromosome's boundary segments
+        short of their bins. Each chromosome gets a distinct coordinate origin
+        so that looking the bin bounds up globally instead of per chromosome
+        fails the assertions too.
+        """
+        n = 10
+        origins = {"chr1": 0, "chr2": 1_000_000, "chr3": 2_000_000}
+        bins = pd.concat(
+            [
+                pd.DataFrame(
+                    {
+                        "chromosome": [chrom] * n,
+                        "start": origin + np.arange(0, n * 1000, 1000),
+                        "end": origin + np.arange(1000, n * 1000 + 1000, 1000),
+                        "gene": ["G"] * n,
+                        "log2": np.zeros(n),
+                        "depth": np.ones(n) * 100.0,
+                        "weight": np.ones(n),
+                    }
+                )
+                for chrom, origin in origins.items()
+            ],
+            ignore_index=True,
+        )
+        cnarr = cnary.CopyNumArray(bins)
+        # Two segments per chromosome, all inset from that chromosome's bounds
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1", "chr1", "chr2", "chr2", "chr3", "chr3"],
+                    "start": [o + s for o in origins.values() for s in (2000, 5000)],
+                    "end": [o + e for o in origins.values() for e in (5000, 8000)],
+                    "gene": ["-"] * 6,
+                    "log2": [0.0] * 6,
+                    "probes": [3, 3] * 3,
+                    "weight": [0.0] * 6,
+                }
+            )
+        )
+        result = segmentation.transfer_fields(segarr, cnarr)
+        self.assertEqual(
+            result["start"].tolist(),
+            [o + s for o in origins.values() for s in (0, 5000)],
+        )
+        self.assertEqual(
+            result["end"].tolist(),
+            [o + e for o in origins.values() for e in (5000, 10000)],
+        )
+
+    def test_transfer_fields_rejects_unknown_chromosome(self):
+        """A segment on a chromosome absent from the bins must fail loudly.
+
+        Segments derive from the bins, so a mismatch means a name was mangled
+        in transit -- DNAcopy renders a zero-padded contig '01' as '1'. Both the
+        endpoint stretch and the gene/weight/depth aggregation match on
+        chromosome name, so such a segment would otherwise be emitted with the
+        placeholder gene '-' and weight/depth 0 and no warning.
+        """
+        n = 10
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["01"] * n,
+                    "start": np.arange(0, n * 1000, 1000),
+                    "end": np.arange(1000, n * 1000 + 1000, 1000),
+                    "gene": ["G"] * n,
+                    "log2": np.zeros(n),
+                    "depth": np.ones(n) * 100.0,
+                    "weight": np.ones(n),
+                }
+            )
+        )
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["1"],  # as DNAcopy renders '01'
+                    "start": [2000],
+                    "end": [8000],
+                    "gene": ["-"],
+                    "log2": [0.0],
+                    "probes": [6],
+                    "weight": [0.0],
+                }
+            )
+        )
+        with self.assertRaises(ValueError) as caught:
+            segmentation.transfer_fields(segarr, cnarr)
+        self.assertIn("1", str(caught.exception))
+
+    @staticmethod
+    def _bin_gap_pair(with_weight):
+        """Two chr1 bins separated by a 99 kb gap, and three segments over them.
+
+        Bins: 0-1000 (AAA, depth 100, weight 1) and 100000-101000 (BBB, depth
+        200, weight 2). Segments: 0-20000, 20000-60000 and 60000-101000, of
+        which the middle one lies wholly inside the gap. ``with_weight`` adds
+        the bin weight column; without it the aggregation weights bins equally.
+        """
+        bins = {
+            "chromosome": ["chr1"] * 2,
+            "start": [0, 100_000],
+            "end": [1000, 101_000],
+            "gene": ["AAA", "BBB"],
+            "log2": [0.0, 0.0],
+            "depth": [100.0, 200.0],
+        }
+        if with_weight:
+            bins["weight"] = [1.0, 2.0]
+        segments = {
+            "chromosome": ["chr1"] * 3,
+            "start": [0, 20_000, 60_000],
+            "end": [20_000, 60_000, 101_000],
+            "gene": ["-"] * 3,
+            "log2": [0.0] * 3,
+        }
+        return (
+            cnary.CopyNumArray(pd.DataFrame(bins)),
+            cnary.CopyNumArray(pd.DataFrame(segments)),
+        )
+
+    def test_transfer_fields_segment_spanning_no_bins(self):
+        """A segment overlapping no bins takes the empty aggregate, not a neighbor's.
+
+        ``iter_slices(..., keep_empty=False)`` omits the yield for such a
+        segment, so a consumer pairing the yields with segment rows
+        positionally would shift every later row onto the following segment's
+        bins. The middle segment here lies wholly inside a bin-free gap; each
+        flanking segment must still get its own bin.
+        """
+        cnarr, segarr = self._bin_gap_pair(with_weight=True)
+        result = segmentation.transfer_fields(segarr, cnarr)
+        self.assertEqual(result["gene"].tolist(), ["AAA", "-", "BBB"])
+        self.assertEqual(result["weight"].tolist(), [1.0, 0.0, 2.0])
+        self.assertEqual(result["depth"].tolist(), [100.0, 0.0, 200.0])
+
+    def test_transfer_fields_non_contiguous_chromosomes(self):
+        """Aggregates follow segment rows, not chromosome-grouped yield order.
+
+        ``by_shared_chroms`` groups the segments by chromosome with
+        ``groupby(sort=False)``, so consuming it directly would yield in
+        chromosome-of-first-appearance order and write values across
+        chromosomes; ``iter_slices`` re-orders to the segment rows. Interleaved
+        chromosome rows arise only for an in-memory array assembled by
+        concatenation and never re-sorted, since every file-based route is
+        sorted by ``tabio.read``. chr2 before chr10 makes first-appearance
+        order differ from the lexicographic order pandas would use with
+        ``groupby(sort=True)``, so recovering the groups by sorting fails here
+        too. Every gene, depth and weight is distinct, so any permutation of
+        the assignment fails.
+        """
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr2", "chr2", "chr10", "chr10"],
+                    "start": [0, 1000, 0, 1000],
+                    "end": [1000, 2000, 1000, 2000],
+                    "gene": ["AAA", "BBB", "CCC", "DDD"],
+                    "log2": [0.0] * 4,
+                    "depth": [100.0, 200.0, 300.0, 400.0],
+                    "weight": [1.0, 2.0, 3.0, 4.0],
+                }
+            )
+        )
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr2", "chr10", "chr2", "chr10"],
+                    "start": [0, 0, 1000, 1000],
+                    "end": [1000, 1000, 2000, 2000],
+                    "gene": ["-"] * 4,
+                    "log2": [0.0] * 4,
+                }
+            )
+        )
+        result = segmentation.transfer_fields(segarr, cnarr)
+        self.assertEqual(result["gene"].tolist(), ["AAA", "CCC", "BBB", "DDD"])
+        self.assertEqual(result["weight"].tolist(), [1.0, 3.0, 2.0, 4.0])
+        self.assertEqual(result["depth"].tolist(), [100.0, 300.0, 200.0, 400.0])
+
+    def test_transfer_fields_no_weight_column_spanning_no_bins(self):
+        """Without a bin weight column, a bin-free segment gets depth 0, not NaN.
+
+        ``weight`` is optional throughout CNVkit; absent, bins are weighted
+        equally, so the segment weight is the bin count and the depth is the
+        plain mean. The mean of an empty selection is NaN and warns, which
+        would put NaN in the .cns.
+        """
+        cnarr, segarr = self._bin_gap_pair(with_weight=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            result = segmentation.transfer_fields(segarr, cnarr)
+        self.assertEqual(result["depth"].tolist(), [100.0, 0.0, 200.0])
+        self.assertEqual(result["weight"].tolist(), [1.0, 0.0, 1.0])
+        # The .cns columns are float, not the int the bin count would infer
+        self.assertEqual(result.data["weight"].dtype, np.float64)
+        self.assertEqual(result.data["depth"].dtype, np.float64)
+
+    def test_transfer_fields_filtered_bins_gapped_index(self):
+        """Bin aggregation survives a bin table whose index has gaps.
+
+        ``iter_slices`` yields index *labels*, and the aggregation indexes the
+        extracted numpy arrays positionally, so ``transfer_fields`` resets the
+        index first. Without that, a filtered ``cnarr`` -- as the upstream log2
+        and coverage filters produce -- reads the wrong bins or runs off the
+        end of the arrays.
+        """
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * 4,
+                    "start": [0, 100_000, 200_000, 300_000],
+                    "end": [1000, 101_000, 201_000, 301_000],
+                    "gene": ["AAA", "BBB", "CCC", "DDD"],
+                    "log2": [0.0] * 4,
+                    "depth": [100.0, 200.0, 300.0, 400.0],
+                    "weight": [1.0, 2.0, 3.0, 4.0],
+                }
+            )
+        )
+        # As drop_outliers / drop_low_coverage do: filter without re-indexing
+        kept = cnarr[cnarr["depth"] >= 300.0]
+        self.assertEqual(kept.data.index.tolist(), [2, 3])
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * 2,
+                    "start": [200_000, 300_000],
+                    "end": [201_000, 301_000],
+                    "gene": ["-"] * 2,
+                    "log2": [0.0] * 2,
+                }
+            )
+        )
+        result = segmentation.transfer_fields(segarr, kept)
+        self.assertEqual(result["gene"].tolist(), ["CCC", "DDD"])
+        self.assertEqual(result["depth"].tolist(), [300.0, 400.0])
+        self.assertEqual(result["weight"].tolist(), [3.0, 4.0])
+
+    def test_do_segmentation_vcf_subsegment_without_bins(self):
+        """End-to-end: --vcf sub-segments can land in a bin-free gap.
+
+        ``variants_in_segment`` places a breakpoint midway between two SNVs,
+        which on a targeted panel can fall entirely inside the gap between two
+        bins. Whatever the resulting breakpoints, each bin's gene, depth and
+        weight must land on the segment that actually contains it.
+        """
+        bins, _segarr = self._bin_gap_pair(with_weight=True)
+        # 180 SNVs, all inside the 99 kb bin-free gap: 120 spread across it,
+        # plus 60 at BAF 0.75 in its middle, so the allele-frequency split
+        # necessarily lands between the bins.
+        pos = np.concatenate(
+            [np.linspace(1500, 99_000, 120), np.linspace(20_000, 60_000, 60)]
+        ).astype(int)
+        baf = np.concatenate([np.full(120, 0.5), np.full(60, 0.75)])
+        order = np.argsort(pos)
+        varr = vary.VariantArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * 180,
+                    "start": pos[order],
+                    "end": pos[order] + 1,
+                    "ref": ["A"] * 180,
+                    "alt": ["G"] * 180,
+                    "zygosity": np.full(180, 0.5),
+                    "alt_freq": baf[order],
+                    "depth": np.full(180, 100.0),
+                }
+            )
+        )
+        segarr = segmentation.do_segmentation(bins, "none", variants=varr)
+        # The bin-free sub-segment is the condition under test; assert it exists
+        # so that a later change to `variants_in_segment` cannot make the test
+        # vacuous.
+        covered = [
+            ((bins.start < seg.end) & (bins.end > seg.start)).any()
+            for seg in segarr.data.itertuples()
+        ]
+        self.assertIn(False, covered)
+        for _, abin in bins.data.iterrows():
+            midpoint = (abin.start + abin.end) // 2
+            hits = segarr.data[(segarr.start <= midpoint) & (midpoint < segarr.end)]
+            self.assertEqual(len(hits), 1)
+            self.assertIn(abin.gene, hits["gene"].iat[0])
+            self.assertEqual(hits["depth"].iat[0], abin.depth)
+            self.assertEqual(hits["weight"].iat[0], abin.weight)
+
+    def test_do_segmentation_drops_nan_log2(self):
+        """do_segmentation tolerates NaN-log2 bins on the default path (#881).
+
+        Without --drop-low-coverage (skip_low=False), NaN-log2 bins are never
+        filtered before drop_outliers' Savitzky-Golay smoother, whose scipy
+        lstsq rejects non-finite input ("array must not contain infs or NaNs"),
+        crashing segmentation long before reaching DNAcopy. The NaN bins must be
+        dropped first. Uses the pure-Python 'haar' method so no R is required;
+        the savgol outlier path that crashed is shared by every method.
+        """
+        n = 120  # > drop_outliers' width (50) so savgol actually runs
+        rng = np.random.default_rng(0)
+        log2 = rng.normal(0, 0.2, n)
+        log2[5] = np.nan  # inside the leading savgol edge window
+        log2[60] = np.nan
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * n,
+                    "start": np.arange(0, n * 1000, 1000),
+                    "end": np.arange(1000, n * 1000 + 1000, 1000),
+                    "gene": ["G"] * n,
+                    "log2": log2,
+                    "depth": np.ones(n) * 100.0,
+                    "weight": np.ones(n),
+                }
+            )
+        )
+        # Must not raise, and no NaN should leak into the segment log2 values
+        cns = segmentation.do_segmentation(cnarr, "haar", processes=1)
+        self.assertGreater(len(cns), 0)
+        self.assertFalse(np.isnan(cns["log2"].to_numpy()).any())
+
+    def test_do_segmentation_drops_inf_log2(self):
+        """do_segmentation tolerates ±inf-log2 bins (#508, sibling to #881).
+
+        The #881 fix dropped NaN-log2 bins before drop_outliers' Savitzky-Golay
+        smoother because scipy's lstsq rejects non-finite input ("array must
+        not contain infs or NaNs"). But pandas ``.isna()`` does NOT catch
+        ±inf, so degenerate flat-reference WGS data (#508) -- where some
+        bins can land at ±inf after reference subtraction -- still crashed
+        on the same path. Broadening the prefilter from ``.isna()`` to
+        ``~np.isfinite`` covers both.
+        """
+        n = 120  # > drop_outliers' width (50) so savgol actually runs
+        rng = np.random.default_rng(0)
+        log2 = rng.normal(0, 0.2, n)
+        log2[5] = np.inf  # inside the leading savgol edge window
+        log2[60] = -np.inf
+        log2[80] = np.nan  # confirm NaN is still handled alongside ±inf
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * n,
+                    "start": np.arange(0, n * 1000, 1000),
+                    "end": np.arange(1000, n * 1000 + 1000, 1000),
+                    "gene": ["G"] * n,
+                    "log2": log2,
+                    "depth": np.ones(n) * 100.0,
+                    "weight": np.ones(n),
+                }
+            )
+        )
+        # Must not raise, and the segment log2 must be finite (no inf/nan leaks).
+        cns = segmentation.do_segmentation(cnarr, "haar", processes=1)
+        self.assertGreater(len(cns), 0)
+        self.assertTrue(np.isfinite(cns["log2"].to_numpy()).all())
+
+    def test_hmm_tolerates_nonfinite_log2_and_nan_weight(self):
+        """HMM segmentation must not hard-abort on non-finite bins (#672).
+
+        Dropping non-finite-log2 bins (the boundary guard) hands the HMM path a
+        pandas copy-on-write slice whose buffers are read-only. HMM then calls
+        smooth_log2 -> guess_window_size -> weighted_std, whose NaN-weight fill
+        formerly wrote in place and raised "assignment destination is
+        read-only", intermittently aborting batch/coverage runs. A surviving
+        NaN bin weight must be filled on a copy, not the shared buffer.
+
+        Uses a single chromosome so the whole-genome transfer_fields path is not
+        exercised (that edge is covered by
+        test_hmm_first_chromosome_entirely_dropped); the weighted_std path that
+        crashed is shared by every method.
+        """
+        n = 120  # > guess_window_size / drop_outliers width so smoothing runs
+        rng = np.random.default_rng(0)
+        log2 = rng.normal(0, 0.2, n)
+        log2[5] = np.nan  # dropped at the boundary -> read-only CoW slice
+        log2[60] = np.inf  # ±inf dropped too
+        weight = np.ones(n)
+        weight[70] = np.nan  # survives the log2 drop -> hits the fill path
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * n,
+                    "start": np.arange(0, n * 1000, 1000),
+                    "end": np.arange(1000, n * 1000 + 1000, 1000),
+                    "gene": ["G"] * n,
+                    "log2": log2,
+                    "depth": np.ones(n) * 100.0,
+                    "weight": weight,
+                }
+            )
+        )
+        # Must not raise; no non-finite must leak into the segment output.
+        cns = segmentation.do_segmentation(cnarr, "hmm", processes=1)
+        self.assertGreater(len(cns), 0)
+        self.assertTrue(np.isfinite(cns["log2"].to_numpy()).all())
+        self.assertFalse(np.isnan(cns["weight"].to_numpy()).any())
+
+    def test_hmm_first_chromosome_entirely_dropped(self):
+        """HMM survives the non-finite guard dropping a whole first chromosome.
+
+        The HMM path segments the genome in one call, then transfers fields from
+        the unfiltered bins. When every bin of the leading chromosome is
+        non-finite, the first segment belongs to a later chromosome than the
+        first bin, which used to trip a bare AssertionError in transfer_fields.
+        The dropped chromosome must simply be absent from the output -- not
+        emitted as a fabricated neutral segment.
+
+        chr2's leading and chr3's trailing bins are dropped as well, with a
+        distinct coordinate origin per chromosome, so the surviving
+        chromosomes' spans pin the per-chromosome endpoint stretch rather than
+        holding vacuously.
+        """
+        n = 60
+        rng = np.random.default_rng(0)
+        origins = {"chr1": 0, "chr2": 1_000_000, "chr3": 2_000_000}
+        frames = []
+        for chrom, origin in origins.items():
+            if chrom == "chr1":
+                log2 = np.full(n, np.nan)  # entire leading chromosome dropped
+            else:
+                log2 = rng.normal(0, 0.2, n)
+                # Chromosome-edge bins the stretch must reclaim
+                if chrom == "chr2":
+                    log2[:3] = np.nan
+                else:
+                    log2[-3:] = np.nan
+            frames.append(
+                pd.DataFrame(
+                    {
+                        "chromosome": [chrom] * n,
+                        "start": origin + np.arange(0, n * 1000, 1000),
+                        "end": origin + np.arange(1000, n * 1000 + 1000, 1000),
+                        "gene": ["G"] * n,
+                        "log2": log2,
+                        "depth": np.ones(n) * 100.0,
+                        "weight": np.ones(n),
+                    }
+                )
+            )
+        cnarr = cnary.CopyNumArray(pd.concat(frames, ignore_index=True))
+        cns = segmentation.do_segmentation(cnarr, "hmm", processes=1)
+        # chr1 absent, and no fabricated segment in its place
+        self.assertEqual(set(cns.chromosome), {"chr2", "chr3"})
+        # Surviving chromosomes span their original bins, dropped edges included
+        for chrom, subseg in cns.by_chromosome():
+            subbins = cnarr[cnarr.chromosome == chrom]
+            self.assertEqual(subseg["start"].iat[0], subbins["start"].iat[0])
+            self.assertEqual(subseg["end"].iat[-1], subbins["end"].iat[-1])

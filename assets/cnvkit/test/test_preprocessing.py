@@ -1,0 +1,874 @@
+#!/usr/bin/env python
+"""Tests for preprocessing commands: access, antitarget, autobin, target, coverage."""
+
+import argparse
+import logging
+import os
+import shutil
+import tempfile
+import unittest
+import warnings
+from unittest import mock
+
+import pytest
+
+logging.basicConfig(level=logging.ERROR, format="%(message)s")
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+import numpy as np
+import pandas as pd
+import pysam
+from conftest import ast_calls_to, call_arg_names, linecount
+
+import cnvlib
+from cnvlib import (
+    access,
+    antitarget,
+    autobin,
+    batch,
+    bintest,
+    call,
+    cluster,
+    cmdutil,
+    cnary,
+    commands,
+    core,
+    coverage,
+    diagram,
+    export,
+    fix,
+    heatmap,
+    import_rna,
+    importers,
+    metrics,
+    parallel,
+    params,
+    plots,
+    purity,
+    reference,
+    reports,
+    samutil,
+    scatter,
+    segfilters,
+    segmentation,
+    segmetrics,
+    smoothing,
+    vary,
+)
+from skgenome import GenomicArray as GA
+from skgenome import tabio
+
+
+class PreprocessingTests(unittest.TestCase):
+    """Tests for preprocessing commands: access, antitarget, autobin, target, coverage."""
+
+    def test_access(self):
+        fasta = "formats/chrM-Y-trunc.hg19.fa"
+        for min_gap_size, expect_nrows in ((None, 7), (500, 3), (1000, 2)):
+            with self.subTest(min_gap_size=min_gap_size):
+                acc = commands.do_access(
+                    fasta, [], min_gap_size, skip_noncanonical=False
+                )
+                self.assertEqual(len(acc), expect_nrows)
+        excludes = ["formats/dac-my.bed", "formats/my-targets.bed"]
+        for min_gap_size, expect_nrows in (
+            (None, 12),
+            (2, 10),
+            (20, 5),
+            (200, 3),
+            (2000, 2),
+        ):
+            with self.subTest(min_gap_size=min_gap_size, excludes=True):
+                acc = commands.do_access(
+                    fasta, excludes, min_gap_size, skip_noncanonical=False
+                )
+                self.assertEqual(len(acc), expect_nrows)
+        # Dropping chrM, keeping only chrY
+        acc = commands.do_access(fasta, excludes, 10, skip_noncanonical=True)
+        self.assertEqual(len(acc), 5)
+
+    @pytest.mark.slow
+    def test_antitarget(self):
+        """The 'antitarget' command."""
+        baits = tabio.read_auto("formats/nv2_baits.interval_list")
+        acs = tabio.read_auto("../data/access-5k-mappable.hg19.bed")
+        self.assertLess(0, len(commands.do_antitarget(baits)))
+        self.assertLess(0, len(commands.do_antitarget(baits, acs)))
+        self.assertLess(0, len(commands.do_antitarget(baits, acs, 200000)))
+        self.assertLess(0, len(commands.do_antitarget(baits, acs, 10000, 5000)))
+
+    def test_cmd_antitarget_default_output(self):
+        """#806: the 'antitarget' CLI command with -o/--output omitted must
+        derive the default output filename from args.targets. The pre-fix code
+        referenced the nonexistent args.interval and raised AttributeError in
+        this default-output branch; after the args.targets fix it succeeds.
+        Exercises commands._cmd_antitarget, which the (slow) test_antitarget
+        above never touches."""
+        with tempfile.TemporaryDirectory() as tmp:
+            # Copy a tiny targets BED into a temp dir so the derived default
+            # output lands there, not in test/formats/.
+            targets_bed = os.path.join(tmp, "mytargets.bed")
+            shutil.copy("formats/agilent.bed", targets_bed)
+            args = argparse.Namespace(
+                targets=targets_bed,
+                access=None,
+                avg_size=150000,
+                min_size=None,
+                output=None,
+            )
+            # Pre-fix: raises AttributeError here (args.interval). Post-fix: OK.
+            commands._cmd_antitarget(args)
+            expect_out = os.path.join(tmp, "mytargets.antitarget.bed")
+            self.assertTrue(os.path.exists(expect_out))
+            self.assertGreater(os.path.getsize(expect_out), 0)
+            # Sanity: the derived file parses back as a genomic table.
+            self.assertGreater(len(tabio.read_auto(expect_out)), 0)
+
+    def test_autobin(self):
+        """The 'autobin' command."""
+        bam_fname = "formats/na12878-chrM-Y-trunc.bam"
+        target_bed = "formats/my-targets.bed"
+        targets = tabio.read(target_bed, "bed")
+        access_bed = "../data/access-5k-mappable.hg19.bed"
+        accessible = tabio.read(access_bed, "bed").filter(chromosome="chrY")
+        for method in ("amplicon", "wgs", "hybrid"):
+            (cov, bs), _ = autobin.do_autobin(
+                bam_fname, method, targets=targets, access=accessible
+            )
+            self.assertGreater(cov, 0)
+            self.assertGreater(bs, 0)
+
+    def test_autobin_chrom_name_mismatch(self):
+        """WGS autobin gives a clear, actionable error -- not the cryptic
+        'cannot convert float NaN to integer' -- when the BAM and access
+        regions share no chromosome names (#421)."""
+        bam_fname = "formats/na12878-chrM-Y-trunc.bam"
+        # Access regions on a contig absent from the BAM => no shared chroms,
+        # so the estimated read depth is NaN.
+        access_arr = GA.from_columns(
+            {"chromosome": ["nonexistent_contig"], "start": [0], "end": [100000]}
+        )
+        with self.assertRaises(ValueError) as cm:
+            autobin.do_autobin(bam_fname, "wgs", access=access_arr)
+        msg = str(cm.exception)
+        self.assertNotIn("NaN", msg)
+        self.assertIn("chromosome", msg.lower())
+
+    def test_bedcov_filters_absent_contigs(self):
+        """bedcov keeps regions on BAM contigs and drops those on absent
+        contigs instead of erroring out entirely (#620)."""
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        samutil.ensure_bam_index(bam)  # self-contained: don't rely on test order
+        bam_chroms = samutil.get_bam_chroms(bam)
+        with tempfile.NamedTemporaryFile("w+t", suffix=".bed", delete=False) as f:
+            f.write("chrM\t251\t277\tfoo\n")
+            f.write("absent_contig\t100\t200\tbar\n")
+            bed = f.name
+        try:
+            table = coverage.bedcov(bed, bam, 0, bam_chroms=bam_chroms)
+            self.assertEqual(list(table.chromosome.unique()), ["chrM"])
+            self.assertEqual(len(table), 1)
+        finally:
+            os.unlink(bed)
+
+    def test_bedcov_all_absent_contigs(self):
+        """bedcov on an all-absent BED: raise a clear error by default, but
+        return empty when allow_empty=True (the per-chunk parallel path)."""
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        samutil.ensure_bam_index(bam)  # self-contained: don't rely on test order
+        bam_chroms = samutil.get_bam_chroms(bam)
+        with tempfile.NamedTemporaryFile("w+t", suffix=".bed", delete=False) as f:
+            f.write("absent_contig\t100\t200\tbar\n")
+            bed = f.name
+        try:
+            with self.assertRaises(ValueError) as cm:
+                coverage.bedcov(bed, bam, 0, bam_chroms=bam_chroms)
+            self.assertIn("don't match", str(cm.exception))
+            empty = coverage.bedcov(
+                bed, bam, 0, bam_chroms=bam_chroms, allow_empty=True
+            )
+            self.assertEqual(len(empty), 0)
+        finally:
+            os.unlink(bed)
+
+    def test_bedcov_depth_independent_of_process_count(self):
+        """Emitted depth must not depend on how the BED is split across workers.
+
+        A BED5 whose score field is numeric on some rows and '.' on others used
+        to make the column layout ambiguous: it was guessed per output batch
+        from whether the last two fields both looked like integers, so a numeric
+        score was mistaken for samtools' -d column and depth was computed from
+        the score instead of the basecount. Which rows started a batch depended
+        on the chunk count, hence on --processes and the host's CPU count.
+        """
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        samutil.ensure_bam_index(bam)
+        with tempfile.NamedTemporaryFile("w+t", suffix=".bed", delete=False) as f:
+            for i in range(40):
+                # Legal BED5 either way: '.' and an integer are both valid scores
+                score = "." if i < 24 else str(100 + i)
+                f.write(f"chrM\t{i * 400}\t{(i + 1) * 400}\tbin{i}\t{score}\n")
+            bed = f.name
+        try:
+            serial = coverage.interval_coverages_pileup(bed, bam, 0, procs=1)
+            with mock.patch.object(parallel, "available_cpus", return_value=8):
+                parallelized = coverage.interval_coverages_pileup(bed, bam, 0, procs=8)
+            self.assertEqual(len(serial), 40)
+            self.assertEqual(list(serial.start), list(parallelized.start))
+            self.assertEqual(
+                list(serial.depth),
+                list(parallelized.depth),
+                "depth must be identical however the BED is chunked",
+            )
+            # Depth comes from the appended basecount, never from the score.
+            self.assertTrue(
+                (serial.depth > 1).all(),
+                "a numeric BED score must not be mistaken for the basecount",
+            )
+        finally:
+            os.unlink(bed)
+
+    def test_coverage_skips_marked_duplicates(self):
+        """Coverage ignores reads flagged as duplicates in both the depth
+        (bedcov) and by-count paths, so marking duplicates (e.g. Picard
+        MarkDuplicates) is equivalent to physically removing them (#689)."""
+        seqlen = 50
+        n_total, n_dup = 10, 6  # 4 reads survive the duplicate filter
+        header = {
+            "HD": {"VN": "1.6", "SO": "coordinate"},
+            "SQ": [{"SN": "chr1", "LN": 1000}],
+        }
+        tmpdir = tempfile.mkdtemp()
+        bam = os.path.join(tmpdir, "dup.bam")
+        with pysam.AlignmentFile(bam, "wb", header=header) as out:
+            for i in range(n_total):
+                a = pysam.AlignedSegment()
+                a.query_name = f"r{i}"
+                a.query_sequence = "A" * seqlen
+                a.flag = 0
+                a.reference_id = 0
+                a.reference_start = 100
+                a.mapping_quality = 60
+                a.cigarstring = f"{seqlen}M"
+                a.query_qualities = pysam.qualitystring_to_array("I" * seqlen)
+                a.is_duplicate = i >= (n_total - n_dup)
+                out.write(a)
+        pysam.index(bam)
+        bed = os.path.join(tmpdir, "region.bed")
+        with open(bed, "w") as fh:
+            fh.write("chr1\t90\t160\tregionA\n")
+        n_kept = n_total - n_dup
+        try:
+            # Depth path (default): basecount counts only non-duplicate reads
+            table = coverage.bedcov(bed, bam, 0)
+            self.assertEqual(float(table["basecount"].iloc[0]), n_kept * seqlen)
+            # By-count path: same surviving read count
+            bamfile = pysam.AlignmentFile(bam, "rb")
+            count, _row = coverage.region_depth_count(
+                bamfile, "chr1", 90, 160, "regionA", 0
+            )
+            self.assertEqual(count, n_kept)
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def _write_overlap_fixture(self, tmpdir):
+        """Build a BAM/BED pair for exercising --no-overlap.
+
+        ``regionA`` (chr1:90-180, width 90) holds one fragment whose mates
+        overlap by 30bp (mate1 [100,150), mate2 [120,170) -- 70bp of unique
+        fragment span but 100bp of naively-summed mate bases), mimicking the
+        short-insert FFPE double-counting from #999.
+
+        ``regionB`` (chr1:300-400, width 100) holds one fragment whose mates
+        do *not* overlap (mate1 [300,350), mate2 [360,410)), so it's a control
+        proving --no-overlap is a no-op when no mate bases overlap.
+
+        Empirically cross-checked against samtools 1.24 on this exact
+        geometry: ``samtools bedcov`` and ``samtools depth`` (no ``-s``) both
+        report basecount 100 in regionA (they count the overlap twice);
+        ``samtools depth -s`` and ``samtools mpileup`` (overlap-removal default
+        ON) report 70. ``samtools bedcov`` has no ``-s``-equivalent flag at all,
+        hence the per-template position union this option implements.
+        """
+        seqlen = 50
+        header = {
+            "HD": {"VN": "1.6", "SO": "coordinate"},
+            "SQ": [{"SN": "chr1", "LN": 1000}],
+        }
+        bam = os.path.join(tmpdir, "overlap.bam")
+
+        def make_read(name, start, flag, mate_start):
+            a = pysam.AlignedSegment()
+            a.query_name = name
+            a.query_sequence = "A" * seqlen
+            a.flag = flag
+            a.reference_id = 0
+            a.reference_start = start
+            a.mapping_quality = 60
+            a.cigarstring = f"{seqlen}M"
+            a.query_qualities = pysam.qualitystring_to_array("I" * seqlen)
+            a.next_reference_id = 0
+            a.next_reference_start = mate_start
+            return a
+
+        with pysam.AlignmentFile(bam, "wb", header=header) as out:
+            # regionA: overlapping mates (paired, proper_pair, read1/read2)
+            out.write(make_read("fragA", 100, 0x63, 120))
+            out.write(make_read("fragA", 120, 0x93, 100))
+            # regionB: non-overlapping mates -- the union changes nothing
+            out.write(make_read("fragB", 300, 0x63, 360))
+            out.write(make_read("fragB", 360, 0x93, 300))
+        pysam.index(bam)
+
+        bed = os.path.join(tmpdir, "region.bed")
+        with open(bed, "w") as fh:
+            fh.write("chr1\t90\t180\tregionA\n")
+            fh.write("chr1\t300\t400\tregionB\n")
+        return bam, bed
+
+    def test_coverage_no_overlap_counts_mate_overlap_once(self):
+        """--no-overlap counts a fragment's mate-overlap bases once
+        (``samtools depth -s`` semantics), leaving non-overlapping fragments
+        untouched (#999)."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            bam, _bed = self._write_overlap_fixture(tmpdir)
+            bamfile = pysam.AlignmentFile(bam, "rb")
+            count_off, row_off = coverage.region_depth_count(
+                bamfile, "chr1", 90, 180, "regionA", 0
+            )
+            count_on, row_on = coverage.region_depth_count(
+                bamfile, "chr1", 90, 180, "regionA", 0, no_overlap=True
+            )
+            self.assertEqual(count_off, 2)
+            self.assertEqual(
+                count_on, 2, "read count is unaffected by overlap unioning"
+            )
+            self.assertAlmostEqual(
+                row_off[5], 100 / 90, msg="flag off: overlap counted twice"
+            )
+            self.assertAlmostEqual(
+                row_on[5], 70 / 90, msg="flag on: overlap counted once"
+            )
+
+            # Control region: mates don't overlap, so the union changes nothing.
+            _count_off, ctrl_off = coverage.region_depth_count(
+                bamfile, "chr1", 300, 400, "regionB", 0
+            )
+            _count_on, ctrl_on = coverage.region_depth_count(
+                bamfile, "chr1", 300, 400, "regionB", 0, no_overlap=True
+            )
+            self.assertEqual(ctrl_off[5], ctrl_on[5])
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_coverage_defaults_to_overlap_unaware_pileup(self):
+        """Omitting --no-overlap must leave the historical (overlap-inflated)
+        behavior in place: the default routes to the pileup engine, whose
+        basecount it reproduces exactly, and the by-count engine still sums both
+        mates over the overlap."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            bam, bed = self._write_overlap_fixture(tmpdir)
+            cna = commands.do_coverage(bed, bam)  # no_overlap defaults to False
+            bedcov_table = coverage.bedcov(bed, bam, 0)
+            bedcov_table["depth"] = bedcov_table["basecount"] / (
+                bedcov_table["end"] - bedcov_table["start"]
+            )
+            for _i, row in bedcov_table.iterrows():
+                match = cna.data[
+                    (cna.data.start == row.start) & (cna.data.end == row.end)
+                ]
+                self.assertEqual(len(match), 1)
+                self.assertAlmostEqual(float(match["depth"].iloc[0]), row["depth"])
+            # The by-count engine, which --no-overlap reroutes through, also
+            # double-counts the overlap by default (100 of 90bp, not 70).
+            cna_count = commands.do_coverage(bed, bam, by_count=True)
+            self.assertAlmostEqual(
+                float(cna_count.data[cna_count.data.start == 90]["depth"].iloc[0]),
+                100 / 90,
+            )
+            self.assertAlmostEqual(
+                float(cna_count.data[cna_count.data.start == 300]["depth"].iloc[0]),
+                90 / 100,
+            )
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_coverage_no_overlap_only_pools_matable_records(self):
+        """Overlap unioning applies only to records that could have a mate in
+        the region. Two *unpaired* records sharing a query name -- e.g. from
+        name-collided merged BAMs -- must still be counted separately, as
+        ``samtools depth -s`` does, rather than silently losing their overlap."""
+        tmpdir = tempfile.mkdtemp()
+        try:
+            seqlen = 50
+            header = {
+                "HD": {"VN": "1.6", "SO": "coordinate"},
+                "SQ": [{"SN": "chr1", "LN": 1000}],
+            }
+            bam = os.path.join(tmpdir, "unpaired.bam")
+            with pysam.AlignmentFile(bam, "wb", header=header) as out:
+                for start in (100, 120):
+                    a = pysam.AlignedSegment()
+                    a.query_name = "collided"
+                    a.query_sequence = "A" * seqlen
+                    a.flag = 0  # single-end, mapped, forward
+                    a.reference_id = 0
+                    a.reference_start = start
+                    a.mapping_quality = 60
+                    a.cigarstring = f"{seqlen}M"
+                    a.query_qualities = pysam.qualitystring_to_array("I" * seqlen)
+                    out.write(a)
+            pysam.index(bam)
+            bamfile = pysam.AlignmentFile(bam, "rb")
+            _count, row = coverage.region_depth_count(
+                bamfile, "chr1", 90, 180, "regionA", 0, no_overlap=True
+            )
+            self.assertAlmostEqual(row[5], 100 / 90)
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_coverage_no_overlap_end_to_end(self):
+        """--no-overlap, threaded through do_coverage (both the default
+        pileup-equivalent path and --count), fixes the overlap-inflated bin to
+        its true depth while leaving the non-overlapping control bin unchanged,
+        for a fixture BAM with a known overlapping mate pair (#999 acceptance
+        criteria). The flag-off values it is measured against are pinned exactly
+        by ``test_coverage_no_overlap_counts_mate_overlap_once`` (count engine)
+        and ``test_coverage_no_overlap_flag_off_is_bit_exact`` (pileup engine).
+        """
+        tmpdir = tempfile.mkdtemp()
+        try:
+            bam, bed = self._write_overlap_fixture(tmpdir)
+            for by_count in (False, True):
+                with self.subTest(by_count=by_count):
+                    cna = commands.do_coverage(
+                        bed, bam, by_count=by_count, no_overlap=True
+                    )
+                    regionA = cna.data[cna.data.start == 90].iloc[0]
+                    regionB = cna.data[cna.data.start == 300].iloc[0]
+                    self.assertAlmostEqual(float(regionA["depth"]), 70 / 90)
+                    self.assertAlmostEqual(float(regionB["depth"]), 90 / 100)
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def test_coverage_no_overlap_ignored_for_bedgraph(self):
+        """--no-overlap has no per-read information to act on for bedGraph
+        input, so it's ignored with a warning, matching --count/--min-mapq/
+        --processes on the same input type."""
+        bed = "formats/my-targets.bed"
+        bedgraph = "formats/na12878-chrM-Y-trunc.bed.gz"
+        with self.assertLogs(level="WARNING") as cm:
+            cna = commands.do_coverage(bed, bedgraph, no_overlap=True)
+        self.assertTrue(any("no-overlap" in m.lower() for m in cm.output))
+        self.assertGreater(len(cna), 0)
+
+    def test_coverage_no_overlap_cli_flag(self):
+        """--no-overlap parses on both `coverage` and `batch`, default off."""
+        args = commands.AP.parse_args(["coverage", "a.bam", "b.bed"])
+        self.assertFalse(args.no_overlap)
+        args = commands.AP.parse_args(["coverage", "a.bam", "b.bed", "--no-overlap"])
+        self.assertTrue(args.no_overlap)
+        args = commands.AP.parse_args(
+            ["batch", "a.bam", "-r", "ref.cnn", "-d", "out", "--no-overlap"]
+        )
+        self.assertTrue(args.no_overlap)
+
+    def test_coverage_no_overlap_propagated_to_do_coverage(self):
+        """AST guard: `_cmd_coverage` must forward `args.no_overlap` into
+        `coverage.do_coverage`, not silently drop it (cf. the bias_smoother
+        propagation guards in test_batch.py)."""
+        invocations = ast_calls_to(commands._cmd_coverage, "do_coverage", "coverage")
+        self.assertGreater(
+            len(invocations), 0, "Expected a do_coverage() call in _cmd_coverage"
+        )
+        for inv in invocations:
+            self.assertIn(
+                "no_overlap",
+                call_arg_names(inv),
+                "_cmd_coverage must pass args.no_overlap to do_coverage",
+            )
+
+    def test_coverage_partial_chrom_mismatch(self):
+        """coverage tolerates a BED mixing present and absent contigs,
+        returning only the present-contig regions, for any process count and
+        either depth/count method (#620: failure was process-count- and
+        method-dependent)."""
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        with tempfile.NamedTemporaryFile("w+t", suffix=".bed", delete=False) as f:
+            f.write("chrM\t251\t277\tfoo\n")
+            f.write("chrY\t11170\t11213\tbar\n")
+            f.write("absent_contig\t100\t200\tbaz\n")
+            bed = f.name
+        try:
+            for by_count in (False, True):
+                for nprocs in (1, 2):
+                    with self.subTest(by_count=by_count, processes=nprocs):
+                        cna = commands.do_coverage(
+                            bed, bam, by_count=by_count, processes=nprocs
+                        )
+                        self.assertEqual(
+                            sorted(cna.chromosome.unique()), ["chrM", "chrY"]
+                        )
+                        self.assertEqual(len(cna), 2)
+        finally:
+            os.unlink(bed)
+
+    def test_coverage_all_chrom_mismatch(self):
+        """coverage raises a clear error when no BED chromosome matches the
+        BAM, for any process count or method (#620)."""
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        with tempfile.NamedTemporaryFile("w+t", suffix=".bed", delete=False) as f:
+            f.write("absent_contig\t100\t200\tbaz\n")
+            bed = f.name
+        try:
+            for by_count in (False, True):
+                for nprocs in (1, 2):
+                    with self.subTest(by_count=by_count, processes=nprocs):
+                        with self.assertRaises(ValueError) as cm:
+                            commands.do_coverage(
+                                bed, bam, by_count=by_count, processes=nprocs
+                            )
+                        self.assertIn("don't match", str(cm.exception))
+        finally:
+            os.unlink(bed)
+
+    @pytest.mark.slow
+    def test_coverage(self):
+        """The 'coverage' command."""
+        bed = "formats/my-targets.bed"
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        # Cover distinct code paths: depth-based default, count-based with
+        # mapq filtering, and multiprocessing.
+        for by_count, min_mapq, nprocs in [
+            (False, 0, 1),
+            (True, 30, 1),
+            (False, 0, 2),
+        ]:
+            cna = commands.do_coverage(
+                bed, bam, by_count=by_count, min_mapq=min_mapq, processes=nprocs
+            )
+            self.assertEqual(len(cna), 4)
+            self.assertTrue((cna.log2 != 0).any())
+            self.assertGreater(cna.log2.nunique(), 1)
+
+    def test_coverage_cram(self):
+        """The 'coverage' command with CRAM input."""
+        bed = "formats/my-targets.bed"
+        cram = "formats/na12878-chrM-Y-trunc.cram"
+        fasta = "formats/chrM-Y-trunc.hg19.fa"
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        # Verify CRAM coverage matches BAM coverage
+        cna_cram = commands.do_coverage(bed, cram, fasta=fasta)
+        cna_bam = commands.do_coverage(bed, bam)
+        self.assertEqual(len(cna_cram), len(cna_bam))
+        np.testing.assert_array_almost_equal(
+            cna_cram["depth"].values, cna_bam["depth"].values, decimal=1
+        )
+
+    def test_coverage_bedgraph(self):
+        """The 'coverage' command with bedGraph input."""
+        bed = "formats/my-targets.bed"
+        bedgraph = "formats/na12878-chrM-Y-trunc.bed.gz"
+
+        # Test basic bedGraph coverage
+        cna = commands.do_coverage(bed, bedgraph)
+        self.assertEqual(len(cna), 4)
+        self.assertTrue((cna.log2 != 0).any())
+        self.assertGreater(cna.log2.nunique(), 1)
+
+        # Verify sample_id is set correctly
+        self.assertEqual(cna.sample_id, "na12878-chrM-Y-trunc")
+
+        # Verify depth values are calculated
+        self.assertTrue((cna["depth"] >= 0).all())
+
+    def test_coverage_bedgraph_vs_bam(self):
+        """Compare bedGraph and BAM coverage outputs."""
+        bed = "formats/my-targets.bed"
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        bedgraph = "formats/na12878-chrM-Y-trunc.bed.gz"
+
+        # Get coverage from both inputs
+        cna_bam = commands.do_coverage(bed, bam)
+        cna_bedgraph = commands.do_coverage(bed, bedgraph)
+
+        # Should have same number of regions
+        self.assertEqual(len(cna_bam), len(cna_bedgraph))
+
+        # Convert to DataFrames for easier comparison
+        df_bam = cna_bam.data.copy()
+        df_bedgraph = cna_bedgraph.data.copy()
+
+        # Sort both by chromosome, start, end
+        df_bam = df_bam.sort_values(["chromosome", "start", "end"]).reset_index(
+            drop=True
+        )
+        df_bedgraph = df_bedgraph.sort_values(
+            ["chromosome", "start", "end"]
+        ).reset_index(drop=True)
+
+        # Chromosomes and positions should match exactly
+        pd.testing.assert_series_equal(
+            df_bam["chromosome"], df_bedgraph["chromosome"], check_names=False
+        )
+        pd.testing.assert_series_equal(
+            df_bam["start"], df_bedgraph["start"], check_names=False
+        )
+        pd.testing.assert_series_equal(
+            df_bam["end"], df_bedgraph["end"], check_names=False
+        )
+
+        # Depth values should be reasonably close
+        # Note: Small differences expected due to different depth calculation methods
+        # (pysam.bedcov vs bedtools genomecov)
+        np.testing.assert_allclose(
+            df_bam["depth"].values,
+            df_bedgraph["depth"].values,
+            rtol=0.05,  # Allow 5% relative difference
+            atol=1.0,  # Allow 1.0 absolute difference for low-depth regions
+            err_msg="bedGraph and BAM coverage depths should be reasonably close",
+        )
+
+    def test_coverage_bedgraph_missing_index(self):
+        """Test error handling when tabix index is missing."""
+        bed = "formats/my-targets.bed"
+
+        # Create a temporary bedGraph without index
+        with tempfile.NamedTemporaryFile(suffix=".bed.gz", delete=False) as tmp:
+            tmp_path = tmp.name
+            # Copy bedGraph content but not the index
+            with open("formats/na12878-chrM-Y-trunc.bed.gz", "rb") as src:
+                tmp.write(src.read())
+
+        try:
+            # Should raise FileNotFoundError for missing index
+            with self.assertRaises(FileNotFoundError) as cm:
+                commands.do_coverage(bed, tmp_path)
+
+            self.assertIn("tabix index", str(cm.exception))
+        finally:
+            os.unlink(tmp_path)
+
+    def test_coverage_bedgraph_chr_naming(self):
+        """Test chromosome name mismatch handling (chr1 vs 1)."""
+        bed = "formats/my-targets.bed"
+        # This bedGraph has chromosomes named without 'chr' prefix (M, Y)
+        # while the BED file uses 'chr' prefix (chrM, chrY)
+        bedgraph_nochr = "formats/na12878-M-Y-trunc-nochr.bed.gz"
+
+        # Should still work by auto-matching chromosome names
+        cna = commands.do_coverage(bed, bedgraph_nochr)
+
+        # Should get same number of regions
+        self.assertEqual(len(cna), 4)
+
+        # Should have valid coverage values
+        self.assertTrue((cna.log2 != 0).any())
+        self.assertGreater(cna.log2.nunique(), 1)
+
+    @pytest.mark.slow
+    def test_target_annotate_refflat_assigns_genes(self):
+        """'target --annotate refFlat' actually populates gene names (#688).
+
+        The refFlat reader parses the gene column, tabio sorts the annotation,
+        and into_ranges overlaps it onto the baits. Guards against silent
+        annotation failures: a real bait set should come back almost entirely
+        gene-named, with names drawn from the refFlat's first column.
+        """
+        annot_fname = "formats/refflat-mini.txt"
+        baits = tabio.read_auto("formats/baits-funky.bed")
+        out = commands.do_target(
+            baits, do_split=True, avg_size=200, annotate=annot_fname
+        )
+        named = [g for g in out["gene"] if g != "-"]
+        # Nearly all bins on these gene-dense baits should be annotated
+        self.assertGreater(len(named), 0.9 * len(out))
+        # Names come from the refFlat first column (gene symbols)
+        all_names = {n for g in named for n in g.split(",")}
+        self.assertIn("DDX11L1", all_names)
+        self.assertIn("WASH7P", all_names)
+
+    def test_target_annotate_wrong_build_warns(self):
+        """Warn when annotation shares chrom names but assigns no genes (#688).
+
+        Mimics a wrong-genome-build refFlat: chromosome names match (so
+        compare_chrom_names passes), but no coordinates overlap, leaving every
+        region unnamed. Without the warning this failure is silent.
+        """
+        annot_fname = "formats/refflat-mini.txt"  # chr1 genes end well before 210 Mb
+        baits = GA.from_columns(
+            {
+                "chromosome": ["chr1", "chr1"],
+                "start": [210_000_000, 210_010_000],
+                "end": [210_001_000, 210_011_000],
+                "gene": ["-", "-"],
+            }
+        )
+        with self.assertLogs(level="WARNING") as cm:
+            out = commands.do_target(baits, annotate=annot_fname)
+        self.assertTrue(all(g == "-" for g in out["gene"]))
+        self.assertTrue(any("different genome build" in m for m in cm.output))
+
+    def test_target(self):
+        """The 'target' command."""
+        annot_fname = "formats/refflat-mini.txt"
+
+        def assert_disjoint(arr, msg):
+            """Bins are sorted and non-overlapping: next start >= previous end."""
+            for _c, subarr in arr.by_chromosome():
+                self.assertTrue(subarr.start.is_monotonic_increasing, msg)
+                self.assertTrue(subarr.end.is_monotonic_increasing, msg)
+                gaps = subarr.start.to_numpy()[1:] - subarr.end.to_numpy()[:-1]
+                self.assertTrue((gaps >= 0).all(), msg)
+
+        def covered_bases(arr):
+            merged = arr.merge()
+            return int((merged.end - merged.start).sum())
+
+        for bait_fname in (
+            "formats/nv2_baits.interval_list",
+            "formats/amplicon.bed",
+            "formats/baits-funky.bed",
+        ):
+            baits = tabio.read_auto(bait_fname)
+            bait_len = len(baits)
+            # No splitting: w/o and w/ re-annotation
+            r1 = commands.do_target(baits)
+            # Overlapping baits are merged, so the row count may shrink, but
+            # the covered territory is unchanged and no bin is smaller than the
+            # smallest bait it came from (#567)
+            assert_disjoint(r1, bait_fname)
+            self.assertEqual(covered_bases(r1), covered_bases(baits), bait_fname)
+            self.assertGreaterEqual(
+                (r1.end - r1.start).min(), (baits.end - baits.start).min(), bait_fname
+            )
+            r1a = commands.do_target(baits, do_short_names=True, annotate=annot_fname)
+            self.assertEqual(len(r1a), len(r1))
+            # Splitting, w/o and w/ re-annotation
+            r2 = commands.do_target(
+                baits, do_short_names=True, do_split=True, avg_size=100
+            )
+            self.assertGreater(len(r2), len(r1))
+            assert_disjoint(r2, bait_fname)
+            r2a = commands.do_target(
+                baits,
+                do_short_names=True,
+                do_split=True,
+                avg_size=100,
+                annotate=annot_fname,
+            )
+            self.assertEqual(len(r2a), len(r2))
+            # Original regions object should be unmodified
+            self.assertEqual(len(baits), bait_len)
+
+    def test_target_collapses_duplicate_baits(self):
+        """'target' merges duplicate and overlapping baits (#567).
+
+        Duplicate BED rows, and rows with identical coordinates but different
+        gene labels, otherwise reach `fix` as duplicated coordinates and abort
+        the run. Before this change nothing collapsed them unless --split was
+        given.
+        """
+        baits = tabio.read_auto("formats/baits-funky.bed")
+
+        def coords(arr):
+            return list(zip(arr.chromosome, arr.start, arr.end, strict=True))
+
+        self.assertGreater(len(coords(baits)), len(set(coords(baits))))
+
+        with self.assertLogs(level="INFO") as cm:
+            out = commands.do_target(baits)
+        self.assertTrue(any("overlapping or duplicated" in m for m in cm.output))
+        self.assertEqual(len(coords(out)), len(set(coords(out))))
+
+        # Genes of coincident baits are joined, each name appearing once --
+        # including names that arrive already joined, as at chr1:14360-14409,
+        # where two of the three duplicate rows are labelled "DDX11L1,WASH7P"
+        for chromosome, start, end, gene in [
+            ("chr1", 14360, 14409, "DDX11L1,WASH7P,WASH7P_DUPE"),
+            ("chrX", 69673485, 69673643, "DLG3,DLG3_DUPE"),
+            # A nested bait is absorbed by the one containing it
+            ("chr1", 16605, 16765, "WASH7P,WASH7P_NESTED"),
+            # Partly overlapping baits merge into their union
+            ("chr1", 14968, 15150, "WASH7P,WASH7P_OVERLAP"),
+        ]:
+            row = out[(out.chromosome == chromosome) & (out.start == start)]
+            self.assertEqual(len(row), 1, (chromosome, start))
+            self.assertEqual(row["end"].iloc[0], end)
+            self.assertEqual(row["gene"].iloc[0], gene)
+
+        # Bookended baits are left alone: merging them would coarsen the tiling
+        # of a capture kit, whose targets are consecutive by design
+        bookended = out[(out.chromosome == "chr1") & (out.start == 17367)]
+        self.assertEqual(list(bookended["end"]), [17368])
+
+    def test_target_is_idempotent(self):
+        """Re-running 'target' on its own output changes nothing.
+
+        The output of `target` is a valid bait file, so feeding it back in with
+        the same options must be a no-op: merging is confined to genuine
+        overlaps, of which the output has none, and re-splitting an evenly
+        divided run reproduces the same bins. Users do chain the command this
+        way, and `batch` effectively does so when handed an already-processed
+        target BED.
+        """
+        options = [
+            {},
+            {"do_split": True, "avg_size": 200},
+            {"do_split": True, "avg_size": 100, "do_short_names": True},
+            {"do_split": True, "avg_size": 200, "annotate": "formats/refflat-mini.txt"},
+        ]
+        for bait_fname in (
+            "formats/amplicon.bed",
+            "formats/baits-funky.bed",
+        ):
+            baits = tabio.read_auto(bait_fname)
+            for kwargs in options:
+                once = commands.do_target(baits, **kwargs)
+                twice = commands.do_target(once, **kwargs)
+                self.assertTrue(
+                    once.data.reset_index(drop=True).equals(
+                        twice.data.reset_index(drop=True)
+                    ),
+                    f"{bait_fname} {kwargs}",
+                )
+
+    def test_target_split_labels_come_from_covering_baits(self):
+        """Each split bin is named for the baits it covers, not its whole run.
+
+        `subdivide` re-merges bookended regions before dividing them evenly, so
+        the joined label of a contiguous run used to be stamped on every bin the
+        run was cut into -- naming bins after genes they do not overlap.
+        """
+        out = commands.do_target(
+            tabio.read_auto("formats/baits-funky.bed"), do_split=True, avg_size=200
+        )
+        labels = {
+            (int(s), int(e)): g
+            for c, s, e, g in zip(
+                out.chromosome, out.start, out.end, out["gene"], strict=True
+            )
+            if c == "chr1"
+        }
+        # chr1:13219-14829 is one contiguous run of DDX11L1 and WASH7P baits.
+        # Every bin cut from it used to carry the whole run's joined label.
+        self.assertEqual(labels[(13219, 13420)], "DDX11L1")
+        self.assertEqual(labels[(14225, 14426)], "DDX11L1,WASH7P,WASH7P_DUPE")
+        self.assertEqual(labels[(14627, 14829)], "WASH7P")
+
+        # No bin anywhere may claim a bait it does not overlap
+        for bait_fname in (
+            "formats/nv2_baits.interval_list",
+            "formats/baits-funky.bed",
+        ):
+            baits = tabio.read_auto(bait_fname)
+            split = commands.do_target(baits, do_split=True, avg_size=200)
+            covering = baits.into_ranges(split, "gene", "-")
+            for bin_label, bait_labels in zip(split["gene"], covering, strict=True):
+                self.assertEqual(
+                    set(bin_label.split(",")),
+                    set(str(bait_labels).split(",")),
+                    bait_fname,
+                )

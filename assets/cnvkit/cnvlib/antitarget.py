@@ -1,0 +1,171 @@
+"""Supporting functions for the 'antitarget' command."""
+
+from __future__ import annotations
+
+import logging
+
+from skgenome import GenomicArray as GA
+from skgenome.chromnames import is_alternative_contig, is_mitochondrial
+from skgenome.chromsort import detect_big_chroms
+
+from .params import ANTITARGET_NAME, INSERT_SIZE, MIN_REF_COVERAGE
+from .plots import chromosome_sizes
+
+
+def _is_canonical_for_antitarget(name: str) -> bool:
+    """Identify chromosomes the antitarget step should consider canonical.
+
+    Excludes alternative/unplaced contigs and mitochondria. Roman-numeral
+    chromosomes (e.g. yeast) are treated as canonical.
+    """
+    return not (is_alternative_contig(name) or is_mitochondrial(name))
+
+
+def do_antitarget(
+    targets: GA,
+    access: GA | None = None,
+    avg_bin_size: int = 150000,
+    min_bin_size: int | None = None,
+) -> GA:
+    """Derive off-target ("antitarget") bins from target regions.
+
+    Parameters
+    ----------
+    targets : GenomicArray
+        Target genomic regions.
+    access : GenomicArray, optional
+        Accessible genomic regions to constrain antitarget bins.
+    avg_bin_size : int, optional
+        Average size for antitarget bins. Default is 150000.
+    min_bin_size : int, optional
+        Minimum size for antitarget bins. If not specified, calculated as
+        2 * avg_bin_size * (2^MIN_REF_COVERAGE).
+
+    Returns
+    -------
+    GenomicArray
+        Antitarget genomic regions.
+    """
+    if not min_bin_size:
+        min_bin_size = 2 * int(avg_bin_size * (2**MIN_REF_COVERAGE))
+    return get_antitargets(targets, access, avg_bin_size, min_bin_size)  # type: ignore[arg-type]
+
+
+def get_antitargets(
+    targets: GA, accessible: GA, avg_bin_size: int, min_bin_size: int | None
+) -> GA:
+    """Generate antitarget intervals between/around target intervals.
+
+    Procedure:
+
+    - Invert target intervals
+    - Subtract the inverted targets from accessible regions
+    - For each of the resulting regions:
+
+        - Shrink by a fixed margin on each end
+        - If it's smaller than min_bin_size, skip
+        - Divide into equal-size (region_size/avg_bin_size) portions
+        - Emit the (chrom, start, end) coords of each portion
+    """
+    if accessible:
+        # Chromosomes' accessible sequence regions are given -- use them
+        accessible = drop_noncanonical_contigs(accessible, targets)
+    else:
+        # Chromosome accessible sequence regions not known -- use heuristics
+        # (chromosome length is endpoint of last probe; skip initial
+        # <magic number> of bases that are probably telomeric)
+        TELOMERE_SIZE = 150000
+        accessible = guess_chromosome_regions(targets, TELOMERE_SIZE)
+    pad_size = 2 * INSERT_SIZE
+    bg_arr = (
+        accessible.resize_ranges(-pad_size)
+        .subtract(targets.resize_ranges(pad_size))
+        .subdivide(avg_bin_size, min_bin_size)  # type: ignore[arg-type]
+    )
+    bg_arr["gene"] = ANTITARGET_NAME
+    return bg_arr
+
+
+def drop_noncanonical_contigs(accessible: GA, targets: GA, verbose: bool = True) -> GA:
+    """Drop contigs that are not targeted or canonical chromosomes.
+
+    Antitargets will be binned over chromosomes that:
+
+    - Appear in the sequencing-accessible regions of the reference genome
+      sequence, and
+    - Contain at least one targeted region, or
+    - Are named like a canonical chromosome (1-22,X,Y for human)
+
+    This allows antitarget binning to pick up canonical chromosomes that do not
+    contain any targets, as well as non-canonical or oddly named chromosomes
+    that were targeted.
+    """
+    # TODO - generalize: (garr, by="name", verbose=True):
+
+    access_chroms, target_chroms = compare_chrom_names(accessible, targets)
+    # Filter out untargeted alternative contigs and mitochondria
+    untgt_chroms = access_chroms - target_chroms
+    # Autosomes typically have numeric names, allosomes are X and Y
+    if any(_is_canonical_for_antitarget(c) for c in target_chroms):
+        chroms_to_skip = [
+            c for c in untgt_chroms if not _is_canonical_for_antitarget(c)
+        ]
+    else:
+        # Alternative contigs have longer names -- skip them
+        max_tgt_chr_name_len = max(map(len, target_chroms))
+        chroms_to_skip = [c for c in untgt_chroms if len(c) > max_tgt_chr_name_len]
+    if chroms_to_skip:
+        logging.info(
+            "Skipping untargeted chromosomes %s", " ".join(sorted(chroms_to_skip))
+        )
+        skip_idx = accessible.chromosome.isin(chroms_to_skip)
+        accessible = accessible[~skip_idx]
+    return accessible
+
+
+def compare_chrom_names(a_regions: GA, b_regions: GA) -> tuple[set, set]:
+    """Check if chromosome names overlap, and preview each if not.
+
+    This summary message will help triage cases of e.g. "chr1" vs. "1" in the
+    two genomic datasets being compared.
+    """
+    a_chroms = set(a_regions.chromosome.unique())
+    b_chroms = set(b_regions.chromosome.unique())
+    if a_chroms and a_chroms.isdisjoint(b_chroms):
+        msg = "Chromosome names do not match between files"
+        a_fname = a_regions.meta.get("filename")
+        b_fname = b_regions.meta.get("filename")
+        if a_fname and b_fname:
+            msg += f" {a_fname} and {b_fname}"
+        msg += ": {} vs. {}".format(
+            ", ".join(map(repr, sorted(a_chroms)[:3])),
+            ", ".join(map(repr, sorted(b_chroms)[:3])),
+        )
+        raise ValueError(msg)
+    return a_chroms, b_chroms
+
+
+def guess_chromosome_regions(targets: GA, telomere_size: int) -> GA:
+    """Determine (minimum) chromosome lengths from target coordinates."""
+    endpoints = [subarr.end.iat[-1] for _c, subarr in targets.by_chromosome()]
+    whole_chroms = GA.from_columns(
+        {
+            "chromosome": targets.chromosome.drop_duplicates(),
+            "start": telomere_size,  # type: ignore[dict-item]
+            "end": endpoints,
+        }
+    )
+    return whole_chroms
+
+
+def _drop_short_contigs(garr: GA) -> GA:
+    """Drop contigs that are much shorter than the others.
+
+    Cutoff is where a contig is less than half the size of the next-shortest
+    contig.
+    """
+    chrom_sizes = chromosome_sizes(garr)  # type: ignore[arg-type]
+    n_big, thresh = detect_big_chroms(chrom_sizes.values())
+    chrom_names_to_keep = {c for c, s in chrom_sizes.items() if s >= thresh}
+    assert len(chrom_names_to_keep) == n_big
+    return garr[garr.chromosome.isin(chrom_names_to_keep)]

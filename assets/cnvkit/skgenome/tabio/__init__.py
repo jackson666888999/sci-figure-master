@@ -1,0 +1,489 @@
+"""I/O for tabular formats of genomic data (regions or features)."""
+
+from __future__ import annotations
+
+import collections
+import contextlib
+import logging
+import os
+import re
+import sys
+from typing import TYPE_CHECKING
+
+import pandas as pd
+from Bio.File import as_handle
+
+from ..gary import GenomicArray as GA
+from . import (
+    bedio,
+    genepred,
+    gff,
+    picard,
+    seg,
+    seqdict,
+    tab,
+    textcoord,
+    vcfio,
+    vcfsimple,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from io import TextIOWrapper
+    from tempfile import _TemporaryFileWrapper
+
+    from cnvlib.cnary import CopyNumArray
+    from cnvlib.vary import VariantArray
+
+
+def read(
+    infile: str,
+    fmt: str = "tab",
+    into: type[GA] | type[CopyNumArray] | None = None,
+    sample_id: str | None = None,
+    meta: dict[str, str] | None = None,
+    **kwargs,
+) -> CopyNumArray | VariantArray | GA:
+    """Read tabular data from a file or stream into a genome object.
+
+    Supported formats: see `READERS`
+
+    If a format supports multiple samples, return the sample specified by
+    `sample_id`, or if unspecified, return the first sample and warn if there
+    were other samples present in the file.
+
+    Parameters
+    ----------
+    infile : handle or string
+        Filename or opened file-like object to read.
+    fmt : string
+        File format.
+    into : class
+        GenomicArray class or subclass to instantiate, overriding the
+        default for the target file format.
+    sample_id : string
+        Sample identifier.
+    meta : dict
+        Metadata, as arbitrary key-value pairs.
+    **kwargs :
+        Additional keyword arguments to the format-specific reader function.
+
+    Returns
+    -------
+    GenomicArray or subclass
+        The data from the given file instantiated as `into`, if specified, or
+        the default base class for the given file format (usually GenomicArray).
+    """
+    # lazy: skgenome -> cnvlib is a layer inversion; importing at module top
+    # creates a circular import. See skgenome package boundary in CLAUDE.md.
+    from cnvlib.core import fbase  # noqa: PLC0415
+
+    if fmt == "auto":
+        return read_auto(infile)
+
+    if fmt in READERS:
+        reader, suggest_into = READERS[fmt]  # type: ignore[misc]
+    else:
+        raise ValueError(f"Unknown format: {fmt}")
+
+    if meta is None:
+        meta = {}
+    if "sample_id" not in meta:
+        if sample_id:
+            meta["sample_id"] = sample_id
+        else:
+            fname = get_filename(infile)
+            if fname:
+                meta["sample_id"] = fbase(fname)
+    if "filename" not in meta:
+        fname = get_filename(infile)
+        if fname:
+            meta["filename"] = infile
+    if fmt in ("seg", "vcf") and sample_id is not None:
+        # Multi-sample formats: choose one sample
+        kwargs["sample_id"] = sample_id
+    try:
+        dframe = reader(infile, **kwargs)  # type: ignore[operator]
+    except pd.errors.EmptyDataError:
+        # File is blank/empty, most likely
+        logging.info("Blank %s file?: %s", fmt, infile)
+        dframe = []
+    if fmt == "vcf":
+        # lazy: skgenome -> cnvlib is a layer inversion; see note in read() above.
+        from cnvlib.vary import VariantArray as VA  # noqa: PLC0415
+
+        suggest_into = VA  # type: ignore[assignment]
+    result = (into or suggest_into)(dframe, meta)
+    _apply_interval_order_policy(result.data, fmt, get_filename(infile))
+    result.sort_columns()
+    result.sort()
+    return result
+    # ENH CategoricalIndex ---
+    # if dframe:
+    # dframe['chromosome'] = pd.Categorical(dframe['chromosome'],
+    #                                      dframe.chromosome.drop_duplicates(),
+    #                                      ordered=True)
+    # Create a multi-index of genomic coordinates (like GRanges)
+    # dframe.set_index(['chromosome', 'start'], inplace=True)
+
+
+#: Formats CNVkit writes itself: the bin and segment tables (.cnn, .cnr, .cns)
+#: and the SEG its own segmenter emits. A row whose end precedes its start in
+#: one of these is corrupt output, so it is refused rather than repaired --
+#: see `_apply_interval_order_policy`.
+_SELF_WRITTEN_FORMATS = frozenset(("tab", "seg"))
+
+#: Formats other tools write, whose rows carry both coordinates as the file
+#: spells them. CNVkit does not own these producers, so a reversed row is
+#: repaired rather than refused. The remainder of `READERS` is the VCF
+#: family, which derives its end from a declared field against a fallback of
+#: its own; `_apply_interval_order_policy` says why that is left alone.
+_FOREIGN_FORMATS = frozenset(
+    (
+        "bed",
+        "bed3",
+        "bed4",
+        "bed6",
+        "dict",
+        "genepred",
+        "genepredext",
+        "gff",
+        "interval",
+        "picardhs",
+        "refflat",
+        "refgene",
+        "text",
+    )
+)
+
+
+def repair_inverted_intervals(frame: pd.DataFrame, fname: str | None = None) -> None:
+    """Reverse every row whose end precedes its start, in place, and say so.
+
+    The answer for coordinates another tool wrote, where refusing the file
+    would block a workflow CNVkit does not control, so the interval is taken
+    to span the wider range. For BED that is the reading the writer intended:
+    reverse-direction PCR primers are recorded with the start after the end.
+    For an annotation format carrying its own strand column, GFF and the
+    genePred family, coordinate order encodes nothing, so a reversed row is
+    damage and the wider range is merely the only usable interval left in it.
+    Both warrant repair over refusal; the warning is what tells them apart.
+
+    Public because provenance is a property of the caller, not only of the
+    format. `import-seg` reads SEG another tool produced and so calls this
+    directly, while `read`'s own SEG branch refuses, its caller being
+    CNVkit's DNAcopy output.
+
+    Call it before sorting: reversing coordinates can move a row's place in
+    the order.
+    """
+    inverted = (frame["end"] < frame["start"]).to_numpy()
+    if not inverted.any():
+        return
+    first = _describe_row(frame, int(inverted.argmax()))
+    # Copy both columns before writing either. `.to_numpy()` on a `.loc`
+    # slice hands back a view whenever the mask selects every row, so a swap
+    # through one uncopied array reduces those rows to `end, end`. A reader's
+    # own frame has that layout; the frame `read` goes on to build does not.
+    starts = frame.loc[inverted, "start"].to_numpy(copy=True)
+    ends = frame.loc[inverted, "end"].to_numpy(copy=True)
+    frame.loc[inverted, "start"] = ends
+    frame.loc[inverted, "end"] = starts
+    logging.warning(
+        "Reversed %d of %d intervals whose end preceded their start%s, first %s",
+        int(inverted.sum()),
+        len(frame),
+        f" in {fname}" if fname else "",
+        first,
+    )
+
+
+def _apply_interval_order_policy(
+    frame: pd.DataFrame, fmt: str, fname: str | None
+) -> None:
+    """Refuse or repair rows whose end precedes their start, as `fmt` warrants.
+
+    What an inverted row means depends on who wrote it, so the two answers
+    are not interchangeable.
+
+    In a format CNVkit produces, the coordinates are a segmenter's or a
+    binner's own output and an inverted row cannot be anything but corrupt.
+    The damage such a row does is downstream of any search -- `export vcf`
+    writes it out as a deletion call whose END precedes its POS, and it
+    suppresses a neighbouring record's confidence interval -- which is why a
+    check inside the search half would not have caught it. Repairing one
+    would invent a span no segmenter produced, so the only safe answer is to
+    refuse the file and say which rows are wrong.
+
+    A format another tool wrote is repaired instead; see
+    `repair_inverted_intervals`. SEG is counted as CNVkit's own here because
+    the only caller that reaches it through `read` is the DNAcopy pipeline
+    reading its own segmenter back; `import-seg`, whose input is foreign by
+    definition, repairs instead.
+
+    VCF is deliberately in neither group. Its end is not read but derived,
+    from INFO/END and INFO/SVLEN against the reference allele, so an end
+    below the start means a declared value is untrustworthy rather than that
+    the record runs backwards; swapping the two would fabricate a span. That
+    is resolved where it arises instead: every VCF reader takes the furthest
+    of those three, so a value below the record's own POS simply loses (see
+    `vcfspan`), and no VCF reader hands this function an inverted row.
+    """
+    if fmt in _SELF_WRITTEN_FORMATS:
+        inverted = (frame["end"] < frame["start"]).to_numpy()
+        if inverted.any():
+            remedy = (
+                "To fix, regenerate the file with a current CNVkit, which "
+                "has not written such a row since v0.9.14, or drop the rows."
+                if fname
+                else "These coordinates were produced in this process, so "
+                "this is a defect in CNVkit rather than in the input."
+            )
+            raise ValueError(
+                "Genomic intervals must not end before they start: "
+                f"{int(inverted.sum())} of {len(frame)} rows"
+                f"{f' in {fname}' if fname else ''} are reversed, first "
+                f"{_describe_row(frame, int(inverted.argmax()))}. {remedy}"
+            )
+    elif fmt in _FOREIGN_FORMATS:
+        repair_inverted_intervals(frame, fname)
+
+
+def _describe_row(frame: pd.DataFrame, position: int) -> str:
+    """Name one row by its coordinates, for a diagnostic message."""
+    row = frame.iloc[position]
+    return f"{row['chromosome']}:{row['start']}-{row['end']}"
+
+
+def read_auto(infile: str) -> GA:
+    """Auto-detect a file's format and use an appropriate parser to read it."""
+    if not isinstance(infile, str) and not hasattr(infile, "seek"):  # type: ignore[unreachable]
+        raise ValueError(
+            "Can only auto-detect format from filename or "
+            + f"seekable (local, on-disk) files, which {infile} is not"
+        )
+
+    fmt = sniff_region_format(infile)
+    if hasattr(infile, "seek"):
+        infile.seek(0)
+    if fmt:
+        logging.info("Detected file format: %s", fmt)
+    else:
+        # File is blank -- simple BED will handle this OK
+        fmt = "bed3"
+    return read(infile, fmt or "tab")
+
+
+READERS = {
+    # Format name, formatter, default target class
+    "auto": (read_auto, GA),
+    "bed": (bedio.read_bed, GA),
+    "bed3": (bedio.read_bed3, GA),
+    "bed4": (bedio.read_bed4, GA),
+    "bed6": (bedio.read_bed6, GA),
+    "dict": (seqdict.read_dict, GA),
+    "gff": (gff.read_gff, GA),
+    "interval": (picard.read_interval, GA),
+    "genepred": (genepred.read_genepred, GA),
+    "genepredext": (genepred.read_genepred_ext, GA),
+    "refflat": (genepred.read_refflat, GA),
+    "refgene": (genepred.read_refgene, GA),
+    "picardhs": (picard.read_picard_hs, GA),
+    "seg": (seg.read_seg, GA),
+    "tab": (tab.read_tab, GA),
+    "text": (textcoord.read_text, GA),
+    "vcf": (vcfio.read_vcf, GA),
+    "vcf-simple": (vcfsimple.read_vcf_simple, GA),
+    "vcf-sites": (vcfsimple.read_vcf_sites, GA),
+}
+
+
+# _____________________________________________________________________
+
+
+def write(
+    garr: CopyNumArray | GA,
+    outfile: _TemporaryFileWrapper | str | None = None,
+    fmt: str = "tab",
+    verbose: bool = True,
+    **kwargs,
+) -> None:
+    """Write a genome object to a file or stream."""
+    formatter, show_header = WRITERS[fmt]  # type: ignore[misc]
+    if fmt in ("seg", "vcf"):
+        kwargs["sample_id"] = garr.sample_id
+    dframe = formatter(garr.data, **kwargs)  # type: ignore[operator]
+    with safe_write(outfile or sys.stdout, verbose=False) as handle:  # type: ignore[arg-type]
+        dframe.to_csv(
+            handle, header=show_header, index=False, sep="\t", float_format="%.6g"
+        )
+    if verbose:
+        # Log the output path, if possible
+        outfname = get_filename(outfile)  # type: ignore[arg-type]
+        if outfname:
+            logging.info("Wrote %s with %d regions", outfname, len(dframe))
+
+
+WRITERS = {
+    # Format name, formatter, show header
+    "bed": (bedio.write_bed, False),
+    "bed3": (bedio.write_bed3, False),
+    "bed4": (bedio.write_bed4, False),
+    # "gff": (gff.write_gff, False),
+    "interval": (picard.write_interval, False),
+    "picardhs": (picard.write_picard_hs, True),
+    "seg": (seg.write_seg, True),
+    "tab": (tab.write_tab, True),
+    "text": (textcoord.write_text, False),
+    "vcf": (vcfio.write_vcf, True),
+}
+
+
+# _____________________________________________________________________
+
+
+@contextlib.contextmanager
+def safe_write(
+    outfile: _TemporaryFileWrapper | str, verbose: bool = True
+) -> Iterator[TextIOWrapper | _TemporaryFileWrapper]:
+    """Write to a filename or file-like object with error handling.
+
+    If given a file name, open it. If the path includes directories that don't
+    exist yet, create them.  If given a file-like object, just pass it through.
+    """
+    if isinstance(outfile, str):
+        dirname = os.path.dirname(outfile)
+        if dirname and not os.path.isdir(dirname):
+            os.mkdir(dirname)
+            logging.info("Created directory %s", dirname)
+        with open(outfile, "w") as handle:
+            yield handle
+    else:
+        yield outfile
+
+    # Log the output path, if possible (but don't contaminate stdout)
+    if verbose:
+        outfname = get_filename(outfile)
+        if outfname:
+            logging.info("Wrote %s", outfname)
+
+
+def get_filename(infile: _TemporaryFileWrapper | str) -> str | None:
+    if isinstance(infile, str):
+        return infile
+    if hasattr(infile, "name") and infile not in (sys.stdout, sys.stderr):
+        # File(-like) handle
+        return infile.name
+    return None
+
+
+def sniff_region_format(infile: str) -> str | None:
+    """Guess the format of the given file by reading the first line.
+
+    Returns
+    -------
+    str or None
+        The detected format name, or None if the file is empty.
+    """
+    # If the filename extension indicates the format, try that first
+    fname_fmt = None
+    fname = get_filename(infile)
+    if fname:
+        _base, ext = os.path.splitext(fname)
+        ext = ext.removeprefix(".")
+        # if ext in known_extensions:
+        if ext in format_patterns:
+            fname_fmt = ext
+
+    # Fallback: regex detection
+    # has_track = False
+    with as_handle(infile, "r") as handle:
+        for line in handle:
+            if not line.strip():
+                # Skip blank lines
+                continue
+            if line.startswith(("track", "browser ")):
+                # NB: Could be UCSC BED or Ensembl GFF
+                # has_track = True
+                continue
+            if fname_fmt and format_patterns[fname_fmt].match(line):
+                return fname_fmt
+            # Formats that (may) declare themselves in an initial '#' comment
+            if line.startswith("##gff-version") or format_patterns["gff"].match(line):
+                return "gff"
+            if line.startswith(("##fileformat=VCF", "#CHROM\tPOS\tID")):
+                return "vcf"
+            if line.startswith("#"):
+                continue
+            # Formats that need to be guessed solely by regex
+            if format_patterns["text"].match(line):
+                return "text"
+            if format_patterns["tab"].match(line):
+                return "tab"
+            if line.startswith("@") or format_patterns["interval"].match(line):
+                return "interval"
+            if format_patterns["refflat"].match(line):
+                return "refflat"
+            if format_patterns["bed"].match(line):
+                return "bed"
+
+            raise ValueError(
+                "File %r does not appear to be a recognized "
+                "format! (Any of: %s)\n"
+                "First non-blank line:\n%s"
+                % (fname, ", ".join(format_patterns.keys()), line)
+            )
+    return None
+
+
+format_patterns = collections.OrderedDict(
+    [
+        #  ('genepred', re.compile()),
+        #  ('genepredext', re.compile()),
+        ("text", re.compile(r"\w+:\d*-\d*.*")),
+        ("tab", re.compile("\t".join(("chromosome", "start", "end")))),
+        (
+            "interval",
+            re.compile("\t".join((r"\w+", r"\d+", r"\d+", r"[.+-]", r"\S+$"))),
+        ),
+        (
+            "refflat",
+            re.compile(
+                "\t".join(
+                    (
+                        r"\S+",
+                        r"\S+",
+                        r"\w+",
+                        r"[+-]",
+                        r"\d+",
+                        r"\d+",
+                        r"\d+",
+                        r"\d+",
+                        r"\d+",
+                        r"(\d+,)+",
+                        r"(\d+,)+$",
+                    )
+                )
+            ),
+        ),
+        (
+            "gff",
+            re.compile(
+                "\t".join(
+                    (
+                        r"\w+",
+                        r"\S+",
+                        r"\w+",
+                        r"\d+",
+                        r"\d+",
+                        r"\S+",
+                        r"[.?+-]",
+                        r"[012.]",
+                        r".*",
+                    )
+                )
+            ),
+        ),
+        ("bed", re.compile("\t".join((r"\S+", r"\d+", r"\d+")))),
+    ]
+)

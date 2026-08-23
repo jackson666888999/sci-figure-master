@@ -1,0 +1,101 @@
+#' @include utilities.R
+NULL
+#'Nice Summary of a Survival Curve
+#'@description Compared to the default summary() function, surv_summary()
+#'  creates a data frame containing a nice summary from
+#'  \code{\link[survival]{survfit}} results.
+#'@param x an object of class survfit.
+#'@param data a dataset used to fit survival curves. If not supplied then data
+#'  will be extracted from 'fit' object.
+#'@return An object of class \bold{'surv_summary'}, which is a data frame with
+#'  the following columns: \itemize{ \item time: the time points at which the
+#'  curve has a step. \item n.risk: the number of subjects at risk at t. \item
+#'  n.event: the number of events that occur at time t. \item  n.censor: number
+#'  of censored events. \item surv: estimate of survival. \item std.err:
+#'  standard error of survival. \item upper: upper end of confidence interval.
+#'  \item lower: lower end of confidence interval. \item strata: stratification of survival curves.}
+#
+#'  In a situation, where survival curves have been fitted with one or more
+#'  variables, surv_summary object contains \bold{extra columns} representing the
+#'  variables. This makes it possible to facet the output of
+#'  \code{\link{ggsurvplot}} by strata or by some combinations of factors.
+#'
+#'  surv_summary object has also an attribut named \bold{'table'} containing
+#'  information about the survival curves, including medians of survival with
+#'  confidence intervals, as well as, the total number of subjects and the
+#'  number of event in each curve.
+#'
+#'@author Alboukadel Kassambara, \email{alboukadel.kassambara@@gmail.com}
+#' @examples
+#'
+#'# Fit survival curves
+#' require("survival")
+#' fit <- survfit(Surv(time, status) ~ rx + adhere, data = colon)
+#'
+#' # Summarize
+#' res.sum <- surv_summary(fit, data = colon)
+#' head(res.sum)
+#'
+#' # Information about the survival curves
+#' attr(res.sum, "table")
+#'
+#'
+#'@export
+surv_summary <- function (x, data = NULL){
+  # ggsurvplot()/surv_summary() draw single-event Kaplan-Meier curves and do not
+  # support multi-state / competing-risks fits. A factor (or >2-level) status makes
+  # survival::survfit() return a 'survfitms' object; building the summary data frame
+  # for such a fit then failed with a cryptic "arguments imply differing number of
+  # rows". Fail early with an actionable message instead (#373). (The former
+  # 'survfitms' branch here was dead code: it referenced x$prev, which modern
+  # survival renamed to x$pstate, so it always crashed in its own cbind -- removed.)
+  if (inherits(x, "survfitms"))
+    stop("survminer's Kaplan-Meier summary/plots do not support multi-state / ",
+         "competing-risks fits (survfit() returned a 'survfitms' object, which ",
+         "happens when the status passed to Surv() is a factor or has more than two ",
+         "levels). Use a numeric 0/1 or logical status for a Kaplan-Meier curve, or ",
+         "ggcompetingrisks() for competing risks / multi-state.", call. = FALSE)
+  res <- as.data.frame(.compact(unclass(x)[c("time", "n.risk",
+                                            "n.event", "n.censor")]))
+  # A survfit stored without confidence limits -- e.g. conf.type = "none", or any
+  # fit that kept no CI -- has NULL (length-0) $upper/$lower (and sometimes
+  # $std.err). cbind()-ing a length-0 column into the summary threw a cryptic
+  # "arguments imply differing number of rows: N, 0", and because surv_summary()
+  # runs for EVERY ggsurvplot() (not only conf.int = TRUE), such a fit could not be
+  # plotted at all (#639). Coalesce an absent column to an NA vector of the right
+  # length so the summary is always well-formed; the curve then draws with no
+  # confidence band. A fit WITH CI keeps its real columns (length == n, not empty),
+  # so its summary is byte-identical.
+  .col_or_na <- function(v, n, flat = FALSE) {
+    if (is.null(v) || length(v) == 0L) return(rep(NA_real_, n))
+    if (flat) .flat(v) else v
+  }
+  # Case of survfit(res.cox, newdata)
+  if(is.matrix(x$surv)){
+    ncurve <- ncol(x$surv)
+    res <- data.frame(time = rep(x$time, ncurve), n.risk = rep(x$n.risk, ncurve),
+                      n.event = rep(x$n.event, ncurve), n.censor = rep(x$n.censor, ncurve))
+    res <- cbind(res, surv = .flat(x$surv),
+                 std.err = .col_or_na(x$std.err, nrow(res), flat = TRUE),
+                 upper = .col_or_na(x$upper, nrow(res), flat = TRUE),
+                 lower = .col_or_na(x$lower, nrow(res), flat = TRUE))
+    res$strata <- as.factor(rep(colnames(x$surv), each = nrow(x$surv)))
+  }
+  # case of standard survfit() or survfit(res.cox)
+  else res <- cbind(res, surv = x$surv,
+                    std.err = .col_or_na(x$std.err, nrow(res)),
+                    upper = .col_or_na(x$upper, nrow(res)),
+                    lower = .col_or_na(x$lower, nrow(res)))
+  if (!is.null(x$strata)) {
+    data <- .get_data(x, data = data) # data used to compute survfit
+    res$strata <- rep(names(x$strata), x$strata)
+    res$strata <- .clean_strata(res$strata, x)
+    # Add column for each variable in survival fit
+    variables <- .get_variables(res$strata, x, data)
+    for(variable in variables) res[[variable]] <- .get_variable_value(variable, res$strata, x, data)
+  }
+  structure(res, class = c("data.frame", "surv_summary"))
+  attr(res, "table") <-  as.data.frame(summary(x)$table)
+  res
+}
+

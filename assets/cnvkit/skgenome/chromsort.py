@@ -1,0 +1,66 @@
+"""Operations on chromosome/contig/sequence names."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+from itertools import takewhile
+
+import numpy as np
+import pandas as pd
+
+
+def detect_big_chroms(sizes: Iterable[int]) -> tuple[int, int]:
+    """Determine the number of "big" chromosomes from their lengths.
+
+    In the human genome, this returns 24, where the canonical chromosomes 1-22,
+    X, and Y are considered "big", while mitochrondria and the alternative
+    contigs are not. This allows us to exclude the non-canonical chromosomes
+    from an analysis where they're not relevant.
+
+    Returns
+    -------
+    n_big : int
+        Number of "big" chromosomes in the genome.
+    thresh : int
+        Length of the smallest "big" chromosomes.
+    """
+    sizes_s = pd.Series(sizes).sort_values(ascending=False)
+    reldiff = sizes_s.diff().abs().to_numpy()[1:] / sizes_s.to_numpy()[:-1]
+    changepoints = np.nonzero(reldiff > 0.5)[0]
+    if changepoints.any():
+        n_big = changepoints[0] + 1
+        thresh = sizes_s.iat[n_big - 1]
+    else:
+        n_big = len(sizes_s)
+        thresh = sizes_s.to_numpy()[-1]
+    return n_big, thresh
+
+
+def sorter_chrom(label: str) -> tuple[int, str]:
+    """Create a sorting key from chromosome label.
+
+    Sort by integers first, then letters or strings. The prefix "chr"
+    (case-insensitive), if present, is stripped automatically for sorting.
+
+    E.g. chr1 < chr2 < chr10 < chrX < chrY < chrM
+    """
+    # Strip "chr" prefix
+    chrom = label[3:] if label.lower().startswith("chr") else label
+    if chrom in ("X", "Y"):
+        key = (1000, chrom)
+    else:
+        # Separate numeric and special chromosomes
+        nums = "".join(takewhile(str.isdigit, chrom))
+        chars = chrom[len(nums) :]
+        num_val = int(nums) if nums else 0
+        if not chars:
+            key = (num_val, "")
+        elif len(chars) == 1:
+            key = (2000 + num_val, chars)
+        else:
+            key = (3000 + num_val, chars)
+    return key

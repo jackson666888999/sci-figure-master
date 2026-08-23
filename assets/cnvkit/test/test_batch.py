@@ -1,0 +1,853 @@
+#!/usr/bin/env python
+"""Tests for the batch command."""
+
+import ast
+import inspect
+import logging
+import os
+import shutil
+import tempfile
+import unittest
+import warnings
+from unittest import mock
+
+import pytest
+
+logging.basicConfig(level=logging.ERROR, format="%(message)s")
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+import numpy as np
+import pandas as pd
+import pysam
+from conftest import ast_calls_to, ast_submit_calls, call_arg_names, linecount
+
+import cnvlib
+from cnvlib import (
+    access,
+    antitarget,
+    autobin,
+    batch,
+    bintest,
+    call,
+    cluster,
+    cmdutil,
+    cnary,
+    commands,
+    core,
+    coverage,
+    diagram,
+    export,
+    fix,
+    heatmap,
+    import_rna,
+    importers,
+    metrics,
+    parallel,
+    params,
+    plots,
+    purity,
+    reference,
+    reports,
+    samutil,
+    scatter,
+    segfilters,
+    segmentation,
+    segmetrics,
+    smoothing,
+    vary,
+)
+from skgenome import GenomicArray as GA
+from skgenome import tabio
+
+
+class BatchTests(unittest.TestCase):
+    """Tests for the batch command and end-to-end pipeline."""
+
+    def test_batch(self):
+        """The 'batch' command."""
+        target_bed = "formats/my-targets.bed"
+        fasta = "formats/chrM-Y-trunc.hg19.fa"
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        annot = "formats/my-refflat.bed"
+        # Build a single-sample WGS reference
+        ref_fname, tgt_bed_fname, _ = batch.batch_make_reference(
+            [bam],
+            None,
+            None,
+            True,
+            None,
+            fasta,
+            annot,
+            True,
+            500,
+            None,
+            None,
+            None,
+            None,
+            "build",
+            1,
+            False,
+            0,
+            "wgs",
+            False,
+        )
+        self.assertEqual(ref_fname, "build/reference.cnn")
+        refarr = cnvlib.read(ref_fname, "bed")
+        tgt_regions = tabio.read(tgt_bed_fname, "bed")
+        self.assertEqual(len(refarr), len(tgt_regions))
+        # Build a single-sample hybrid-capture reference
+        ref_fname, tgt_bed_fname, anti_bed_fname = batch.batch_make_reference(
+            [bam],
+            target_bed,
+            None,
+            True,
+            None,
+            fasta,
+            None,
+            True,
+            10,
+            None,
+            1000,
+            100,
+            None,
+            "build",
+            1,
+            False,
+            0,
+            "hybrid",
+            False,
+        )
+        self.assertEqual(ref_fname, "build/reference.cnn")
+        refarr = cnvlib.read(ref_fname, "bed")
+        tgt_regions = tabio.read(tgt_bed_fname, "bed")
+        anti_regions = tabio.read(anti_bed_fname, "bed")
+        self.assertEqual(len(refarr), len(tgt_regions) + len(anti_regions))
+        # Run the same sample
+        batch.batch_run_sample(
+            bam,
+            tgt_bed_fname,
+            anti_bed_fname,
+            ref_fname,
+            "build",
+            True,
+            None,
+            True,
+            True,
+            "Rscript",
+            False,
+            0,
+            False,
+            "hybrid",
+            "hmm",
+            1,
+            False,
+        )
+        cns = cnvlib.read("build/na12878-chrM-Y-trunc.cns")
+        self.assertGreater(len(cns), 0)
+
+    def test_batch_hybrid_autobin(self):
+        """Hybrid batch with autobin-determined bin sizes (issue #302)."""
+        target_bed = "formats/my-targets.bed"
+        fasta = "formats/chrM-Y-trunc.hg19.fa"
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        # target_avg_size=0 triggers autobin for hybrid mode
+        ref_fname, tgt_bed_fname, anti_bed_fname = batch.batch_make_reference(
+            [bam],
+            target_bed,
+            None,
+            True,
+            None,
+            fasta,
+            None,
+            True,
+            0,
+            None,
+            None,
+            None,
+            None,
+            "build",
+            1,
+            False,
+            0,
+            "hybrid",
+            False,
+        )
+        self.assertEqual(ref_fname, "build/reference.cnn")
+        refarr = cnvlib.read(ref_fname, "bed")
+        tgt_regions = tabio.read(tgt_bed_fname, "bed")
+        anti_regions = tabio.read(anti_bed_fname, "bed")
+        self.assertGreater(len(tgt_regions), 0)
+        self.assertEqual(len(refarr), len(tgt_regions) + len(anti_regions))
+
+    def test_batch_run_sample_with_duplicate_coordinates(self):
+        """Integration test: batch_run_sample with duplicate coordinates in coverage.
+
+        This tests that when coverage data contains duplicate coordinates,
+        the error is properly detected and reported with sample context.
+        """
+        # Build in-memory cnarrs with duplicate target coordinates; the test
+        # exercises do_fix's duplicate-detection branch, no disk I/O needed.
+        target_data = pd.DataFrame(
+            {
+                "chromosome": ["chr1"] * 4,
+                "start": [100, 200, 200, 300],  # Duplicate start at position 200
+                "end": [150, 250, 250, 350],  # Duplicate end at position 250
+                "gene": ["GeneA", "GeneB", "GeneB", "GeneC"],
+                "log2": [0.1, 0.2, 0.2, 0.3],
+                "depth": [100.0, 200.0, 200.0, 150.0],
+            }
+        )
+        target_cnarr = cnary.CopyNumArray(target_data, {"sample_id": "test_sample"})
+
+        antitarget_data = pd.DataFrame(
+            {
+                "chromosome": ["chr1"] * 2,
+                "start": [50, 400],
+                "end": [90, 450],
+                "gene": ["Antitarget", "Antitarget"],
+                "log2": [0.0, 0.0],
+                "depth": [50.0, 50.0],
+            }
+        )
+        antitarget_cnarr = cnary.CopyNumArray(
+            antitarget_data, {"sample_id": "test_sample"}
+        )
+
+        # Create a simple reference without duplicates
+        ref_data = pd.DataFrame(
+            {
+                "chromosome": ["chr1"] * 5,
+                "start": [50, 100, 200, 300, 400],
+                "end": [90, 150, 250, 350, 450],
+                "gene": ["Antitarget", "GeneA", "GeneB", "GeneC", "Antitarget"],
+                "log2": [0.0, 0.0, 0.0, 0.0, 0.0],
+            }
+        )
+        ref_cnarr = cnary.CopyNumArray(ref_data, {"sample_id": "reference"})
+
+        # Test that do_fix detects duplicate coordinates and raises ValueError
+        with self.assertRaises(ValueError) as ctx:
+            fix.do_fix(target_cnarr, antitarget_cnarr, ref_cnarr)
+
+        # The error message should mention duplicates
+        self.assertIn("Duplicated genomic coordinates", str(ctx.exception))
+
+    def test_batch_accepts_sample_sex_arg(self):
+        """``cnvkit.py batch`` accepts ``-x/--sample-sex`` (#500, #635).
+
+        Users running the full pipeline via ``batch`` need a way to override
+        the auto-inferred sex when the inference goes wrong on their data,
+        without having to hand-build the equivalent multi-step pipeline.
+        The ``call``/``diagram``/``export`` commands have always accepted
+        ``--sample-sex``; ``batch`` was the documented gap.
+        """
+        args = commands.AP.parse_args(
+            [
+                "batch",
+                "dummy.bam",
+                "-r",
+                "dummy.cnn",
+                "-d",
+                "outdir",
+                "-x",
+                "female",
+            ]
+        )
+        self.assertEqual(args.sample_sex, "female")
+        # Long form also resolves to sample_sex. (The legacy ``-g/--gender``
+        # alias supplied by ``add_sample_sex`` elsewhere is deliberately
+        # omitted on batch because ``-g`` is already taken by ``--access``.)
+        args2 = commands.AP.parse_args(
+            [
+                "batch",
+                "dummy.bam",
+                "-r",
+                "dummy.cnn",
+                "-d",
+                "outdir",
+                "--sample-sex",
+                "male",
+            ]
+        )
+        self.assertEqual(args2.sample_sex, "male")
+
+    def test_batch_run_sample_propagates_sex_to_do_call(self):
+        """``batch_run_sample`` must pass ``is_haploid_x_reference`` AND
+        ``is_sample_female`` to every ``call.do_call`` invocation, not silently
+        fall through to ``do_call``'s ``False/False`` defaults.
+
+        Previously the ``do_call`` calls inside ``batch_run_sample`` used the
+        function defaults regardless of ``batch -y``, so ``.call.cns`` chrX
+        cn values were computed against a diploid-X reference even when the
+        user built a male reference (normal female chrX at log2 ~ +1 was
+        called as GAIN). The fix consolidates the per-sample sex decision
+        via ``verify_sample_sex`` and passes the result explicitly to both
+        ``do_call`` calls and the diagram path.
+
+        AST-level guard so source rearrangements still catch the regression
+        cleanly without needing a full BAM fixture per case.
+        """
+        invocations = ast_calls_to(batch.batch_run_sample, "do_call", "call")
+        self.assertEqual(
+            len(invocations),
+            2,
+            "Expected exactly two call.do_call() invocations in "
+            "batch_run_sample: the method='none' pass that filters segments by "
+            "confidence interval, and the final method='threshold' pass that "
+            "assigns absolute copy number. The count is pinned because "
+            "ast_calls_to cannot see an aliased call.",
+        )
+        for inv in invocations:
+            kw_names = {kw.arg for kw in inv.keywords}
+            self.assertIn(
+                "is_haploid_x_reference",
+                kw_names,
+                "call.do_call inside batch_run_sample must pass "
+                "is_haploid_x_reference explicitly (#500/#635-adjacent latent bug).",
+            )
+            self.assertIn(
+                "is_sample_female",
+                kw_names,
+                "call.do_call inside batch_run_sample must pass "
+                "is_sample_female explicitly so batch -x is honored.",
+            )
+
+    def test_batch_run_sample_passes_bias_smoother_to_do_fix(self):
+        """``batch_run_sample`` must forward its ``bias_smoother`` argument
+        to every ``fix.do_fix`` invocation it makes (#1028).
+
+        Without this, ``cnvkit batch --bias-smoother loess`` would silently
+        fall back to ``rolling_median`` and users would have no way to
+        evaluate LOESS through the high-level ``batch`` entry point even
+        though the CLI flag was accepted.
+
+        AST-level guard so source rearrangements still catch the regression
+        cleanly without needing a full BAM fixture.
+        """
+        invocations = ast_calls_to(batch.batch_run_sample, "do_fix", "fix")
+        self.assertGreater(
+            len(invocations),
+            0,
+            "Expected at least one fix.do_fix() invocation in batch_run_sample",
+        )
+        for inv in invocations:
+            self.assertIn(
+                "bias_smoother",
+                {kw.arg for kw in inv.keywords},
+                "fix.do_fix inside batch_run_sample must pass bias_smoother "
+                "explicitly so `cnvkit batch --bias-smoother loess` reaches "
+                "center_by_window (#1028).",
+            )
+
+    def test_batch_run_sample_leaves_segmetrics_policy_to_the_library(self):
+        """``batch_run_sample`` may choose *which* segment metrics it wants and
+        at what level, but not *how* they are computed.
+
+        ``batch`` used to pin ``smoothed=True`` on its ``do_segmetrics`` call.
+        That matched the CLI while ``--smooth-bootstrap`` was a flag, but the
+        option became an integer threshold (bins at or below which to smooth,
+        BCa above) and the in-process caller was missed, so ``batch`` kept
+        smoothing every segment -- a setting no command line could express, and
+        one that leaves the confidence intervals of large segments dependent on
+        unseeded noise.
+
+        The whitelist, rather than an assertion that ``smoothed`` is absent,
+        states the invariant: a later ``bootstraps=200`` would break the
+        "equivalent to" pipeline listing in ``doc/pipeline.rst`` the same way.
+        If ``batch`` ever gains a legitimate smoothing option, delete this test
+        deliberately.
+        """
+        chosen_by_batch = {
+            "location_stats",
+            "spread_stats",
+            "interval_stats",
+            "alpha",
+            "skip_low",
+        }
+        invocations = ast_calls_to(
+            batch.batch_run_sample, "do_segmetrics", "segmetrics"
+        )
+        self.assertEqual(
+            sum(
+                "interval_stats" in {kw.arg for kw in inv.keywords}
+                for inv in invocations
+            ),
+            1,
+            "Expected exactly one segmetrics.do_segmetrics() invocation in "
+            "batch_run_sample to request interval statistics; the whitelist "
+            "below only covers calls spelled `segmetrics.do_segmetrics(...)`, "
+            "so an aliased import would otherwise go unchecked.",
+        )
+        for inv in invocations:
+            pinned = {kw.arg for kw in inv.keywords} - chosen_by_batch
+            self.assertEqual(
+                pinned,
+                set(),
+                "segmetrics.do_segmetrics inside batch_run_sample must leave "
+                f"{sorted(pinned)} at the library default so batch and "
+                "`cnvkit.py segmetrics` agree.",
+            )
+            self.assertLessEqual(
+                len(inv.args),
+                2,
+                "Only the bin- and segment-level arrays may be passed "
+                "positionally; anything further evades the keyword whitelist.",
+            )
+
+    def test_batch_make_reference_passes_bias_smoother_to_do_reference(self):
+        """``batch_make_reference`` must forward ``bias_smoother`` to
+        ``reference.do_reference`` for the pooled-reference path (#1028).
+
+        ``do_reference_flat`` is exempt because a flat reference performs no
+        bias-vs-trait smoothing.
+
+        AST-level guard, paired with
+        ``test_batch_run_sample_passes_bias_smoother_to_do_fix``.
+        """
+        invocations = ast_calls_to(
+            batch.batch_make_reference, "do_reference", "reference"
+        )
+        self.assertGreater(
+            len(invocations),
+            0,
+            "Expected at least one reference.do_reference() invocation "
+            "in batch_make_reference",
+        )
+        for inv in invocations:
+            self.assertIn(
+                "bias_smoother",
+                {kw.arg for kw in inv.keywords},
+                "reference.do_reference inside batch_make_reference must "
+                "pass bias_smoother explicitly so `cnvkit batch "
+                "--bias-smoother loess` reaches center_by_window during "
+                "reference construction (#1028).",
+            )
+
+    def test_batch_run_sample_passes_no_overlap_to_do_coverage(self):
+        """``batch_run_sample`` must forward its ``no_overlap`` argument to
+        every ``coverage.do_coverage`` invocation it makes (#999).
+
+        Without this, ``cnvkit batch --no-overlap`` would silently drop
+        the flag and (anti)target coverage would keep double-counting
+        mate-pair overlap even though the CLI accepted the option.
+
+        AST-level guard, paired with the bias_smoother guards above.
+        """
+        invocations = ast_calls_to(batch.batch_run_sample, "do_coverage", "coverage")
+        self.assertEqual(
+            len(invocations),
+            2,
+            "Expected exactly two coverage.do_coverage() invocations in "
+            "batch_run_sample, one for targets and one for antitargets. The "
+            "count is pinned because ast_calls_to cannot see an aliased call.",
+        )
+        for inv in invocations:
+            self.assertIn(
+                "no_overlap",
+                call_arg_names(inv),
+                "coverage.do_coverage inside batch_run_sample must pass "
+                "no_overlap so `cnvkit batch --no-overlap` reaches "
+                "overlap-aware depth counting (#999).",
+            )
+
+    def test_batch_make_reference_passes_no_overlap_to_batch_write_coverage(self):
+        """``batch_make_reference`` must forward ``no_overlap`` to every
+        ``batch_write_coverage`` call it submits for normal samples (#999).
+
+        AST-level guard, paired with
+        ``test_batch_run_sample_passes_no_overlap_to_do_coverage``.
+        """
+        invocations = ast_submit_calls(
+            batch.batch_make_reference, "batch_write_coverage"
+        )
+        self.assertEqual(
+            len(invocations),
+            2,
+            "Expected exactly two pool.submit(batch_write_coverage, ...) "
+            "invocations in batch_make_reference, one for targets and one for "
+            "antitargets. The count is pinned because ast_submit_calls cannot "
+            "see an aliased target.",
+        )
+        for inv in invocations:
+            self.assertIn(
+                "no_overlap",
+                call_arg_names(inv),
+                "pool.submit(batch_write_coverage, ...) inside "
+                "batch_make_reference must pass no_overlap so `cnvkit batch "
+                "--no-overlap` reaches normal-sample coverage (#999).",
+            )
+
+    def test_cmd_batch_passes_no_overlap(self):
+        """``_cmd_batch`` must forward ``args.no_overlap`` to both
+        ``batch.batch_make_reference`` and ``batch.batch_run_sample`` (#999).
+        """
+        invocations = ast_calls_to(commands._cmd_batch, "batch_make_reference")
+        invocations += ast_submit_calls(commands._cmd_batch, "batch_run_sample")
+        self.assertEqual(
+            len(invocations),
+            2,
+            "Expected exactly one batch_make_reference call and one "
+            "pool.submit(batch_run_sample, ...) call in _cmd_batch",
+        )
+        for inv in invocations:
+            self.assertIn(
+                "no_overlap",
+                call_arg_names(inv),
+                "_cmd_batch must pass args.no_overlap through to no_overlap "
+                "in both the reference-building and per-sample paths (#999).",
+            )
+
+    # -- batch coverage-dedup / self-reference (#48) --
+
+    def test_resolve_batch_sample_ids_self_reference_building(self):
+        """Self-reference returns the shared ID as reusable when building a
+        reference (#48).
+
+        The same file in both the tumor and normal sets is the intentional
+        self-reference workflow; its coverage is computed during the reference
+        build and must be flagged for reuse on the tumor pass. Compared via
+        ``os.path.realpath``, so two spellings of one file still match.
+        """
+        reusable = commands._resolve_batch_sample_ids(
+            ["d/s1.bam"], ["./d/s1.bam"], building_reference=True
+        )
+        self.assertEqual(reusable, {"s1"})
+
+    def test_resolve_batch_sample_ids_self_reference_existing_reference(self):
+        """Self-reference yields no reusable IDs when a reference is supplied
+        rather than built (#48).
+
+        With ``-r/--reference`` nothing was precomputed this run, so even the
+        legitimately-shared sample has no coverage to reuse; the set is empty.
+        """
+        reusable = commands._resolve_batch_sample_ids(
+            ["d/s1.bam"], ["d/s1.bam"], building_reference=False
+        )
+        self.assertEqual(reusable, set())
+
+    def test_resolve_batch_sample_ids_duplicate_within_set(self):
+        """A repeated sample ID within one set (distinct paths, same basename)
+        is always fatal (#48).
+
+        Two inputs sharing an ID would overwrite each other's
+        ``{output_dir}/{id}.*`` outputs, so this must abort regardless of the
+        self-reference allowance.
+        """
+        with self.assertRaises(SystemExit):
+            commands._resolve_batch_sample_ids(
+                ["a/s1.bam", "b/s1.bam"], [], building_reference=True
+            )
+
+    def test_resolve_batch_sample_ids_same_id_different_paths(self):
+        """Same basename from different real paths across the two sets is fatal
+        (#48).
+
+        The self-reference allowance covers only the *same file* in both sets;
+        distinct files colliding on ID would overwrite outputs, so this aborts.
+        """
+        with self.assertRaises(SystemExit):
+            commands._resolve_batch_sample_ids(
+                ["tumor/s1.bam"], ["normal/s1.bam"], building_reference=True
+            )
+
+    def test_resolve_batch_sample_ids_no_overlap(self):
+        """Disjoint tumor/normal ID sets are valid and reuse nothing (#48)."""
+        reusable = commands._resolve_batch_sample_ids(
+            ["t1.bam", "t2.bam"], ["n1.bam", "n2.bam"], building_reference=True
+        )
+        self.assertEqual(reusable, set())
+
+    def test_batch_run_sample_reuse_coverage_guarded_read(self):
+        """``batch_run_sample`` must read existing coverage via ``read_cna``
+        under a branch gated by ``reuse_coverage`` (#48).
+
+        AST-level guard so source rearrangements still catch a regression that
+        drops the reuse branch (or the parameter) without needing a BAM fixture
+        per case, mirroring the bias_smoother/do_call plumbing guards above.
+        """
+        self.assertIn(
+            "reuse_coverage",
+            inspect.signature(batch.batch_run_sample).parameters,
+            "batch_run_sample must expose a reuse_coverage parameter (#48).",
+        )
+        src = inspect.getsource(batch.batch_run_sample)
+        tree = ast.parse(src)
+        guarded_reads = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.If):
+                continue
+            names_in_test = {
+                n.id for n in ast.walk(node.test) if isinstance(n, ast.Name)
+            }
+            if "reuse_coverage" not in names_in_test:
+                continue
+            guarded_reads.extend(
+                body_node
+                for body_node in ast.walk(node)
+                if isinstance(body_node, ast.Call)
+                and isinstance(body_node.func, ast.Name)
+                and body_node.func.id == "read_cna"
+            )
+        self.assertGreater(
+            len(guarded_reads),
+            0,
+            "batch_run_sample must read existing coverage via read_cna under a "
+            "branch guarded by reuse_coverage so the self-reference pass skips "
+            "recomputation (#48).",
+        )
+
+    def test_batch_run_sample_reuse_coverage_end_to_end(self):
+        """End-to-end self-reference: the shared sample's coverage is computed
+        once (during the reference build) and reused on the tumor pass (#48).
+
+        Drives the direct API with haar (pure-Python) segmentation. The
+        deterministic dedup signal is the number of ``coverage.do_coverage``
+        calls -- 0 on the reuse pass vs 2 (target + antitarget) without reuse --
+        rather than bit-exact .cnr equality, which is unsafe because the reuse
+        path reads coverage round-tripped through tabio's ``%.6g`` writer while
+        a fresh run uses full-precision in-memory values.
+        """
+        target_bed = "formats/my-targets.bed"
+        fasta = "formats/chrM-Y-trunc.hg19.fa"
+        bam = "formats/na12878-chrM-Y-trunc.bam"
+        sample_id = core.fbase(bam)
+        outdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, outdir, ignore_errors=True)
+
+        # Build a hybrid-capture reference from the sample itself; this writes
+        # {outdir}/{sample_id}.{target,antitarget}coverage.cnn.
+        ref_fname, tgt_bed_fname, anti_bed_fname = batch.batch_make_reference(
+            [bam],
+            target_bed,
+            None,
+            True,
+            None,
+            fasta,
+            None,
+            True,
+            10,
+            None,
+            1000,
+            100,
+            None,
+            outdir,
+            1,
+            False,
+            0,
+            "hybrid",
+            False,
+        )
+        self.assertTrue(os.path.isfile(ref_fname))
+        self.assertTrue(
+            os.path.isfile(os.path.join(outdir, sample_id + ".targetcoverage.cnn"))
+        )
+
+        def run(reuse):
+            with mock.patch.object(
+                batch.coverage,
+                "do_coverage",
+                wraps=batch.coverage.do_coverage,
+            ) as spy:
+                batch.batch_run_sample(
+                    bam,
+                    tgt_bed_fname,
+                    anti_bed_fname,
+                    ref_fname,
+                    outdir,
+                    True,
+                    None,
+                    False,
+                    False,
+                    "Rscript",
+                    False,
+                    0,
+                    False,
+                    "hybrid",
+                    "haar",
+                    1,
+                    False,
+                    fasta=fasta,
+                    reuse_coverage=reuse,
+                )
+            return spy.call_count
+
+        # Control first: the default path recomputes both (anti)target coverage,
+        # proving the spy has teeth and reuse is what suppresses the calls.
+        self.assertEqual(
+            run(reuse=False),
+            2,
+            "reuse_coverage=False must recompute target + antitarget coverage.",
+        )
+        # Self-reference tumor pass with reuse: coverage is read back, never
+        # recomputed. Runs last so the output assertions below defend the reuse
+        # path's products.
+        self.assertEqual(
+            run(reuse=True),
+            0,
+            "reuse_coverage=True must skip do_coverage for the shared sample "
+            "whose coverage the reference build already wrote (#48).",
+        )
+
+        # Outputs from the reuse pass exist and are non-empty.
+        cnr = cnvlib.read(os.path.join(outdir, sample_id + ".cnr"))
+        self.assertGreater(len(cnr), 0)
+        call_cns = cnvlib.read(os.path.join(outdir, sample_id + ".call.cns"))
+        self.assertGreater(len(call_cns), 0)
+
+    @pytest.mark.slow
+    def test_diploid_parx_genome(self):
+        genome_build = "grch37"
+        male_target_fnames = [
+            "formats/male01.targetcoverage.cnn",
+            "formats/male02.targetcoverage.cnn",
+        ]
+        male_antitarget_fnames = [
+            "formats/male01.antitargetcoverage.cnn",
+            "formats/male02.antitargetcoverage.cnn",
+        ]
+        female_target_fnames = [
+            "formats/female01.targetcoverage.cnn",
+            "formats/female02.targetcoverage.cnn",
+        ]
+        female_antitarget_fnames = [
+            "formats/female01.antitargetcoverage.cnn",
+            "formats/female02.antitargetcoverage.cnn",
+        ]
+
+        # Baseline assumption: PAR1/2 is highly coveraged in the male sample.
+        target_cnn = cnvlib.read(male_target_fnames[0])
+        antitarget_cnn = cnvlib.read(male_antitarget_fnames[0])
+        target_cnn_non_parx = target_cnn[target_cnn.chr_x_filter(genome_build)]
+        antitarget_cnn_non_parx = antitarget_cnn[
+            antitarget_cnn.chr_x_filter(genome_build)
+        ]
+        target_cnn_parx = target_cnn[target_cnn.parx_filter(genome_build)]
+        antitarget_cnn_parx = antitarget_cnn[antitarget_cnn.parx_filter(genome_build)]
+        target_log2_mean_parx = target_cnn_parx["log2"].mean()
+        target_log2_mean_non_parx = target_cnn_non_parx["log2"].mean()
+        antitarget_log2_mean_parx = antitarget_cnn_parx["log2"].mean()
+        antitarget_log2_mean_non_parx = antitarget_cnn_non_parx["log2"].mean()
+        self.assertTrue(
+            target_log2_mean_parx - 0.9 > target_log2_mean_non_parx,
+            "PAR1/2 have nearly doubled coverage.",
+        )
+        self.assertTrue(
+            antitarget_log2_mean_parx - 0.9 > antitarget_log2_mean_non_parx,
+            "PAR1/2 have nearly doubled coverage.",
+        )
+
+        #### MIXED POOL ####
+        target_fnames = male_target_fnames + female_target_fnames
+        antitarget_fnames = male_antitarget_fnames + female_antitarget_fnames
+        # Only process male02 (index 1) and female01 (index 2) — the samples
+        # actually checked below — to avoid redundant CBS segmentation.
+        _ref_probes1, _cnrs1, _cnss1, clls1, _sex_df1 = run_samples(
+            target_fnames, antitarget_fnames, None, sample_indices=[1, 2]
+        )
+        _ref_probes2, _cnrs2, _cnss2, clls2, _sex_df2 = run_samples(
+            target_fnames, antitarget_fnames, genome_build, sample_indices=[1, 2]
+        )
+
+        # "dpxg" = DiploidParXGenome
+        male_call, male_call_dpxg = clls1[0], clls2[0]
+        female_call, female_call_dpxg = clls1[1], clls2[1]
+        male_call__x, male_call_dpxg__x = (
+            male_call[male_call.chr_x_filter()],
+            male_call_dpxg[male_call_dpxg.chromosome == "X"],
+        )
+        female_call__x, female_call_dpxg__x = (
+            female_call[female_call.chromosome == "X"],
+            female_call_dpxg[female_call_dpxg.chromosome == "X"],
+        )
+
+        # The cn=0 segment for the male sample is derived from a true loss on XAGE1B.
+        self.assertEqual(
+            male_call__x["cn"].to_list(),
+            [1, 1, 0, 1, 1],
+            "Non-Dpxg male has cn=1 including PAR1/2.",
+        )
+        self.assertEqual(
+            male_call_dpxg__x["cn"].to_list(),
+            [2, 1, 0, 1, 1, 2],
+            "Dpxg male has cn=2 for PAR1/2 and cn=1 otherwise.",
+        )
+        self.assertEqual(
+            female_call__x["cn"].to_list(),
+            [1, 2, 2, 1],
+            "Non-Dpxg female is biased towards loss in PAR1/2.",
+        )
+        self.assertEqual(
+            female_call_dpxg__x["cn"].to_list(),
+            [2, 2],
+            "Dpxg female has cn=2 everywhere including PAR1/2.",
+        )
+
+        #### MALE-ONLY POOL ####
+        target_fnames = male_target_fnames
+        antitarget_fnames = male_antitarget_fnames
+        # Only process male02 (index 1) — the sample actually checked below.
+        _ref_probes1, _cnrs1, _cnss1, clls1, _sex_df1 = run_samples(
+            target_fnames, antitarget_fnames, None, sample_indices=[1]
+        )
+        _ref_probes2, _cnrs2, _cnss2, clls2, _sex_df2 = run_samples(
+            target_fnames, antitarget_fnames, genome_build, sample_indices=[1]
+        )
+
+        male_call, male_call_dpxg = clls1[0], clls2[0]
+        male_call__x, male_call_dpxg__x = (
+            male_call[male_call.chr_x_filter()],
+            male_call_dpxg[male_call_dpxg.chromosome == "X"],
+        )
+        self.assertEqual(
+            male_call__x["cn"].to_list(),
+            [1, 1],
+            "Non-Dpxg male has cn=1 including PAR1/2.",
+        )
+        self.assertEqual(
+            male_call_dpxg__x["cn"].to_list(),
+            [2, 1, 1, 2],
+            "Dpxg male has cn=2 for PAR1/2 and cn=1 otherwise.",
+        )
+
+
+# == helpers ==
+
+
+def run_samples(
+    target_fnames, antitarget_fnames, diploid_parx_genome, sample_indices=None
+):
+    ref_probes = commands.do_reference(
+        target_fnames, antitarget_fnames, diploid_parx_genome=diploid_parx_genome
+    )
+    if sample_indices is None:
+        sample_indices = range(len(target_fnames))
+    cnrs, cnss, clls = [], [], []
+    for i in sample_indices:
+        cnr, cns, cll = run_sample(
+            target_fnames[i], antitarget_fnames[i], ref_probes, diploid_parx_genome
+        )
+        cnrs.append(cnr)
+        cnss.append(cns)
+        clls.append(cll)
+
+    sex_df = commands.do_sex(
+        cnrs, is_haploid_x_reference=False, diploid_parx_genome=diploid_parx_genome
+    )
+    return ref_probes, cnrs, cnss, clls, sex_df
+
+
+def run_sample(target_fname, antitarget_fname, ref_probes, diploid_parx_genome):
+    tgt_raw = cnvlib.read(target_fname)
+    anti_raw = cnvlib.read(antitarget_fname)
+    cnr = commands.do_fix(
+        tgt_raw, anti_raw, ref_probes, diploid_parx_genome=diploid_parx_genome
+    )
+    cns = commands.do_segmentation(
+        cnr, method="cbs", diploid_parx_genome=diploid_parx_genome, threshold=0.001
+    )
+    cll = commands.do_call(cns, diploid_parx_genome=diploid_parx_genome)
+    return (cnr, cns, cll)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

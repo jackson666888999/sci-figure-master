@@ -1,0 +1,229 @@
+"""BAM utilities."""
+
+from __future__ import annotations
+
+import logging
+import os
+from io import StringIO
+from itertools import islice
+from pathlib import PurePath
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+import pandas as pd
+
+from skgenome._pysam import PYSAM_INSTALL_MSG
+
+if TYPE_CHECKING:
+    from numpy import float64, int64
+
+
+def idxstats(
+    bam_fname: str, drop_unmapped: bool = False, fasta: str | None = None
+) -> pd.DataFrame:
+    """Get chromosome names, lengths, and number of mapped/unmapped reads.
+
+    Use the BAM index (.bai) to get the number of reads and size of each
+    chromosome. Contigs with no mapped reads are skipped.
+    """
+    try:
+        import pysam  # noqa: PLC0415  # lazy: keep targeted ImportError message
+    except ImportError:
+        raise ImportError(
+            f"pysam is required for reading BAM index stats. {PYSAM_INSTALL_MSG}"
+        ) from None
+    handle = StringIO(
+        pysam.idxstats(bam_fname, split_lines=False, reference_filename=fasta)  # type: ignore[arg-type,attr-defined]
+    )
+    table = pd.read_csv(
+        handle,
+        sep="\t",
+        header=None,
+        names=["chromosome", "length", "mapped", "unmapped"],
+    )
+    if drop_unmapped:
+        table = table[table.mapped != 0].drop("unmapped", axis=1)
+    return table
+
+
+def get_bam_chroms(bam_fname: str, fasta: str | None = None) -> set[str]:
+    """Return the set of reference (chromosome/contig) names in a BAM header.
+
+    Includes contigs with zero mapped reads, since samtools accepts BED regions
+    on any header contig (they simply yield zero coverage) -- only contigs
+    *absent* from the header cause errors downstream.
+    """
+    table = idxstats(bam_fname, drop_unmapped=False, fasta=fasta)
+    return set(table.chromosome) - {"*"}
+
+
+def bam_total_reads(bam_fname: str, fasta: str | None = None) -> int64:
+    """Count the total number of mapped reads in a BAM file.
+
+    Uses the BAM index to do this quickly.
+    """
+    table = idxstats(bam_fname, drop_unmapped=True, fasta=fasta)
+    return table.mapped.sum()  # type: ignore[no-any-return]
+
+
+# BAI's binning scheme cannot address coordinates beyond 2**29 bp, so a
+# reference contig longer than this requires a CSI index instead.
+_BAI_MAX_CONTIG_LENGTH = 1 << 29  # 536_870_912
+
+
+def _bam_needs_csi(bam_fname: str, pysam: Any) -> bool:
+    """Return True if any reference contig is too long for a BAI index.
+
+    Long-chromosome genomes (e.g. wheat, barley) have contigs exceeding the BAI
+    coordinate limit of 2**29 bp and must use a CSI index. Reads only the BAM
+    header, so no index is required.
+    """
+    with pysam.AlignmentFile(bam_fname, "rb") as bam:
+        return any(length > _BAI_MAX_CONTIG_LENGTH for length in bam.lengths)
+
+
+def ensure_bam_index(bam_fname: str) -> str:
+    """Ensure a BAM/CRAM file is indexed, to enable fast traversal & lookup.
+
+    For MySample.bam, samtools looks for an index in these files, in order:
+
+    - MySample.bam.bai / MySample.bam.csi
+    - MySample.bai / MySample.csi
+
+    A CSI index is built automatically when any reference contig is longer than
+    the BAI coordinate limit (2**29 bp), as in long-chromosome genomes such as
+    wheat or barley.
+    """
+    try:
+        import pysam  # noqa: PLC0415  # lazy: keep targeted ImportError message
+    except ImportError:
+        raise ImportError(
+            f"pysam is required for BAM/CRAM indexing. {PYSAM_INSTALL_MSG}"
+        ) from None
+    if PurePath(bam_fname).suffix == ".cram":
+        if os.path.isfile(bam_fname + ".crai"):
+            # MySample.cram.crai
+            index_fname = bam_fname + ".crai"
+        else:
+            # MySample.crai
+            index_fname = bam_fname[:-1] + "i"
+        if not is_newer_than(index_fname, bam_fname):
+            logging.info("Indexing CRAM file %s", bam_fname)
+            pysam.index(bam_fname)  # type: ignore[attr-defined]
+            index_fname = bam_fname + ".crai"
+        assert os.path.isfile(index_fname), (
+            "Failed to generate cram index " + index_fname
+        )
+    elif _bam_needs_csi(bam_fname, pysam):
+        # Long-chromosome genome: a contig exceeds the BAI 2**29 bp coordinate
+        # limit, so a CSI index is required instead of BAI.
+        if os.path.isfile(bam_fname + ".csi"):
+            # MySample.bam.csi
+            index_fname = bam_fname + ".csi"
+        else:
+            # MySample.csi
+            index_fname = bam_fname[:-3] + "csi"
+        if not is_newer_than(index_fname, bam_fname):
+            logging.info("Indexing BAM file %s (CSI; long contigs)", bam_fname)
+            pysam.index("-c", bam_fname)  # type: ignore[attr-defined]
+            index_fname = bam_fname + ".csi"
+            # A stale .bai cannot index this BAM and would shadow the new .csi.
+            for stale_bai in (bam_fname + ".bai", bam_fname[:-1] + "i"):
+                if os.path.isfile(stale_bai):
+                    os.remove(stale_bai)
+        assert os.path.isfile(index_fname), (
+            "Failed to generate bam csi index " + index_fname
+        )
+    else:
+        if os.path.isfile(bam_fname + ".bai"):
+            # MySample.bam.bai
+            index_fname = bam_fname + ".bai"
+        else:
+            # MySample.bai
+            index_fname = bam_fname[:-1] + "i"
+        if not is_newer_than(index_fname, bam_fname):
+            logging.info("Indexing BAM file %s", bam_fname)
+            pysam.index(bam_fname)  # type: ignore[attr-defined]
+            index_fname = bam_fname + ".bai"
+        assert os.path.isfile(index_fname), (
+            "Failed to generate bam index " + index_fname
+        )
+    return index_fname
+
+
+def ensure_bam_sorted(
+    bam_fname: str, by_name: bool = False, span: int = 50, fasta: str | None = None
+) -> bool:
+    """Test if the reads in a BAM file are sorted as expected.
+
+    by_name=True: reads are expected to be sorted by query name. Consecutive
+    read IDs are in alphabetical order, and read pairs appear together.
+
+    by_name=False: reads are sorted by position. Consecutive reads have
+    increasing position.
+    """
+    try:
+        import pysam  # noqa: PLC0415  # lazy: keep targeted ImportError message
+    except ImportError:
+        raise ImportError(
+            f"pysam is required for checking BAM sort order. {PYSAM_INSTALL_MSG}"
+        ) from None
+    if by_name:
+        # Compare read IDs
+        def out_of_order(read, prev) -> bool:
+            return not (prev is None or prev.qname <= read.qname)
+
+    else:
+        # Compare read locations
+        def out_of_order(read, prev) -> bool:
+            return not (prev is None or read.tid != prev.tid or prev.pos <= read.pos)
+
+    # ENH - repeat at 50%, ~99% through the BAM
+    bam = pysam.AlignmentFile(bam_fname, "rb", reference_filename=fasta)
+    last_read = None
+    for read in islice(bam, span):
+        if out_of_order(read, last_read):
+            return False
+        last_read = read
+    bam.close()
+    return True
+
+
+def is_newer_than(target_fname: str, orig_fname: str) -> bool:
+    """Compare file modification times."""
+    if not os.path.isfile(target_fname):
+        return False
+    return os.stat(target_fname).st_mtime >= os.stat(orig_fname).st_mtime
+
+
+def get_read_length(
+    bam: str | Any, span: int = 1000, fasta: str | None = None
+) -> float64:
+    """Get (median) read length from first few reads in a BAM file.
+
+    Illumina reads all have the same length; other sequencers might not.
+
+    Parameters
+    ----------
+    bam : str or pysam.AlignmentFile
+        Filename or pysam-opened BAM file.
+    n : int
+        Number of reads used to calculate median read length.
+    """
+    try:
+        import pysam  # noqa: PLC0415  # lazy: keep targeted ImportError message
+    except ImportError:
+        raise ImportError(
+            f"pysam is required for reading BAM files. {PYSAM_INSTALL_MSG}"
+        ) from None
+    was_open = False
+    if isinstance(bam, str):
+        bam = pysam.AlignmentFile(bam, "rb", reference_filename=fasta)
+    else:
+        was_open = True
+    lengths = [read.query_length for read in islice(bam, span) if read.query_length > 0]
+    if was_open:
+        bam.seek(0)
+    else:
+        bam.close()
+    return np.median(lengths)  # type: ignore[no-any-return]

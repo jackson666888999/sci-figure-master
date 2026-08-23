@@ -1,0 +1,366 @@
+#!/usr/bin/env python
+"""Unit tests for the HaarSeg segmentation algorithm."""
+
+import logging
+import unittest
+
+import numpy as np
+from numpy.testing import assert_allclose, assert_array_equal
+from scipy import stats
+
+import cnvlib
+from cnvlib.segmentation.haar import (
+    SIGMA_FLOOR,
+    FDRThres,
+    FindLocalPeaks,
+    HaarConv,
+    PulseConv,
+    SegmentByPeaks,
+    _baf_signal_and_sigma,
+    haarSeg,
+    segment_haar,
+)
+
+logging.basicConfig(level=logging.ERROR, format="%(message)s")
+
+
+class FDRThresTests(unittest.TestCase):
+    """Tests for FDR threshold calculation."""
+
+    def test_fdr_thres_basic(self):
+        """FDRThres computes correct p-values using normal distribution."""
+        # Known values: for stdev=1, the threshold at q=0.05 with sorted |x|
+        # For a two-tailed test, p = 2*(1 - Phi(|x|/stdev))
+        # At |x|=1.96, p ≈ 0.05
+        stdev = 1.0
+        # Create values where we know the p-values
+        x = np.array([2.5, 2.0, 1.5, 1.0, 0.5])
+        q = 0.05
+        T = FDRThres(x, q, stdev)
+        # The threshold should be positive and reasonable
+        self.assertGreater(T, 0)
+        self.assertLess(T, 3.0)
+
+    def test_fdr_thres_matches_r_pnorm(self):
+        """FDRThres p-values match R's pnorm(x, 0, stdev) * 2."""
+        # Reference: In R, two-tailed p-value is 2 * pnorm(-abs(x), 0, sd)
+        # or equivalently 2 * (1 - pnorm(abs(x), 0, sd))
+        # At x=1.0, stdev=0.5: p = 2*(1 - Phi(2)) ≈ 0.0455
+        p_at_1 = 2 * (1 - stats.norm.cdf(1.0, loc=0, scale=0.5))
+        assert_allclose(p_at_1, 0.0455, atol=0.001)
+
+    def test_fdr_thres_empty_input(self):
+        """FDRThres returns 0 for empty or single-element input."""
+        self.assertEqual(FDRThres(np.array([]), 0.05, 1.0), 0)
+        self.assertEqual(FDRThres(np.array([1.5]), 0.05, 1.0), 0)
+
+    def test_fdr_thres_stdev_scaling(self):
+        """FDRThres threshold scales with standard deviation."""
+        # Use larger values and higher q to ensure some pass the threshold
+        x = np.array([3.0, 2.5, 2.0, 1.5, 1.0])
+        q = 0.1
+        T1 = FDRThres(x, q, stdev=1.0)
+        T2 = FDRThres(x, q, stdev=2.0)
+        # With larger stdev, same x values have larger p-values (less significant),
+        # so fewer pass the FDR criterion, resulting in a higher threshold
+        self.assertGreaterEqual(T2, T1)
+
+    def test_fdr_thres_zero_stdev(self):
+        """stdev=0 must not yield NaN p-values; all peaks are admitted.
+
+        norm.cdf(scale=0) returns NaN, which previously made every p-value NaN
+        and silently dropped real breakpoints.
+        """
+        T = FDRThres(np.array([1.0, 0.5, 0.2]), 0.05, 0.0)
+        self.assertFalse(np.isnan(T))
+        self.assertEqual(T, 0.0)
+
+    def test_fdr_thres_rejects_all_when_none_significant(self):
+        """When no peak is significant, T strictly exceeds max|x|.
+
+        The old fallback `x_sorted[0] + 1e-16` is a no-op near magnitude 1.0
+        (1e-16 < ULP), so the largest peak slipped through `>=`.
+        """
+        x = np.array([1.0, 0.9, 0.8])
+        T = FDRThres(x, 1e-12, 10.0)  # tiny q, large stdev -> nothing significant
+        self.assertGreater(T, np.max(np.abs(x)))
+
+
+class HaarConvTests(unittest.TestCase):
+    """Tests for Haar wavelet convolution."""
+
+    def test_haar_conv_basic(self):
+        """HaarConv produces non-zero output for step signal."""
+        # Step signal: zeros then ones
+        signal = np.concatenate([np.zeros(10), np.ones(10)])
+        result = HaarConv(signal, None, stepHalfSize=2)
+        self.assertEqual(len(result), len(signal))
+        # Should detect the step around index 10
+        self.assertGreater(np.abs(result).max(), 0)
+
+    def test_haar_conv_constant_signal(self):
+        """HaarConv returns near-zero for constant signal."""
+        signal = np.ones(20) * 5.0
+        result = HaarConv(signal, None, stepHalfSize=2)
+        # Constant signal should have zero wavelet coefficients (except boundary)
+        assert_allclose(result[5:15], 0, atol=1e-10)
+
+    def test_haar_conv_size_edge_case(self):
+        """HaarConv returns zeros when stepHalfSize > signalSize."""
+        signal = np.array([1.0, 2.0, 3.0])
+        # stepHalfSize=10 > signalSize=3
+        with self.assertLogs(level="WARNING") as log:
+            result = HaarConv(signal, None, stepHalfSize=10)
+        self.assertEqual(len(result), len(signal))
+        assert_array_equal(result, np.zeros(3))
+        self.assertTrue(any("exceeds signal length" in msg for msg in log.output))
+
+    def test_haar_conv_weighted(self):
+        """HaarConv handles weights correctly."""
+        signal = np.concatenate([np.zeros(10), np.ones(10)])
+        weights = np.ones(20)
+        result_weighted = HaarConv(signal, weights, stepHalfSize=2)
+        result_unweighted = HaarConv(signal, None, stepHalfSize=2)
+        # With uniform weights, results should be similar in shape
+        # (but not identical due to different normalization)
+        self.assertEqual(len(result_weighted), len(signal))
+        self.assertEqual(len(result_unweighted), len(signal))
+        # Both should detect the step
+        self.assertGreater(np.abs(result_weighted).max(), 0)
+        self.assertGreater(np.abs(result_unweighted).max(), 0)
+
+
+class PulseConvTests(unittest.TestCase):
+    """Tests for pulse convolution (used in non-stationary variance)."""
+
+    def test_pulse_conv_basic(self):
+        """PulseConv computes moving average correctly."""
+        signal = np.array([0.0, 0.0, 1.0, 1.0, 0.0, 0.0])
+        result = PulseConv(signal, pulseSize=2)
+        self.assertEqual(len(result), len(signal))
+        # Result should be smoothed version of signal
+        self.assertGreater(result.max(), 0)
+        self.assertLessEqual(result.max(), 1.0)
+
+    def test_pulse_conv_size_edge_case(self):
+        """PulseConv returns zeros when pulseSize > signalSize."""
+        signal = np.array([1.0, 2.0, 3.0])
+        # pulseSize=10 > signalSize=3
+        with self.assertLogs(level="WARNING") as log:
+            result = PulseConv(signal, pulseSize=10)
+        self.assertEqual(len(result), len(signal))
+        assert_array_equal(result, np.zeros(3))
+        self.assertTrue(any("exceeds signal length" in msg for msg in log.output))
+
+
+class FindLocalPeaksTests(unittest.TestCase):
+    """Tests for local peak detection."""
+
+    def test_find_peaks_basic(self):
+        """FindLocalPeaks detects obvious peaks."""
+        # Clear peak at index 5
+        signal = np.array([0.0, 0.1, 0.2, 0.3, 0.5, 1.0, 0.5, 0.3, 0.2, 0.1])
+        peaks = FindLocalPeaks(signal)
+        self.assertIn(5, peaks)
+
+    def test_find_peaks_negative(self):
+        """FindLocalPeaks detects minima on negative values."""
+        # Clear trough at index 5
+        signal = np.array([0.0, -0.1, -0.2, -0.3, -0.5, -1.0, -0.5, -0.3, -0.2, -0.1])
+        peaks = FindLocalPeaks(signal)
+        self.assertIn(5, peaks)
+
+    def test_find_peaks_empty(self):
+        """FindLocalPeaks returns empty for flat signal."""
+        signal = np.zeros(10)
+        peaks = FindLocalPeaks(signal)
+        self.assertEqual(len(peaks), 0)
+
+
+class HaarSegIntegrationTests(unittest.TestCase):
+    """Integration tests for the full haarSeg algorithm."""
+
+    def test_haarseg_step_signal(self):
+        """haarSeg detects breakpoint in step signal."""
+        # Create a clear step signal with noise
+        rng = np.random.default_rng(42)
+        signal = np.concatenate(
+            [
+                np.zeros(50) + rng.normal(0, 0.1, 50),
+                np.ones(50) + rng.normal(0, 0.1, 50),
+            ]
+        )
+        result = haarSeg(signal, breaksFdrQ=0.01)
+        # Should find at least one breakpoint near index 50
+        self.assertGreater(len(result["start"]), 1)
+        # Check breakpoint is near the true change point
+        breakpoints = result["start"][1:]  # Skip the 0 start
+        self.assertTrue(any(45 <= bp <= 55 for bp in breakpoints))
+
+    def test_haarseg_no_signal(self):
+        """haarSeg returns single segment for constant signal."""
+        signal = np.zeros(100)
+        result = haarSeg(signal, breaksFdrQ=0.01)
+        # Should return just one segment
+        self.assertEqual(len(result["start"]), 1)
+        self.assertEqual(result["start"][0], 0)
+        self.assertEqual(result["end"][0], 99)
+
+    def test_haarseg_short_signal(self):
+        """haarSeg handles signals shorter than max wavelet scale."""
+        # Signal with only 10 elements (shorter than 2^5=32)
+        signal = np.array([0.0] * 5 + [1.0] * 5)
+        # Should not raise, may log warnings for skipped levels
+        result = haarSeg(signal, breaksFdrQ=0.01)
+        self.assertIn("start", result)
+        self.assertIn("end", result)
+        self.assertEqual(result["start"][0], 0)
+
+    def test_haarseg_mostly_flat_keeps_small_breakpoint(self):
+        """Mostly-flat (zero-noise) input must not drop a smaller breakpoint.
+
+        Here median(|level-1 Haar coef|) == 0 so peakSigmaEst was 0, which made
+        FDR p-values NaN and silently dropped the small -2 -> -2.3 step,
+        yielding 2 segments instead of 3. Real noisy data is unaffected
+        (noise keeps peakSigmaEst > 0).
+        """
+        signal = np.concatenate([np.zeros(30), np.full(30, -2.0), np.full(30, -2.3)])
+        result = haarSeg(signal, breaksFdrQ=0.001)
+        self.assertEqual(len(result["start"]), 3)
+        assert_allclose(result["mean"], [0.0, -2.0, -2.3], atol=1e-9)
+
+    def test_haarseg_constant_signal_stays_one_segment(self):
+        """The peakSigmaEst floor must not over-segment a constant signal."""
+        result = haarSeg(np.zeros(100), breaksFdrQ=0.01)
+        self.assertEqual(len(result["start"]), 1)
+
+
+class HaarBafTests(unittest.TestCase):
+    """Tests for the depth+BAF breakpoint-union building blocks."""
+
+    def test_baf_signal_and_sigma_observed_only(self):
+        # Noisy observed bins -> the bin-to-bin variation gives a real MAD
+        minor = np.array([12.0, 15.0, 11.0, 16.0, 13.0, 14.0, 10.0, 17.0])
+        depth = np.full(8, 30.0)
+        signal, weights, sigma = _baf_signal_and_sigma(minor, depth)
+        assert_allclose(signal, minor / depth)
+        assert_allclose(weights, depth)  # depth = binomial precision
+        self.assertGreater(sigma, SIGMA_FLOOR)  # real BAF noise, not deflated
+
+    def test_baf_sigma_not_deflated_by_neutral_fills(self):
+        # Same observed bins, but interleaved with many SNP-less (filled) bins.
+        # Computing the noise over observed bins only must keep sigma realistic;
+        # a full-grid (contaminated) estimate would collapse toward the floor.
+        obs_minor = np.array([12.0, 15.0, 11.0, 16.0, 13.0, 14.0, 10.0, 17.0])
+        minor = np.zeros(40)
+        depth = np.zeros(40)
+        minor[::5] = obs_minor
+        depth[::5] = 30.0
+        _s, _w, sigma_sparse = _baf_signal_and_sigma(minor, depth)
+        _s2, _w2, sigma_dense = _baf_signal_and_sigma(obs_minor, np.full(8, 30.0))
+        # Sparse layout's observed-only noise matches the dense one (not deflated)
+        self.assertAlmostEqual(sigma_sparse, sigma_dense)
+
+    def test_baf_signal_and_sigma_no_snps(self):
+        signal, weights, sigma = _baf_signal_and_sigma(
+            np.array([0.0, 5.0, 0.0]), np.array([0.0, 10.0, 0.0])
+        )
+        assert_allclose(signal, [0.5, 0.5, 0.5])  # depth=0 -> neutral fill
+        assert_allclose(weights, [0.0, 10.0, 0.0])
+        # Only 1 observed bin -> noise floor, computed over observed bins only
+        self.assertEqual(sigma, SIGMA_FLOOR)
+
+    def test_haarseg_sigma_override(self):
+        # Noisy signal with many local peaks (so FDRThres actually thresholds,
+        # not the M<2 short-circuit). The override controls FDR sensitivity;
+        # default (None) is byte-identical to the computed estimate.
+        rng = np.random.default_rng(0)
+        sig = rng.normal(0, 1.0, 120)
+        same = haarSeg(sig, 0.001, sigma_override=None)
+        assert_array_equal(haarSeg(sig, 0.001)["start"], same["start"])
+        tiny = haarSeg(sig, 0.001, sigma_override=1e-6)  # everything significant
+        huge = haarSeg(sig, 0.001, sigma_override=1e3)  # nothing significant
+        self.assertGreater(len(tiny["start"]), len(huge["start"]))
+        self.assertEqual(len(huge["start"]), 1)  # reject-all -> one segment
+
+
+class HaarNoiseFloorTests(unittest.TestCase):
+    """HaarSeg must see the true per-bin noise, not a pre-smoothed signal.
+
+    HaarSeg is itself a denoising segmenter: its FDR step assumes the finest-
+    scale (level-1) MAD reflects real per-bin measurement noise. Feeding it a
+    Savitzky-Golay-smoothed signal deflates that noise floor (~8x on this
+    fixture), collapsing the FDR threshold so nearly every coarse-scale wiggle
+    passes -- the sample is fragmented into ~7-bin pieces and the fdr_q knob
+    stops controlling sensitivity. These tests pin the fix: haar
+    segments the raw log2, matching stock upstream HaarSeg and CNVkit's own
+    pre-2019 behavior.
+
+    Fixture: test/formats/regression/p2-9_2.cnr, the deterministic 18759-bin
+    targeted sample already frozen by the #1039 regression test.
+    """
+
+    FIXTURE = "formats/regression/p2-9_2.cnr"
+
+    def _n_segments(self, fdr_q):
+        cnarr = cnvlib.read(self.FIXTURE)
+        return len(segment_haar(cnarr, fdr_q))
+
+    def test_not_grossly_over_segmented(self):
+        """Default-q haar averages many bins per segment, not ~7.
+
+        Smoothed-input haar produced ~2000 segments (8.5 bins/seg); raw-input
+        haar produces a few hundred (>=15 bins/seg). Assert the average segment
+        spans at least 15 bins so the ~7-bin fragmentation cannot return.
+        """
+        cnarr = cnvlib.read(self.FIXTURE)
+        n_bins = len(cnarr)
+        n_segs = len(segment_haar(cnarr, 1e-4))
+        self.assertLessEqual(
+            n_segs,
+            n_bins / 15,
+            f"haar over-segmented: {n_segs} segments over {n_bins} bins "
+            f"({n_bins / n_segs:.1f} bins/seg); expected >=15 bins/seg.",
+        )
+
+    def test_fdr_q_controls_sensitivity(self):
+        """Tightening fdr_q must substantially reduce the segment count.
+
+        With a deflated noise floor every real peak is astronomically
+        significant, so the FDR procedure admits them all regardless of q and
+        the count barely moves (a 10-order-of-magnitude q sweep changed it by
+        ~30%). On the raw signal, tightening q from 1e-2 to 1e-8 more than
+        halves the count.
+        """
+        n_loose = self._n_segments(1e-2)
+        n_tight = self._n_segments(1e-8)
+        self.assertLess(
+            n_tight,
+            0.5 * n_loose,
+            f"fdr_q barely controls segmentation: q=1e-2 -> {n_loose}, "
+            f"q=1e-8 -> {n_tight} (expected tight-q count < half of loose-q).",
+        )
+
+
+class SegmentByPeaksTests(unittest.TestCase):
+    """Tests for weighted segment-mean computation."""
+
+    def test_segment_by_peaks_nan_weight_single_segment(self):
+        """A NaN weight is excluded, not treated as 'no valid weights'."""
+        data = np.array([1.0, 3.0])
+        weights = np.array([1.0, np.nan])
+        out = SegmentByPeaks(data, np.array([], dtype=int), weights)
+        # Exclude the NaN-weighted bin -> mean is just the first value (1.0);
+        # the old code fell back to the unweighted mean (2.0).
+        assert_allclose(out, [1.0, 1.0])
+
+    def test_segment_by_peaks_nan_weight_per_segment(self):
+        """Per-segment weighted means also exclude NaN weights."""
+        data = np.array([1.0, 3.0, 10.0, 10.0])
+        weights = np.array([1.0, np.nan, 1.0, 1.0])
+        out = SegmentByPeaks(data, np.array([2]), weights)
+        assert_allclose(out, [1.0, 1.0, 10.0, 10.0])
+
+
+if __name__ == "__main__":
+    unittest.main()

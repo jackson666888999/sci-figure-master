@@ -1,0 +1,6 @@
+-r doc.txt
+-r tests.txt
+build
+pip-compile-multi
+pre-commit
+tox

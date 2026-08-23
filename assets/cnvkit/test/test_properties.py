@@ -1,0 +1,784 @@
+"""Property-based tests for CNVkit numerical invariants using Hypothesis.
+
+Tests mathematical properties (equivariance, boundedness, round-trips) for:
+- cnvlib/descriptives.py  -- robust statistical estimators
+- cnvlib/smoothing.py     -- signal-smoothing functions
+- cnvlib/call.py          -- copy number arithmetic helpers
+
+See: https://github.com/etal/cnvkit/issues/1038
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import warnings
+
+import numpy as np
+import pandas as pd
+import pytest
+from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import strategies as st
+
+import cnvlib.smoothing as smoothing_mod
+from cnvlib.call import (
+    _log2_ratio_to_absolute,
+    _log2_ratio_to_absolute_pure,
+    rescale_baf,
+)
+from cnvlib.descriptives import (
+    biweight_location,
+    biweight_midvariance,
+    gapper_scale,
+    interquartile_range,
+    median_absolute_deviation,
+    q_n,
+    weighted_median,
+    weighted_std,
+)
+from cnvlib.smoothing import (
+    _width2wing,
+    kaiser,
+    loess,
+    rolling_median,
+    rolling_quantile,
+    rolling_std,
+    savgol,
+)
+
+# ---------------------------------------------------------------------------
+# Hypothesis settings profiles
+# ---------------------------------------------------------------------------
+
+settings.register_profile(
+    "ci",
+    max_examples=50,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.differing_executors],
+    deadline=500,
+)
+settings.register_profile(
+    "default",
+    max_examples=100,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.differing_executors],
+    deadline=800,
+)
+settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "default"))
+
+pytestmark = pytest.mark.hypothesis
+
+
+# ---------------------------------------------------------------------------
+# Shared strategy helpers
+# ---------------------------------------------------------------------------
+
+# Finite floats in the plausible CNV log2 ratio range
+_LOG2_FLOATS = st.floats(
+    min_value=-8.0, max_value=8.0, allow_nan=False, allow_infinity=False
+)
+
+# Positive finite floats (for scale factors, ref_copies)
+_POSITIVE_FLOATS = st.floats(
+    min_value=1e-3, max_value=1e4, allow_nan=False, allow_infinity=False
+)
+
+
+def _float_array(min_size: int = 2, max_size: int = 200):
+    """Strategy: list of finite log2-range floats, converted to np.array."""
+    return st.lists(_LOG2_FLOATS, min_size=min_size, max_size=max_size).map(np.array)
+
+
+def _non_constant_array(min_size: int = 3, max_size: int = 200):
+    """Strategy: finite float array with at least two distinct values."""
+    return _float_array(min_size, max_size).filter(lambda a: np.ptp(a) > 1e-12)
+
+
+def _weighted_pair(min_size: int = 2, max_size: int = 100):
+    """Strategy: paired (values, weights) arrays of equal length."""
+    return st.integers(min_value=min_size, max_value=max_size).flatmap(
+        lambda n: st.tuples(
+            st.lists(_LOG2_FLOATS, min_size=n, max_size=n).map(np.array),
+            st.lists(
+                st.floats(
+                    min_value=0.01,
+                    max_value=1e3,
+                    allow_nan=False,
+                    allow_infinity=False,
+                ),
+                min_size=n,
+                max_size=n,
+            ).map(np.array),
+        )
+    )
+
+
+def _smoothing_input(min_n: int = 10, max_n: int = 100):
+    """Strategy: (array, fractional_width) for smoothing functions."""
+    return st.integers(min_value=min_n, max_value=max_n).flatmap(
+        lambda n: st.tuples(
+            st.lists(_LOG2_FLOATS, min_size=n, max_size=n).map(np.array),
+            st.floats(
+                min_value=0.05, max_value=0.9, allow_nan=False, allow_infinity=False
+            ),
+        )
+    )
+
+
+def _smoothing_input_int(min_n: int = 10, max_n: int = 100):
+    """Strategy: (array, integer_width) for smoothing functions."""
+    return st.integers(min_value=min_n, max_value=max_n).flatmap(
+        lambda n: st.tuples(
+            st.lists(_LOG2_FLOATS, min_size=n, max_size=n).map(np.array),
+            st.integers(min_value=4, max_value=max(4, n - 1)),
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tests: cnvlib/descriptives.py
+# ---------------------------------------------------------------------------
+
+
+class TestBiweightLocation:
+    """Invariants for biweight_location (robust location estimator)."""
+
+    @given(_float_array())
+    def test_finite_output(self, a):
+        result = biweight_location(a)
+        assert np.isfinite(result)
+
+    @given(_float_array())
+    def test_bounded_by_data_range(self, a):
+        result = biweight_location(a)
+        # Allow tiny float rounding (iterative estimator can exceed range by ~eps)
+        eps = 1e-12
+        assert a.min() - eps <= result <= a.max() + eps
+
+    @given(_non_constant_array(), _LOG2_FLOATS)
+    def test_shift_equivariance(self, a, c):
+        """biweight_location(a + c) == biweight_location(a) + c."""
+        assume(np.all(np.isfinite(a + c)))
+        base = biweight_location(a)
+        shifted = biweight_location(a + c)
+        tol = 1e-4 * (abs(base) + abs(c) + 1)
+        assert abs(shifted - (base + c)) < tol
+
+    @given(
+        # min_size=20: for very small samples the windowed biweight iteration
+        # can fall into a 2-cycle (different single points enter the window each
+        # step) and never converge, so the max_iter cutoff -- and thus
+        # equivariance -- becomes sensitive to floating-point noise.  20+ points
+        # give enough mass for the iteration to converge.
+        _non_constant_array(min_size=20),
+        st.floats(min_value=0.5, max_value=10.0, allow_nan=False, allow_infinity=False),
+    )
+    def test_scale_equivariance(self, a, k):
+        """biweight_location(a * k) == biweight_location(a) * k.
+
+        The convergence rule stops on the standardized step, so scaled and
+        unscaled inputs take the same iterations and equivariance holds up to
+        floating-point rounding only.
+        """
+        assume(np.all(np.isfinite(a * k)))
+        base = biweight_location(a)
+        scaled = biweight_location(a * k)
+        tol = 1e-9 * (abs(base * k) + 1)
+        assert abs(scaled - base * k) < tol
+
+
+class TestBiweightMidvariance:
+    """Invariants for biweight_midvariance (robust scale estimator)."""
+
+    @given(_float_array())
+    def test_non_negative(self, a):
+        assert biweight_midvariance(a) >= 0
+
+    @given(_LOG2_FLOATS, st.integers(min_value=2, max_value=50))
+    def test_zero_for_constant_array(self, c, n):
+        a = np.full(n, c)
+        assert biweight_midvariance(a) == 0
+
+    @given(
+        _non_constant_array(min_size=20),
+        st.floats(min_value=0.5, max_value=10.0, allow_nan=False, allow_infinity=False),
+    )
+    def test_scale_equivariance(self, a, k):
+        """biweight_midvariance(a * k) == biweight_midvariance(a) * k."""
+        assume(np.all(np.isfinite(a * k)))
+        base = biweight_midvariance(a)
+        scaled = biweight_midvariance(a * k)
+        tol = max(0.02 * abs(base * k), 0.004)
+        assert abs(scaled - base * k) < tol
+
+
+class TestMedianAbsoluteDeviation:
+    """Invariants for median_absolute_deviation."""
+
+    @given(_float_array())
+    def test_non_negative(self, a):
+        assert median_absolute_deviation(a) >= 0
+
+    @given(_float_array(), _LOG2_FLOATS)
+    def test_shift_invariance(self, a, c):
+        """MAD is location-free: mad(a + c) == mad(a)."""
+        assume(np.all(np.isfinite(a + c)))
+        assert (
+            abs(median_absolute_deviation(a + c) - median_absolute_deviation(a)) < 1e-10
+        )
+
+    @given(_non_constant_array(), _POSITIVE_FLOATS)
+    def test_scale_equivariance(self, a, k):
+        assume(np.all(np.isfinite(a * k)))
+        base = median_absolute_deviation(a)
+        scaled = median_absolute_deviation(a * k)
+        assert abs(scaled - base * k) < 1e-8 * (base * k + 1)
+
+    @given(_float_array())
+    def test_scale_to_sd_relationship(self, a):
+        """scale_to_sd=True equals scale_to_sd=False * 1.4826."""
+        raw = median_absolute_deviation(a, scale_to_sd=False)
+        scaled = median_absolute_deviation(a, scale_to_sd=True)
+        assert abs(scaled - raw * 1.4826) < 1e-10
+
+
+class TestInterquartileRange:
+    """Invariants for interquartile_range."""
+
+    @given(_float_array())
+    def test_non_negative(self, a):
+        assert interquartile_range(a) >= 0
+
+    @given(_float_array(), _LOG2_FLOATS)
+    def test_shift_invariance(self, a, c):
+        assume(np.all(np.isfinite(a + c)))
+        assert abs(interquartile_range(a + c) - interquartile_range(a)) < 1e-10
+
+    @given(_non_constant_array(), _POSITIVE_FLOATS)
+    def test_scale_equivariance(self, a, k):
+        assume(np.all(np.isfinite(a * k)))
+        base = interquartile_range(a)
+        scaled = interquartile_range(a * k)
+        assert abs(scaled - base * k) < 1e-8 * (base * k + 1)
+
+    @given(_LOG2_FLOATS, st.integers(min_value=2, max_value=50))
+    def test_zero_for_constant_array(self, c, n):
+        assert interquartile_range(np.full(n, c)) == 0
+
+
+class TestWeightedMedian:
+    """Invariants for weighted_median."""
+
+    @given(_weighted_pair())
+    def test_bounded_by_data_range(self, pair):
+        a, w = pair
+        assume(w.sum() > 0)
+        result = weighted_median(a, w)
+        assert a.min() <= result <= a.max()
+
+    @given(_float_array(min_size=3))
+    def test_uniform_weights_match_median(self, a):
+        """Uniform weights produce the same result as np.median."""
+        w = np.ones(len(a))
+        result = weighted_median(a, w)
+        expected = np.median(a)
+        assert abs(result - expected) < 1e-10
+
+    def test_mismatched_lengths_raises(self):
+        with pytest.raises(ValueError, match="Unequal array lengths"):
+            weighted_median(np.array([1.0, 2.0]), np.array([1.0]))
+
+
+class TestOnWeightedArrayNaNSafety:
+    """The on_weighted_array wrapper must fill NaN weights safely (#672).
+
+    The wrapper promises to "replace any remaining NaN cells in w with 0."
+    It formerly did so with an in-place ``w[w_nan] = 0.0``, which (a) mutated
+    the caller's weight array and (b) raised ``ValueError: assignment
+    destination is read-only`` on a read-only buffer -- e.g. the pandas
+    copy-on-write slice produced when segmentation drops non-finite-log2 bins
+    and HMM's smooth_log2 then calls weighted_std, aborting the run. The fill
+    must build a new array instead.
+    """
+
+    def test_does_not_mutate_caller_weights(self):
+        a = np.array([0.1, 0.2, 0.3, 0.4])
+        w = np.array([1.0, np.nan, 2.0, 3.0])
+        w_before = w.copy()
+        weighted_std(a, w)
+        weighted_median(a, w)
+        # The NaN weight is untouched: the wrapper worked on a copy.
+        np.testing.assert_array_equal(w, w_before)
+        assert np.isnan(w[1])
+
+    def test_read_only_weights_do_not_raise(self):
+        a = np.array([0.1, 0.2, 0.3, 0.4])
+        w = np.array([1.0, np.nan, 2.0, 3.0])
+        w.setflags(write=False)
+        # Must not raise "assignment destination is read-only".
+        assert np.isfinite(weighted_std(a, w))
+        assert np.isfinite(weighted_median(a, w))
+
+
+class TestGapperScale:
+    """Invariants for gapper_scale."""
+
+    @given(_float_array())
+    def test_non_negative(self, a):
+        assert gapper_scale(a) >= 0
+
+    @given(_LOG2_FLOATS, st.integers(min_value=2, max_value=20))
+    def test_zero_for_constant_array(self, c, n):
+        assert gapper_scale(np.full(n, c)) == 0
+
+    @given(_non_constant_array(), _POSITIVE_FLOATS)
+    def test_scale_equivariance(self, a, k):
+        assume(np.all(np.isfinite(a * k)))
+        base = gapper_scale(a)
+        scaled = gapper_scale(a * k)
+        tol = 1e-6 * (base * k + 1)
+        assert abs(scaled - base * k) < tol
+
+
+class TestQn:
+    """Invariants for the Rousseeuw-Croux Q_n scale estimator."""
+
+    @given(_float_array(max_size=50))
+    def test_non_negative(self, a):
+        assert q_n(a) >= 0
+
+    @given(_non_constant_array(max_size=40), _POSITIVE_FLOATS)
+    def test_scale_equivariance(self, a, k):
+        assume(np.all(np.isfinite(a * k)))
+        base = q_n(a)
+        scaled = q_n(a * k)
+        tol = 1e-6 * (base * k + 1)
+        assert abs(scaled - base * k) < tol
+
+
+# ---------------------------------------------------------------------------
+# Tests: cnvlib/smoothing.py
+# ---------------------------------------------------------------------------
+
+
+class TestWidth2Wing:
+    """Invariants for _width2wing (fractional/integer width to half-window)."""
+
+    @given(
+        st.integers(min_value=10, max_value=200),
+        st.floats(
+            min_value=0.01, max_value=0.99, allow_nan=False, allow_infinity=False
+        ),
+    )
+    def test_fractional_width_returns_bounded_int(self, n, frac):
+        x = np.zeros(n)
+        wing = _width2wing(frac, x)
+        assert isinstance(wing, int)
+        assert 1 <= wing <= n - 1
+
+    @given(st.integers(min_value=10, max_value=200))
+    def test_integer_width_returns_bounded_int(self, n):
+        x = np.zeros(n)
+        wing = _width2wing(4, x)
+        assert isinstance(wing, int)
+        assert 1 <= wing <= n - 1
+
+    @given(st.integers(min_value=10, max_value=200))
+    def test_invalid_width_raises(self, n):
+        x = np.zeros(n)
+        with pytest.raises(ValueError, match="fraction between 0 and 1"):
+            _width2wing(1.5, x)
+
+
+class TestRollingMedian:
+    """Invariants for rolling_median."""
+
+    @given(_smoothing_input())
+    def test_output_length_preserved(self, args):
+        x, width = args
+        result = rolling_median(x, width)
+        assert len(result) == len(x)
+
+    @given(_smoothing_input())
+    def test_output_bounded_by_input_range(self, args):
+        x, width = args
+        result = rolling_median(x, width)
+        assert result.min() >= x.min() - 1e-10
+        assert result.max() <= x.max() + 1e-10
+
+    @given(_smoothing_input())
+    def test_no_nans_in_output(self, args):
+        x, width = args
+        result = rolling_median(x, width)
+        assert not np.any(np.isnan(result))
+
+
+class TestRollingShortInput:
+    """Degenerate short-signal inputs must not crash (#891).
+
+    Near-zero coverage can leave 0 or 1 surviving bins. With 1 bin the
+    caller's fraction is ``1 ** -0.5 == 1.0`` (an invalid width); with 0 bins
+    ``_width2wing`` would compute a negative wing. Both previously raised
+    out of ``rolling_*``, unlike the guarded ``savgol``/``kaiser``.
+    """
+
+    @pytest.mark.parametrize("func", [rolling_median, rolling_std])
+    @pytest.mark.parametrize("n", [0, 1])
+    @pytest.mark.parametrize("width", [1.0, 0.5, 7])
+    def test_short_input_returns_input_unchanged(self, func, n, width):
+        x = np.arange(n, dtype=float)
+        result = func(x, width)
+        assert len(result) == n
+        assert np.array_equal(result, x)
+
+    @pytest.mark.parametrize("n", [0, 1])
+    @pytest.mark.parametrize("width", [1.0, 0.5, 7])
+    def test_rolling_quantile_short_input(self, n, width):
+        x = np.arange(n, dtype=float)
+        result = rolling_quantile(x, width, 0.5)
+        assert len(result) == n
+        assert np.array_equal(result, x)
+
+
+class TestKaiser:
+    """Invariants for kaiser smoothing."""
+
+    @given(_smoothing_input())
+    def test_output_length_preserved(self, args):
+        x, width = args
+        result = kaiser(x, width)
+        assert len(result) == len(x)
+
+    @given(_smoothing_input())
+    def test_no_nans_in_output(self, args):
+        x, width = args
+        result = kaiser(x, width)
+        assert not np.any(np.isnan(result))
+
+
+class TestSavgol:
+    """Invariants for Savitzky-Golay smoothing."""
+
+    @given(_smoothing_input_int())
+    def test_output_length_preserved(self, args):
+        x, width = args
+        result = savgol(x, total_width=width)
+        assert len(result) == len(x)
+
+    @given(
+        st.integers(min_value=10, max_value=100),
+        _LOG2_FLOATS,
+        st.integers(min_value=4, max_value=20),
+    )
+    def test_constant_array_unchanged(self, n, c, width):
+        """Savgol of a constant array returns the same constant."""
+        width = min(width, n - 1)
+        x = np.full(n, c)
+        result = savgol(x, total_width=width)
+        assert np.allclose(result, c, atol=1e-6)
+
+    def test_linalg_error_falls_back_to_nearest(self, monkeypatch):
+        """Savgol recovers when scipy's edge polyfit raises LinAlgError (#508).
+
+        scipy's ``savgol_filter(mode='interp')`` invokes ``np.polyfit`` at
+        the array edges; on numerically degenerate inputs ``lstsq`` can raise
+        ``LinAlgError: SVD did not converge`` (and MKL prints the
+        ``Parameter 6 was incorrect on entry to DGELSD`` message that
+        originally surfaced #508 on WGS flat-reference data). The wrapper
+        must catch the error and retry with a non-polyfit mode rather than
+        let it propagate up through ``do_segmentation`` and crash the run.
+        """
+        real_savgol_filter = smoothing_mod.savgol_filter
+        calls = {"interp": 0, "fallback": 0}
+
+        def flaky_savgol_filter(*args, **kwargs):
+            mode = kwargs.get("mode", "interp")
+            if mode == "interp":
+                calls["interp"] += 1
+                raise np.linalg.LinAlgError(
+                    "SVD did not converge in Linear Least Squares"
+                )
+            calls["fallback"] += 1
+            return real_savgol_filter(*args, **kwargs)
+
+        monkeypatch.setattr(smoothing_mod, "savgol_filter", flaky_savgol_filter)
+
+        rng = np.random.default_rng(0)
+        x = np.linspace(-1.0, 1.0, 60) + rng.normal(0, 0.1, 60)
+        result = savgol(x, total_width=11)
+
+        assert len(result) == len(x)
+        assert np.isfinite(result).all()
+        assert calls["interp"] >= 1, "Interp path should have been attempted"
+        assert calls["fallback"] >= 1, "Fallback (non-polyfit) path should have run"
+
+    def test_nan_input_runs_clean_on_nan_bins(self):
+        """Savgol runs the weighted NaN path without warning or crashing (#543).
+
+        Zero-depth antitarget bins on WGS reach savgol via smooth_log2 with NaN
+        log2 values and zero weight. This is a smoke test for that end-to-end
+        scenario: it does not discriminate the fix on the supported numpy floor
+        (numpy >= 2.3.5 no longer signals FP-invalid on NaN comparisons, so the
+        pre-fix NaN bounds were warning-free there too), but it guards the path
+        against regressions and against older numpy that did warn. The
+        functional value of the fix -- restoring the overshoot check that NaN
+        bounds silently disabled -- is covered by the companion test below.
+        """
+        x = np.array([1.0, 2.0, np.nan, 4.0, 5.0, np.nan, 7.0, 8.0, 9.0, 10.0])
+        weights = np.where(np.isnan(x), 0.0, 1.0)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            result = savgol(x, total_width=5, weights=weights)
+        assert len(result) == len(x)
+
+    def test_overshoot_check_ignores_nan_bounds(self, caplog):
+        """The overshoot check uses finite bounds even when x contains NaN.
+
+        A plain x.max()/x.min() is NaN on non-finite input, so every
+        comparison is False and a genuine overshoot goes silently undetected.
+        Computing the bounds over the finite values restores the check: a
+        spike that makes the smoother overshoot the input's [0, 100] range is
+        still logged despite an intervening NaN bin (#543).
+        """
+        n = 60
+        x = np.zeros(n)
+        x[30] = 100.0  # spike -> smoother overshoots the finite [0, 100] range
+        x[10] = np.nan  # non-finite bin that would poison x.max()/x.min()
+        weights = np.where(np.isnan(x), 0.0, 1.0)
+        with caplog.at_level(logging.WARNING):
+            savgol(x, total_width=11, weights=weights)
+        overshoot = [
+            r.getMessage() for r in caplog.records if "overshot" in r.getMessage()
+        ]
+        assert overshoot, "Overshoot must be detected despite the NaN bin"
+        # The logged 'original' bounds are the finite range, not NaN.
+        assert "vs. original (0.0, 100.0)" in overshoot[0]
+
+
+class TestLoess:
+    """Invariants for the LOESS (lowess) smoother (#1028).
+
+    LOESS exists alongside rolling_median as an opt-in alternative bias
+    smoother that, unlike a mirror-padded rolling median, does not collapse
+    its boundary values to the inner-window median. The properties here
+    cover the same shape/finiteness invariants as TestRollingMedian /
+    TestSavgol, plus a direct check that LOESS tracks a monotone trend
+    into the tails rather than flattening at the edges (the #1028
+    motivation).
+    """
+
+    @given(_smoothing_input())
+    def test_output_length_preserved(self, args):
+        x, frac = args
+        result = loess(x, frac)
+        assert len(result) == len(x)
+
+    @given(_smoothing_input())
+    def test_no_nans_on_finite_input(self, args):
+        x, frac = args
+        result = loess(x, frac)
+        assert not np.any(np.isnan(result))
+
+    @given(
+        st.integers(min_value=10, max_value=100),
+        _LOG2_FLOATS,
+        st.floats(min_value=0.1, max_value=0.9, allow_nan=False, allow_infinity=False),
+    )
+    def test_constant_array_unchanged(self, n, c, frac):
+        """LOESS of a constant array returns the same constant."""
+        x = np.full(n, c)
+        result = loess(x, frac)
+        assert np.allclose(result, c, atol=1e-6)
+
+    def test_short_input_returns_input_unchanged(self):
+        """A single-element array has nothing to smooth; return it unchanged."""
+        result = loess(np.array([0.5]), 0.5)
+        assert len(result) == 1
+        assert result[0] == 0.5
+
+    def test_tracks_linear_trend_at_edges_better_than_rolling_median(self):
+        """LOESS extrapolates a monotone trend into the tails; rolling_median plateaus (#1028).
+
+        Construct a linear bias-vs-position signal with light noise and a
+        large window fraction. The rolling-median smoother collapses its
+        boundary values toward the inner-window median (flat-edge artifact
+        of mirror-padding). LOESS, in contrast, retains the slope at the
+        boundary. The test asserts that LOESS' boundary error against the
+        underlying trend is smaller than rolling-median's by a clear
+        margin, which is the precise property #1028 requests.
+        """
+        n = 200
+        rng = np.random.default_rng(1028)
+        x_axis = np.linspace(0.0, 1.0, n)
+        true_trend = 2.0 * x_axis - 1.0  # linear from -1 to +1
+        signal = true_trend + rng.normal(0.0, 0.15, n)
+
+        frac = 0.3
+        loess_smoothed = loess(signal, frac)
+        median_smoothed = rolling_median(signal, frac)
+
+        # Compare boundary error against the underlying trend, over the
+        # outermost 5% of bins on each side (where the edge artifact lives).
+        edge = max(1, n // 20)
+        boundary_idx = np.r_[np.arange(edge), np.arange(n - edge, n)]
+        loess_err = np.abs(
+            loess_smoothed[boundary_idx] - true_trend[boundary_idx]
+        ).mean()
+        median_err = np.abs(
+            median_smoothed[boundary_idx] - true_trend[boundary_idx]
+        ).mean()
+        assert loess_err < median_err, (
+            f"LOESS should track the boundary trend better than rolling_median; "
+            f"loess_err={loess_err:.4f}, median_err={median_err:.4f}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Tests: cnvlib/call.py (pure arithmetic helpers)
+# ---------------------------------------------------------------------------
+
+
+class TestLog2RatioToAbsolutePure:
+    """Invariants for _log2_ratio_to_absolute_pure."""
+
+    @given(_LOG2_FLOATS, _POSITIVE_FLOATS)
+    def test_positive_output(self, log2_ratio, ref_copies):
+        result = _log2_ratio_to_absolute_pure(log2_ratio, ref_copies)
+        assert result > 0
+
+    @given(_POSITIVE_FLOATS)
+    def test_zero_log2_returns_ref_copies(self, ref_copies):
+        """log2=0 means no change: result == ref_copies."""
+        result = _log2_ratio_to_absolute_pure(0.0, ref_copies)
+        assert abs(result - ref_copies) < 1e-12
+
+    @given(_LOG2_FLOATS, _POSITIVE_FLOATS)
+    def test_round_trip(self, log2_ratio, ref_copies):
+        """np.log2(result / ref_copies) recovers the log2 ratio."""
+        result = _log2_ratio_to_absolute_pure(log2_ratio, ref_copies)
+        recovered = np.log2(result / ref_copies)
+        assert abs(recovered - log2_ratio) < 1e-9
+
+    @given(
+        st.tuples(_LOG2_FLOATS, _LOG2_FLOATS).filter(
+            lambda pair: pair[1] - pair[0] > 1e-10
+        ),
+        _POSITIVE_FLOATS,
+    )
+    def test_monotone_in_log2(self, pair, ref_copies):
+        """Larger log2 ratio always gives more copies."""
+        v1, v2 = pair
+        r1 = _log2_ratio_to_absolute_pure(v1, ref_copies)
+        r2 = _log2_ratio_to_absolute_pure(v2, ref_copies)
+        assert r1 < r2
+
+
+class TestLog2RatioToAbsolute:
+    """Invariants for _log2_ratio_to_absolute (purity-corrected)."""
+
+    @given(_LOG2_FLOATS, _POSITIVE_FLOATS, _POSITIVE_FLOATS)
+    def test_purity_one_equals_pure(self, log2_ratio, ref_copies, expect_copies):
+        """With purity=1, the impure formula reduces to the pure formula."""
+        impure = _log2_ratio_to_absolute(log2_ratio, ref_copies, expect_copies, 1.0)
+        pure = _log2_ratio_to_absolute_pure(log2_ratio, ref_copies)
+        assert abs(impure - pure) < 1e-9
+
+    @given(
+        _POSITIVE_FLOATS,
+        st.floats(
+            min_value=0.05, max_value=0.99, allow_nan=False, allow_infinity=False
+        ),
+    )
+    def test_neutral_log2_gives_expected_copies(self, copies, purity):
+        """When log2=0, autosomal result equals the expected copy number."""
+        # For autosomes: ref_copies == expect_copies, neutral log2 = 0
+        result = _log2_ratio_to_absolute(0.0, copies, copies, purity)
+        assert abs(result - copies) < 1e-9
+
+
+class TestRescaleBaf:
+    """Invariants for rescale_baf (purity-adjusted B-allele frequency)."""
+
+    @given(
+        st.lists(
+            st.floats(
+                min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
+            ),
+            min_size=1,
+            max_size=50,
+        ).map(pd.Series),
+    )
+    def test_purity_one_is_identity(self, baf):
+        """rescale_baf with purity=1 returns the input unchanged."""
+        result = rescale_baf(1.0, baf)
+        assert np.allclose(result.values, baf.values, atol=1e-12)
+
+    @given(
+        st.floats(
+            min_value=0.05, max_value=0.99, allow_nan=False, allow_infinity=False
+        ),
+        st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+    )
+    def test_mixture_round_trip(self, purity, tumor_baf):
+        """Mixing tumor+normal BAF, then rescaling, recovers tumor BAF."""
+        observed = purity * tumor_baf + (1 - purity) * 0.5
+        recovered = rescale_baf(purity, pd.Series([observed]))
+        assert abs(recovered.iloc[0] - tumor_baf) < 1e-9
+
+    @given(
+        st.floats(
+            min_value=0.05, max_value=0.99, allow_nan=False, allow_infinity=False
+        ),
+    )
+    def test_balanced_baf_stays_at_half(self, purity):
+        """Observed BAF=0.5 always rescales to 0.5 (balanced heterozygosity)."""
+        result = rescale_baf(purity, pd.Series([0.5]))
+        assert abs(result.iloc[0] - 0.5) < 1e-12
+
+    @given(
+        st.floats(
+            min_value=0.05, max_value=0.99, allow_nan=False, allow_infinity=False
+        ),
+        st.lists(
+            st.floats(
+                min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
+            ),
+            min_size=1,
+            max_size=50,
+        ).map(pd.Series),
+    )
+    def test_output_clamped_to_unit_interval(self, purity, observed_baf):
+        """rescale_baf output is always in [0, 1] for any in-range inputs."""
+        result = rescale_baf(purity, observed_baf)
+        assert (result.to_numpy() >= 0.0).all()
+        assert (result.to_numpy() <= 1.0).all()
+
+    def test_low_purity_extreme_baf_clamped_to_zero(self):
+        """Regression for issue #601: low purity + observed BAF ~ 0 must
+        clamp to 0, not produce a negative value.
+        """
+        # purity=0.37 (from issue #601). Without clamping:
+        # tumor_baf = (0.0 - 0.5*0.63) / 0.37 = -0.851
+        result = rescale_baf(0.37, pd.Series([0.0]))
+        assert result.iloc[0] == 0.0
+
+    def test_low_purity_extreme_baf_clamped_to_one(self):
+        """Symmetric case: observed BAF ~ 1 must clamp to 1, not exceed it."""
+        # tumor_baf = (1.0 - 0.5*0.63) / 0.37 = 1.851
+        result = rescale_baf(0.37, pd.Series([1.0]))
+        assert result.iloc[0] == 1.0
+
+    def test_nan_preserved(self):
+        """NaN BAF (segments with no SNP coverage) passes through unchanged."""
+        result = rescale_baf(0.5, pd.Series([0.4, np.nan, 0.6]))
+        assert not np.isnan(result.iloc[0])
+        assert np.isnan(result.iloc[1])
+        assert not np.isnan(result.iloc[2])
+
+    def test_no_warning_at_float_noise_boundary(self, caplog):
+        """Values within float-arithmetic noise of 0 or 1 must not log a warning."""
+        # observed_baf at the exact lower boundary 0.5*(1-purity) gives tumor_baf=0
+        purity = 0.5
+        boundary_low = 0.5 * (1 - purity)
+        boundary_high = 0.5 + 0.5 * purity
+        with caplog.at_level("WARNING"):
+            rescale_baf(purity, pd.Series([boundary_low, 0.5, boundary_high]))
+        assert not any("clamped" in rec.message for rec in caplog.records)

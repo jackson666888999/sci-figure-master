@@ -1,0 +1,1375 @@
+#!/usr/bin/env python
+"""Tests for the call command and heterozygous-SNP loading."""
+
+import logging
+import os
+import shutil
+import tempfile
+import unittest
+import warnings
+
+import pytest
+
+logging.basicConfig(level=logging.ERROR, format="%(message)s")
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+import numpy as np
+import pandas as pd
+import pysam
+from conftest import linecount
+
+import cnvlib
+from cnvlib import (
+    access,
+    antitarget,
+    autobin,
+    batch,
+    bintest,
+    call,
+    cluster,
+    cmdutil,
+    cnary,
+    commands,
+    core,
+    coverage,
+    diagram,
+    export,
+    fix,
+    heatmap,
+    import_rna,
+    importers,
+    metrics,
+    parallel,
+    params,
+    plots,
+    reference,
+    reports,
+    samutil,
+    scatter,
+    segfilters,
+    segmentation,
+    segmetrics,
+    smoothing,
+    vary,
+)
+from skgenome import GenomicArray as GA
+from skgenome import tabio
+
+
+class CallTests(unittest.TestCase):
+    """Tests for the call command and related functions."""
+
+    def test_call(self):
+        """The 'call' command."""
+        # Methods: clonal, threshold, none
+        tr_cns = cnvlib.read("formats/tr95t.cns")
+        tr_thresh = commands.do_call(
+            tr_cns,
+            None,
+            "threshold",
+            is_haploid_x_reference=True,
+            is_sample_female=True,
+        )
+        self.assertEqual(len(tr_cns), len(tr_thresh))
+        tr_clonal = commands.do_call(
+            tr_cns,
+            None,
+            "clonal",
+            purity=0.65,
+            is_haploid_x_reference=True,
+            is_sample_female=True,
+        )
+        self.assertEqual(len(tr_cns), len(tr_clonal))
+        cl_cns = cnvlib.read("formats/cl_seq.cns")
+        cl_thresh = commands.do_call(
+            cl_cns,
+            None,
+            "threshold",
+            thresholds=np.log2((np.arange(12) + 0.5) / 6.0),
+            is_haploid_x_reference=True,
+            is_sample_female=True,
+        )
+        self.assertEqual(len(cl_cns), len(cl_thresh))
+        cl_clonal = commands.do_call(
+            cl_cns,
+            None,
+            "clonal",
+            ploidy=6,
+            purity=0.99,
+            is_haploid_x_reference=True,
+            is_sample_female=True,
+        )
+        self.assertEqual(len(cl_cns), len(cl_clonal))
+        cl_none = commands.do_call(
+            cl_cns,
+            None,
+            "none",
+            ploidy=6,
+            purity=0.99,
+            is_haploid_x_reference=True,
+            is_sample_female=True,
+        )
+        self.assertEqual(len(cl_cns), len(cl_none))
+
+    def test_call_nan_log2_neutral_fallback(self):
+        """A NaN log2 segment must not produce a garbage integer copy number.
+
+        Regression for #647: a non-finite log2 reaching the integer cast in
+        do_call silently yielded the int64 sentinel (-9223372036854775808) on
+        older NumPy, or a false homozygous-deletion cn=0 on newer NumPy, for
+        the clonal and pure paths -- whereas the threshold path already mapped
+        NaN to the neutral reference copy number. All methods must agree:
+        substitute the neutral copy number, never emit garbage.
+        """
+        # NaN log2 on an autosome and on both sex chromosomes, where the
+        # neutral reference copy number differs (chr1=2; chrX=1 and chrY=1
+        # under a haploid-X reference). Interleave finite segments as controls.
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1", "chr1", "chrX", "chrY"],
+                    "start": [0, 1000, 0, 0],
+                    "end": [1000, 2000, 1000, 1000],
+                    "gene": ["A", "B", "C", "D"],
+                    "log2": [np.nan, 0.5, np.nan, np.nan],
+                    "weight": [1.0, 1.0, 1.0, 1.0],
+                    "probes": [10, 10, 10, 10],
+                }
+            )
+        )
+        sentinel = np.iinfo(np.int64).min
+        # Neutral reference copies per NaN segment: chr1=2, chrX=1, chrY=1.
+        expected_neutral = {0: 2, 2: 1, 3: 1}
+        results = {}
+        for method, kwargs in (
+            ("clonal", {}),  # -> absolute_pure
+            ("clonal_purity", {"purity": 0.6}),  # -> absolute_clonal
+            ("threshold", {}),  # already guarded; pin the shared contract
+        ):
+            out = commands.do_call(
+                segarr,
+                None,
+                method.split("_")[0],
+                is_haploid_x_reference=True,
+                is_sample_female=True,
+                **kwargs,
+            )
+            cn = out["cn"]
+            results[method] = list(cn)
+            for idx, neutral in expected_neutral.items():
+                self.assertEqual(cn[idx], neutral, f"{method} seg{idx}")
+                self.assertNotEqual(cn[idx], sentinel, f"{method} seg{idx}")
+            self.assertTrue((cn >= 0).all(), method)
+        # All three call methods must agree on the NaN-segment copy numbers.
+        for idx in expected_neutral:
+            called = {m: r[idx] for m, r in results.items()}
+            self.assertEqual(
+                len(set(called.values())), 1, f"methods disagree at seg{idx}: {called}"
+            )
+
+    def test_call_filter(self):
+        segments = cnvlib.read("formats/tr95t.segmetrics.cns")
+        variants = tabio.read("formats/na12878_na12882_mix.vcf", "vcf")
+        # Each filter individually, then filter combos (with merges where needed)
+        for filters, merges in (
+            (["ampdel"], []),
+            (["cn"], []),
+            (["ci"], []),
+            (["sem"], []),
+            ([], ["bic"]),
+            (["sem", "cn", "ampdel"], []),
+            (["ci", "cn"], []),
+            (["ci", "sem"], []),
+            (["cn", "ci", "sem"], []),
+            ([], ["bic", "cn"]),
+            (["ci"], ["bic"]),
+            (["ci", "cn"], ["bic"]),
+        ):
+            with self.subTest(filters=filters, merges=merges):
+                result = commands.do_call(
+                    segments,
+                    variants,
+                    method="threshold",
+                    purity=0.9,
+                    is_haploid_x_reference=True,
+                    is_sample_female=True,
+                    filters=filters or None,
+                    merges=merges or None,
+                )
+                self.assertLessEqual(len(result), len(segments))
+                if "ampdel" not in filters:
+                    # At least 1 segment per chromosome remains
+                    self.assertLessEqual(len(segments.chromosome.unique()), len(result))
+                for colname in "baf", "cn", "cn1", "cn2":
+                    self.assertIn(colname, result)
+                # Segmetrics columns must survive merging by prior filters
+                for colname in "sem", "ci_lo", "ci_hi", "stdev":
+                    self.assertIn(
+                        colname,
+                        result,
+                        f"{colname!r} dropped after filters={filters} merges={merges}",
+                    )
+
+    def test_call_filter_ci_preserves_different_magnitudes(self):
+        """CI filter should not merge adjacent segments with different magnitudes.
+
+        Two adjacent segments both with CIs entirely below zero (both are
+        confident losses) should remain separate if they have different log2
+        values.  Only segments whose CI overlaps zero (neutral) should be
+        merged with adjacent neutral segments.
+        """
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * 5,
+                    "start": [0, 1000, 2000, 3000, 4000],
+                    "end": [1000, 2000, 3000, 4000, 5000],
+                    "gene": ["A", "B", "C", "D", "E"],
+                    "log2": [-1.0, -0.03, 0.01, 0.02, 0.5],
+                    "weight": [1.0, 1.0, 1.0, 1.0, 1.0],
+                    "probes": [10, 10, 10, 10, 10],
+                    # Segment A: deep loss, CI entirely below 0
+                    # Segment B: slight loss, CI entirely below 0
+                    # Segment C: neutral, CI overlaps 0
+                    # Segment D: neutral, CI overlaps 0
+                    # Segment E: gain, CI entirely above 0
+                    "ci_lo": [-1.2, -0.06, -0.05, -0.04, 0.3],
+                    "ci_hi": [-0.8, -0.01, 0.07, 0.08, 0.7],
+                }
+            )
+        )
+
+        result = segfilters.ci(segarr)
+
+        # A and B must stay separate -- both are losses but different magnitude
+        # C and D should merge -- both are neutral (CI overlaps zero)
+        # E must stay separate -- it's a gain
+        self.assertEqual(len(result), 4)
+        # Check that the deep loss is preserved with its own log2
+        self.assertAlmostEqual(result["log2"].iat[0], -1.0)
+        # Check that the slight loss is preserved with its own log2
+        self.assertAlmostEqual(result["log2"].iat[1], -0.03)
+        # Check that the two neutrals were merged
+        self.assertEqual(result["probes"].iat[2], 20)
+        # Check that the gain is preserved
+        self.assertAlmostEqual(result["log2"].iat[3], 0.5)
+
+    def test_call_filter_bic(self):
+        """BIC merge: adjacent segments merge iff their means aren't separable.
+
+        One case table (chromosome, log2, weight, probes, stdev) -> expected
+        segment count and, where merges occur, the merged probe counts.
+        """
+        cases = [
+            {
+                "name": "different means with low variance stay separate",
+                "chromosome": ["chr1"] * 3,
+                "log2": [-1.0, 0.0, 0.5],
+                "weight": [10.0, 10.0, 10.0],
+                "probes": [50, 50, 50],
+                "stdev": [0.1, 0.1, 0.1],
+                "expect_probes": [50, 50, 50],
+            },
+            {
+                "name": "similar means merge",
+                "chromosome": ["chr1"] * 3,
+                "log2": [0.31, 0.30, 0.29],
+                "weight": [10.0, 10.0, 10.0],
+                "probes": [20, 20, 20],
+                "stdev": [0.5, 0.5, 0.5],
+                "expect_probes": [60],
+            },
+            {
+                "name": "same mean across chromosomes never merges",
+                "chromosome": ["chr1", "chr2"],
+                "log2": [0.3, 0.3],
+                "weight": [10.0, 10.0],
+                "probes": [20, 20],
+                "stdev": [0.5, 0.5],
+                "expect_probes": [20, 20],
+            },
+            {
+                "name": "single-bin stdev=0 uses fallback variance, then merges",
+                "chromosome": ["chr1"] * 3,
+                "log2": [0.3, 0.3, 0.3],
+                "weight": [1.0, 10.0, 10.0],
+                "probes": [1, 20, 20],
+                "stdev": [0.0, 0.5, 0.5],
+                "expect_probes": [41],
+            },
+            {
+                "name": "cascading A~B~C merge, distinct D stays",
+                "chromosome": ["chr1"] * 4,
+                "log2": [0.10, 0.12, 0.14, -0.5],
+                "weight": [10.0, 10.0, 10.0, 10.0],
+                "probes": [20, 20, 20, 20],
+                "stdev": [0.4, 0.4, 0.4, 0.1],
+                "expect_probes": [60, 20],
+            },
+        ]
+        for case in cases:
+            with self.subTest(case=case["name"]):
+                n = len(case["log2"])
+                starts = [i * 1000 for i in range(n)]
+                segarr = cnary.CopyNumArray(
+                    pd.DataFrame(
+                        {
+                            "chromosome": case["chromosome"],
+                            "start": starts,
+                            "end": [s + 1000 for s in starts],
+                            "gene": [chr(ord("A") + i) for i in range(n)],
+                            "log2": case["log2"],
+                            "weight": case["weight"],
+                            "probes": case["probes"],
+                            "stdev": case["stdev"],
+                        }
+                    )
+                )
+                result = segfilters.bic(segarr)
+                self.assertEqual(list(result["probes"]), case["expect_probes"])
+
+    def test_call_merge_bic_via_do_call(self):
+        """BIC merge works through the do_call pipeline."""
+        segments = cnvlib.read("formats/tr95t.segmetrics.cns")
+        result = commands.do_call(
+            segments,
+            variants=None,
+            method="threshold",
+            purity=0.9,
+            is_haploid_x_reference=True,
+            is_sample_female=True,
+            merges=["bic"],
+        )
+        self.assertGreater(len(result), 0)
+        self.assertLessEqual(len(result), len(segments))
+
+    def test_call_filter_cn_vs_merge_cn(self):
+        """--filter cn merges only neutral segments; --merge cn merges all same-CN."""
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * 4,
+                    "start": [0, 1000, 2000, 3000],
+                    "end": [1000, 2000, 3000, 4000],
+                    "gene": ["A", "B", "C", "D"],
+                    "log2": [-0.5, -0.6, 0.0, 0.01],
+                    "weight": [1.0, 1.0, 1.0, 1.0],
+                    "probes": [10, 10, 10, 10],
+                }
+            )
+        )
+        # --filter cn: only merges adjacent neutral (cn==2) segments
+        result_filter = commands.do_call(
+            segarr,
+            method="threshold",
+            filters=["cn"],
+        )
+        # Segments A,B are cn=1 (losses) — NOT merged by --filter cn
+        # Segments C,D are cn=2 (neutral) — merged by --filter cn
+        self.assertEqual(len(result_filter), 3)
+
+        # --merge cn: merges any adjacent same-CN segments
+        result_merge = commands.do_call(
+            segarr,
+            method="threshold",
+            merges=["cn"],
+        )
+        # Segments A,B are cn=1 — merged by --merge cn
+        # Segments C,D are cn=2 — merged by --merge cn
+        self.assertEqual(len(result_merge), 2)
+
+    def test_call_filter_cn_neutral_sex_chrom(self):
+        """--filter cn respects expected CN on sex chromosomes (male sample)."""
+        segarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1", "chr1", "chrX", "chrX"],
+                    "start": [0, 1000, 0, 1000],
+                    "end": [1000, 2000, 1000, 2000],
+                    "gene": ["A", "B", "C", "D"],
+                    "log2": [0.0, 0.01, 0.0, 0.05],
+                    "weight": [1.0, 1.0, 1.0, 1.0],
+                    "probes": [10, 10, 10, 10],
+                }
+            )
+        )
+        # Male sample: expected CN=2 on autosomes, CN=1 on chrX
+        result = commands.do_call(
+            segarr,
+            method="threshold",
+            is_haploid_x_reference=True,
+            is_sample_female=False,
+            filters=["cn"],
+        )
+        # chr1 A,B are cn=2 (neutral for autosome) — merged
+        # chrX C,D are cn=1 (neutral for male X) — merged
+        self.assertEqual(len(result), 2)
+
+        # Female sample: expected CN=2 on chrX too
+        result_f = commands.do_call(
+            segarr,
+            method="threshold",
+            is_haploid_x_reference=True,
+            is_sample_female=True,
+            filters=["cn"],
+        )
+        # chr1 A,B are cn=2 (neutral) — merged
+        # chrX C,D are cn=1 (NOT neutral for female, expected 2) — kept separate
+        self.assertEqual(len(result_f), 3)
+
+    def test_call_log2_ratios(self):
+        cnarr = cnvlib.read("formats/par-reference.grch38.cnn")
+        ploidy = 2
+        purity = 0.8
+        is_haploid_x_reference = True
+        is_sample_female = False
+        diploid_parx_genome = None
+        absolutes = call.absolute_clonal(
+            cnarr,
+            ploidy,
+            purity,
+            is_haploid_x_reference,
+            diploid_parx_genome,
+            is_sample_female,
+        )
+        ratios = call.log2_ratios(
+            cnarr, absolutes, ploidy, is_haploid_x_reference, diploid_parx_genome
+        )
+        ratios_dprx = call.log2_ratios(
+            cnarr, absolutes, ploidy, is_haploid_x_reference, "grch38"
+        )
+        self.assertEqual(len(ratios), len(cnarr))
+        self.assertEqual(len(ratios_dprx), len(cnarr))
+        self.assertEqual(ratios[26], ratios_dprx[26])
+        self.assertEqual(ratios[26], ratios_dprx[27] + 1)
+
+    def test_call_sex(self):
+        """Test each 'call' method on allosomes."""
+        for (
+            fname,
+            sample_is_f,
+            ref_is_m,
+            chr1_expect,
+            chrx_expect,
+            chry_expect,
+            chr1_cn,
+            chrx_cn,
+            chry_cn,
+        ) in (
+            ("formats/f-on-f.cns", True, False, 0, 0, None, 2, 2, None),
+            ("formats/f-on-m.cns", True, True, 0.585, 1, None, 3, 2, None),
+            ("formats/m-on-f.cns", False, False, 0, -1, 0, 2, 1, 1),
+            ("formats/m-on-m.cns", False, True, 0, 0, 0, 2, 1, 1),
+        ):
+            cns = cnvlib.read(fname)
+            chr1_idx = cns.chromosome == "chr1"
+            chrx_idx = cns.chromosome == "chrX"
+            chry_idx = cns.chromosome == "chrY"
+
+            def test_chrom_means(segments):
+                self.assertEqual(chr1_cn, segments["cn"][chr1_idx].mean())
+                self.assertAlmostEqual(
+                    chr1_expect, segments["log2"][chr1_idx].mean(), 0
+                )
+                self.assertEqual(chrx_cn, segments["cn"][chrx_idx].mean())
+                self.assertAlmostEqual(
+                    chrx_expect, segments["log2"][chrx_idx].mean(), 0
+                )
+                if not sample_is_f:
+                    self.assertEqual(chry_cn, segments["cn"][chry_idx].mean())
+                    self.assertAlmostEqual(
+                        chry_expect, segments["log2"][chry_idx].mean(), 0
+                    )
+
+            # Call threshold
+            cns_thresh = commands.do_call(
+                cns,
+                None,
+                "threshold",
+                is_haploid_x_reference=ref_is_m,
+                is_sample_female=sample_is_f,
+            )
+            test_chrom_means(cns_thresh)
+            # Call clonal pure
+            cns_clone = commands.do_call(
+                cns,
+                None,
+                "clonal",
+                is_haploid_x_reference=ref_is_m,
+                is_sample_female=sample_is_f,
+            )
+            test_chrom_means(cns_clone)
+            # Call clonal barely-mixed
+            cns_p99 = commands.do_call(
+                cns,
+                None,
+                "clonal",
+                purity=0.99,
+                is_haploid_x_reference=ref_is_m,
+                is_sample_female=sample_is_f,
+            )
+            test_chrom_means(cns_p99)
+
+    def test_call_various_abs_ref_exp_methods(self):
+        cnarr = cnvlib.read("formats/par-reference.grch38.cnn")
+
+        def _run(is_haploid_x_reference, is_sample_female, diploid_parx_genome=None):
+            ploidy = 2
+            purity = 0.8
+            abs_df = call.absolute_dataframe(
+                cnarr,
+                ploidy,
+                purity,
+                is_haploid_x_reference,
+                diploid_parx_genome,
+                is_sample_female,
+            )
+            abs_ref = call.absolute_reference(
+                cnarr, ploidy, diploid_parx_genome, is_haploid_x_reference
+            )
+            abs_exp = call.absolute_expect(
+                cnarr, ploidy, diploid_parx_genome, is_sample_female
+            )
+            abs_clonal = call.absolute_clonal(
+                cnarr,
+                ploidy,
+                purity,
+                is_haploid_x_reference,
+                diploid_parx_genome,
+                is_sample_female,
+            )
+            return abs_df, abs_ref, abs_exp, abs_clonal
+
+        def _assert_abs_df(iloc, abs_df, ref_copies, exp_copies):
+            self.assertTrue("reference" in abs_df.columns)
+            self.assertTrue("expect" in abs_df.columns)
+            r = abs_df.iloc[iloc]
+            self.assertEqual(r.reference, ref_copies)
+            self.assertEqual(r.expect, exp_copies)
+
+        def _assert_abs_copies(i, abs_values, copies):
+            self.assertEqual(abs_values[i], copies)
+
+        def _assert_abs_clonal(i, abs_clonal, value):
+            self.assertAlmostEqual(abs_clonal[i], value, 5)
+
+        def _assert_chr1(abs_df, abs_ref, abs_exp, abs_clonal):
+            i = 0
+            _assert_abs_df(i, abs_df, 2, 2)
+            _assert_abs_copies(i, abs_ref, 2)
+            _assert_abs_copies(i, abs_exp, 2)
+            _assert_abs_clonal(i, abs_clonal, 0.26708)
+
+        def _assert_chrx_par(
+            abs_df, abs_ref, abs_exp, abs_clonal, ref_copies, exp_copies, clonal_copies
+        ):
+            i = 13
+            _assert_abs_df(i, abs_df, ref_copies, exp_copies)
+            _assert_abs_copies(i, abs_ref, ref_copies)
+            _assert_abs_copies(i, abs_exp, exp_copies)
+            _assert_abs_clonal(i, abs_clonal, clonal_copies)
+
+        def _assert_chrx_non_par(
+            abs_df, abs_ref, abs_clonal, abs_exp, ref_copies, exp_copies, clonal_copies
+        ):
+            i = 21
+            _assert_abs_df(i, abs_df, ref_copies, exp_copies)
+            _assert_abs_copies(i, abs_ref, ref_copies)
+            _assert_abs_copies(i, abs_exp, exp_copies)
+            _assert_abs_clonal(i, abs_clonal, clonal_copies)
+
+        def _assert_chry_par(
+            abs_df, abs_ref, abs_exp, abs_clonal, ref_copies, exp_copies, clonal_copies
+        ):
+            i = 36
+            _assert_abs_df(i, abs_df, ref_copies, exp_copies)
+            _assert_abs_copies(i, abs_ref, ref_copies)
+            _assert_abs_copies(i, abs_exp, exp_copies)
+            _assert_abs_clonal(i, abs_clonal, clonal_copies)
+
+        def _assert_chry_non_par(
+            abs_df, abs_ref, abs_exp, abs_clonal, ref_copies, exp_copies, clonal_copies
+        ):
+            i = 40
+            _assert_abs_df(i, abs_df, ref_copies, exp_copies)
+            _assert_abs_copies(i, abs_ref, ref_copies)
+            _assert_abs_copies(i, abs_exp, exp_copies)
+            _assert_abs_clonal(i, abs_clonal, clonal_copies)
+
+        is_haploid_x_reference = True
+        is_female_sample = True
+        abs_df, abs_ref, abs_exp, abs_clonal = _run(
+            is_haploid_x_reference, is_female_sample
+        )
+        _assert_chr1(abs_df, abs_ref, abs_exp, abs_clonal)
+        _assert_chrx_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 2, 1.59225)
+        _assert_chrx_non_par(abs_df, abs_ref, abs_clonal, abs_exp, 1, 2, 1.34001)
+        _assert_chry_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 0, 2.04202)
+        _assert_chry_non_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 0, 0.70083)
+        abs_df, abs_ref, abs_exp, abs_clonal = _run(
+            is_haploid_x_reference, is_female_sample, "grch38"
+        )
+        _assert_chr1(abs_df, abs_ref, abs_exp, abs_clonal)
+        _assert_chrx_par(abs_df, abs_ref, abs_exp, abs_clonal, 2, 2, 3.68449)
+        _assert_chrx_non_par(abs_df, abs_ref, abs_clonal, abs_exp, 1, 2, 1.34001)
+        _assert_chry_par(abs_df, abs_ref, abs_exp, abs_clonal, 0, 0, 0.0)
+        _assert_chry_non_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 0, 0.70083)
+
+        is_haploid_x_reference = True
+        is_female_sample = False
+        abs_df, abs_ref, abs_exp, abs_clonal = _run(
+            is_haploid_x_reference, is_female_sample
+        )
+        _assert_chr1(abs_df, abs_ref, abs_exp, abs_clonal)
+        _assert_chrx_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 1, 1.84225)
+        _assert_chrx_non_par(abs_df, abs_ref, abs_clonal, abs_exp, 1, 1, 1.59001)
+        _assert_chry_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 1, 1.79202)
+        _assert_chry_non_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 1, 0.45083)
+        abs_df, abs_ref, abs_exp, abs_clonal = _run(
+            is_haploid_x_reference, is_female_sample, "grch38"
+        )
+        _assert_chr1(abs_df, abs_ref, abs_exp, abs_clonal)
+        _assert_chrx_par(abs_df, abs_ref, abs_exp, abs_clonal, 2, 2, 3.68449)
+        _assert_chrx_non_par(abs_df, abs_ref, abs_clonal, abs_exp, 1, 1, 1.59001)
+        _assert_chry_par(abs_df, abs_ref, abs_exp, abs_clonal, 0, 0, 0.0)
+        _assert_chry_non_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 1, 0.45083)
+
+        is_haploid_x_reference = False
+        is_female_sample = True
+        abs_df, abs_ref, abs_exp, abs_clonal = _run(
+            is_haploid_x_reference, is_female_sample
+        )
+        _assert_chr1(abs_df, abs_ref, abs_exp, abs_clonal)
+        _assert_chrx_par(abs_df, abs_ref, abs_exp, abs_clonal, 2, 2, 3.68449)
+        _assert_chrx_non_par(abs_df, abs_ref, abs_clonal, abs_exp, 2, 2, 3.18002)
+        _assert_chry_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 0, 2.04202)
+        _assert_chry_non_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 0, 0.70083)
+        abs_df, abs_ref, abs_exp, abs_clonal = _run(
+            is_haploid_x_reference, is_female_sample, "grch38"
+        )
+        _assert_chr1(abs_df, abs_ref, abs_exp, abs_clonal)
+        _assert_chrx_par(abs_df, abs_ref, abs_exp, abs_clonal, 2, 2, 3.684493)
+        _assert_chrx_non_par(abs_df, abs_ref, abs_clonal, abs_exp, 2, 2, 3.18002)
+        _assert_chry_par(abs_df, abs_ref, abs_exp, abs_clonal, 0, 0, 0.0)
+        _assert_chry_non_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 0, 0.70083)
+
+        is_haploid_x_reference = False
+        is_female_sample = False
+        abs_df, abs_ref, abs_exp, abs_clonal = _run(
+            is_haploid_x_reference, is_female_sample
+        )
+        _assert_chr1(abs_df, abs_ref, abs_exp, abs_clonal)
+        _assert_chrx_par(abs_df, abs_ref, abs_exp, abs_clonal, 2, 1, 3.93449)
+        _assert_chrx_non_par(abs_df, abs_ref, abs_clonal, abs_exp, 2, 1, 3.43002)
+        _assert_chry_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 1, 1.79202)
+        _assert_chry_non_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 1, 0.45083)
+        abs_df, abs_ref, abs_exp, abs_clonal = _run(
+            is_haploid_x_reference, is_female_sample, "grch38"
+        )
+        _assert_chr1(abs_df, abs_ref, abs_exp, abs_clonal)
+        _assert_chrx_par(abs_df, abs_ref, abs_exp, abs_clonal, 2, 2, 3.68449)
+        _assert_chrx_non_par(abs_df, abs_ref, abs_clonal, abs_exp, 2, 1, 3.43002)
+        _assert_chry_par(abs_df, abs_ref, abs_exp, abs_clonal, 0, 0, 0.0)
+        _assert_chry_non_par(abs_df, abs_ref, abs_exp, abs_clonal, 1, 1, 0.45083)
+
+    @staticmethod
+    def _deep_deletion_cns():
+        """Segments including deep deletions: a true homozygous deletion
+        (log2=-3) and a zero-coverage sentinel segment (log2=NULL_LOG2_COVERAGE).
+        """
+        log2 = [0.0, -3.0, params.NULL_LOG2_COVERAGE, 0.585]
+        n = len(log2)
+        return cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1"] * n,
+                    "start": np.arange(0, n * 1000, 1000),
+                    "end": np.arange(1000, n * 1000 + 1000, 1000),
+                    "gene": ["-"] * n,
+                    "log2": log2,
+                    "probes": [10] * n,
+                    "weight": [1.0] * n,
+                }
+            )
+        )
+
+    def test_call_clonal_no_negative_cn(self):
+        """Clonal calling with impure samples never emits negative copy number.
+
+        Regression for #503/#516: with purity < 1, the purity-rescale formula
+        n = (r*2^log2 - x*(1-p)) / p extrapolates to negative absolute copies
+        for deeply deleted (or zero-coverage sentinel) segments. Absolute copy
+        number is physically >= 0, so it must be floored at 0.
+        """
+        cns = self._deep_deletion_cns()
+        for tumor_purity in (0.3, 0.5, 0.65, 0.9):
+            with self.subTest(purity=tumor_purity):
+                called = commands.do_call(
+                    cns,
+                    None,
+                    "clonal",
+                    purity=tumor_purity,
+                    is_haploid_x_reference=True,
+                    is_sample_female=True,
+                )
+                self.assertTrue(
+                    (called["cn"] >= 0).all(),
+                    f"negative cn at purity={tumor_purity}: {called['cn'].tolist()}",
+                )
+                # Deep-deletion and sentinel segments should call CN 0
+                self.assertEqual(called["cn"].iloc[1], 0)
+                self.assertEqual(called["cn"].iloc[2], 0)
+
+    def test_log2_ratio_to_absolute_floored_at_zero(self):
+        """_log2_ratio_to_absolute never returns a negative absolute (#503)."""
+        # Impure path: deep deletion below the (1-p) contamination floor
+        self.assertEqual(call._log2_ratio_to_absolute(-20.0, 2, 2, purity=0.5), 0.0)
+        self.assertEqual(call._log2_ratio_to_absolute(-3.0, 2, 2, purity=0.5), 0.0)
+        # A real single-copy gain is unaffected
+        self.assertAlmostEqual(
+            call._log2_ratio_to_absolute(0.585, 2, 2, purity=1.0), 3.0, places=2
+        )
+        # A NaN log2 (malformed input) propagates rather than being silently
+        # floored to 0 -- a false homozygous-deletion call would be worse.
+        self.assertTrue(
+            np.isnan(call._log2_ratio_to_absolute(np.nan, 2, 2, purity=0.5))
+        )
+
+    @staticmethod
+    def _clonal_purity_cns():
+        """Deterministic 4-segment fixture spanning del/loss/gain/amp log2."""
+        return cnary.CopyNumArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chr1", "chr1", "chr1", "chr1"],
+                    "start": [0, 1000, 2000, 3000],
+                    "end": [1000, 2000, 3000, 4000],
+                    "gene": ["A", "B", "C", "D"],
+                    "log2": [-1.2, -0.3, 0.4, 0.9],
+                    "weight": [1.0, 1.0, 1.0, 1.0],
+                    "probes": [10, 10, 10, 10],
+                }
+            )
+        )
+
+    def test_call_clonal_purity_honors_purity(self):
+        """clonal + purity uses the purity-aware absolute_clonal path (#424).
+
+        Regression guard: the purity branch computes purity-adjusted clonal
+        absolutes, so -m clonal --purity 0.7 must differ from pure clonal
+        (purity=1.0). This pins the current-master cn values and would fail if
+        a "fix" reordered the branches to overwrite them with absolute_pure.
+        """
+        cns = self._clonal_purity_cns()
+        clonal_purity = commands.do_call(
+            cns,
+            None,
+            "clonal",
+            purity=0.7,
+            is_haploid_x_reference=True,
+            is_sample_female=True,
+        )
+        self.assertEqual(list(clonal_purity["cn"]), [0, 1, 3, 4])
+        pure_clonal = commands.do_call(
+            cns,
+            None,
+            "clonal",
+            is_haploid_x_reference=True,
+            is_sample_female=True,
+        )
+        # Purity must be honored: distinct from the pure-clonal call.
+        self.assertEqual(list(pure_clonal["cn"]), [1, 2, 3, 4])
+
+    def test_call_clonal_purity_log_confirms_clonal(self):
+        """clonal + purity logs a line naming both clonal and purity (#424).
+
+        The reported defect was a misleading log: with --purity <1 and
+        -m clonal, the elif clonal branch is skipped, so the old code only
+        printed "Rescaling sample with purity ...", making users think
+        -m clonal was ignored. The purity branch now confirms clonal.
+        """
+        cns = self._clonal_purity_cns()
+        with self.assertLogs(level="INFO") as ctx:
+            commands.do_call(
+                cns,
+                None,
+                "clonal",
+                purity=0.7,
+                is_haploid_x_reference=True,
+                is_sample_female=True,
+            )
+        clonal_log = "\n".join(ctx.output)
+        self.assertIn("clonal ploidy", clonal_log)
+        self.assertIn("rescaled for purity", clonal_log)
+        # The default (threshold) purity path keeps the plain rescale message
+        # and must NOT claim clonal calling.
+        with self.assertLogs(level="INFO") as ctx:
+            commands.do_call(
+                cns,
+                None,
+                "threshold",
+                purity=0.7,
+                is_haploid_x_reference=True,
+                is_sample_female=True,
+            )
+        threshold_log = "\n".join(ctx.output)
+        self.assertIn("Rescaling sample with purity", threshold_log)
+        self.assertNotIn("rescaled for purity", threshold_log)
+
+
+class LoadHetSnpsTests(unittest.TestCase):
+    """Tests for cmdutil.load_het_snps and the _warn_if_baf_input_suspicious helper."""
+
+    def test_helper_warns_on_empty(self):
+        """Empty heterozygous result emits a clear warning."""
+        with self.assertLogs(level="WARNING") as ctx:
+            cmdutil._warn_if_baf_input_suspicious(None)
+        self.assertTrue(
+            any("No heterozygous variants" in msg for msg in ctx.output),
+            ctx.output,
+        )
+
+    def test_helper_warns_on_skewed_distribution(self):
+        """Median alt_freq far from 0.5 emits a warning."""
+        # 100 variants all near 1.0 (e.g. mistakenly homozygous-alt or somatic)
+        alt_freqs = pd.Series([0.95] * 100)
+        with self.assertLogs(level="WARNING") as ctx:
+            cmdutil._warn_if_baf_input_suspicious(alt_freqs)
+        self.assertTrue(
+            any("Median allele frequency" in msg for msg in ctx.output),
+            ctx.output,
+        )
+
+    def test_helper_silent_on_balanced_distribution(self):
+        """Median alt_freq near 0.5 emits no warning."""
+        rng = np.random.default_rng(0)
+        # 100 het SNPs with alt_freq centered on 0.5 (binomial-ish noise)
+        alt_freqs = pd.Series(rng.normal(0.5, 0.05, 100).clip(0, 1))
+        with self.assertNoLogs(level="WARNING"):
+            cmdutil._warn_if_baf_input_suspicious(alt_freqs)
+
+    def test_helper_silent_below_min_count(self):
+        """Distribution check is skipped for small variant sets to avoid noise."""
+        # Skewed but only 10 variants -- no warning (could be a small panel)
+        alt_freqs = pd.Series([0.95] * 10)
+        with self.assertNoLogs(level="WARNING"):
+            cmdutil._warn_if_baf_input_suspicious(alt_freqs)
+
+    def test_load_het_snps_warns_on_empty_vcf(self):
+        """Loading a VCF with no records triggers the empty-result warning."""
+        with self.assertLogs(level="WARNING") as ctx:
+            varr = commands.load_het_snps("formats/blank.vcf", None, None, 1, None)
+        self.assertEqual(len(varr), 0)
+        self.assertTrue(
+            any("No heterozygous variants" in msg for msg in ctx.output),
+            ctx.output,
+        )
+
+    def test_load_het_snps_uses_the_matched_normal(self):
+        """The declared pair loads as a pair, so the T/N logic is reached.
+
+        Every matched-normal call in this file used to name the fixture's
+        samples in the order opposite its ``PEDIGREE`` header, which the
+        reader answered with an unpaired array. Nothing downstream of
+        ``heterozygous()``'s ``n_zygosity`` precedence was asserted, and the
+        omission was invisible because an unpaired read is well-formed.
+        """
+        varr = commands.load_het_snps(
+            "formats/na12878_na12882_mix.vcf", "NA12882", "NA12878", 15, None
+        )
+        self.assertGreater(len(varr), 50)
+        self.assertIn("n_zygosity", varr.data.columns)
+        # The normal's genotype, not the tumor's, selects the germline hets
+        self.assertTrue((varr["n_zygosity"] == 0.5).all())
+
+    def test_load_het_snps_warns_on_missing_sample_ids(self):
+        """With no IDs the header still supplies the pair; the fixture's own
+        allele frequencies are what trip the distribution warning.
+
+        This VCF is a titration mixture of two individuals, so its median
+        allele frequency sits near 0.2 rather than 0.5. The warning names
+        unspecified sample IDs as only one of several candidate causes.
+        """
+        with self.assertLogs(level="WARNING") as ctx:
+            commands.load_het_snps(
+                "formats/na12878_na12882_mix.vcf", None, None, 15, None
+            )
+        self.assertTrue(
+            any("Median allele frequency" in msg for msg in ctx.output),
+            ctx.output,
+        )
+
+    def test_load_het_snps_records_chrx_counts_in_meta(self):
+        """``cmdutil.load_het_snps`` stashes pre-filter chrX SNP and het counts
+        in ``varr.meta`` so the chrX-het-density confirmer (#341) can compare
+        chrX het rate against the haploid-X null.
+
+        The pair is named in the fixture's own ``PEDIGREE`` order, so the
+        counts come from NA12878 as the matched normal -- she is XX, so the
+        VCF should have a non-trivial chrX het count if the panel covers
+        chrX at all. We don't pin exact numbers (those depend on the fixture
+        VCF's chrX content) -- we just verify the meta keys are populated as
+        ints, in the right ordering (het count <= total).
+        """
+        varr = cmdutil.load_het_snps(
+            "formats/na12878_na12882_mix.vcf", "NA12882", "NA12878", 15, None
+        )
+        self.assertIn("chrx_snp_total", varr.meta)
+        self.assertIn("chrx_het_count", varr.meta)
+        self.assertIsInstance(varr.meta["chrx_snp_total"], int)
+        self.assertIsInstance(varr.meta["chrx_het_count"], int)
+        self.assertLessEqual(varr.meta["chrx_het_count"], varr.meta["chrx_snp_total"])
+
+
+class BafLocusFilterTests(unittest.TestCase):
+    """Tests for ``cmdutil._drop_unusable_baf_loci``.
+
+    The VCF reader is right about both row shapes it lets through -- a
+    record's span is a property of the record -- so ``cmdutil`` is where the
+    BAF path decides which of those rows it can read a frequency from.
+    """
+
+    # Declares every INFO, FORMAT and ALT key the record bodies below use.
+    _HEADER = (
+        "##fileformat=VCFv4.2\n"
+        "##contig=<ID=chr1,length=1000000>\n"
+        '##INFO=<ID=SVTYPE,Number=1,Type=String,Description="SV type">\n'
+        '##INFO=<ID=END,Number=1,Type=Integer,Description="End">\n'
+        '##INFO=<ID=SVLEN,Number=A,Type=Integer,Description="SV length">\n'
+        '##ALT=<ID=DEL,Description="Deletion">\n'
+        '##ALT=<ID=INS,Description="Insertion">\n'
+        '##ALT=<ID=NON_REF,Description="gVCF placeholder">\n'
+        '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n'
+        '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Depths">\n'
+        "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tTUMOR\n"
+    )
+
+    def _load(self, body):
+        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".vcf") as tmp:
+            tmp.write(self._HEADER + body)
+            tmp.flush()
+            return cmdutil.load_het_snps(tmp.name, None, None, 0, None)
+
+    def test_symbolic_deletion_does_not_smear_its_baf_across_bins(self):
+        """The acceptance case: a het ``<DEL>`` spanning 400 bins is inert.
+
+        Its genotype is ``0/1`` and its 400-kilobase span is genuine, so
+        nothing upstream stops it: measured on the unfixed code it placed the
+        same allele frequency in every bin below, where only two hold a real
+        heterozygous SNP, and shifted the median in those two as well. The
+        comparison is against the identical file with the record deleted, so
+        it pins the whole per-bin BAF vector rather than a count of bins.
+        """
+        snvs = (
+            "chr1\t1500\t.\tG\tA\t50\tPASS\t.\tGT:AD\t0/1:30,10\n"
+            "chr1\t399500\t.\tC\tT\t50\tPASS\t.\tGT:AD\t0/1:30,10\n"
+        )
+        sv = "chr1\t2000\t.\tA\t<DEL>\t50\tPASS\tSVTYPE=DEL;END=402000\tGT:AD\t0/1:20,20\n"
+        starts = np.arange(400) * 1000 + 1000
+        bins = GA(
+            pd.DataFrame({"chromosome": "chr1", "start": starts, "end": starts + 1000})
+        )
+        with_sv = self._load(snvs + sv).baf_by_ranges(bins)
+        without_sv = self._load(snvs).baf_by_ranges(bins)
+        self.assertEqual(int(without_sv.notna().sum()), 2)
+        pd.testing.assert_series_equal(with_sv, without_sv)
+
+    def test_indels_keep_their_baf(self):
+        """A span wider than one base is not the test, and must not become it.
+
+        An insertion and a deletion written as sequence alleles are genuine
+        polymorphic loci whose allele frequencies belong in the BAF. A
+        ``span > 1`` filter would drop the deletion here, and would also
+        revert the ``INFO/END`` corrections made when the reader started
+        honouring a declared end.
+        """
+        varr = self._load(
+            "chr1\t1000\t.\tA\tT\t50\tPASS\t.\tGT:AD\t0/1:20,20\n"
+            "chr1\t2000\t.\tACGT\tA\t50\tPASS\t.\tGT:AD\t0/1:20,20\n"
+            "chr1\t3000\t.\tA\tACGT\t50\tPASS\t.\tGT:AD\t0/1:20,20\n"
+        )
+        self.assertEqual(list(varr["start"]), [999, 1999, 2999])
+
+    def test_symbolic_allele_is_dropped_even_when_it_spans_one_base(self):
+        """Discriminates the allele test from the span test.
+
+        ``<INS>`` and a breakend both quote a single reference base, so they
+        smear nothing and the span comparison cannot see them -- but the
+        fraction of reads supporting a structural junction is not an allelic
+        balance, and averaging it with the SNPs in its bin is meaningless.
+        A fix built only on the span comparison keeps both of these rows.
+        """
+        varr = self._load(
+            "chr1\t1000\t.\tA\tT\t50\tPASS\t.\tGT:AD\t0/1:20,20\n"
+            "chr1\t5000\t.\tA\t<INS>\t50\tPASS\tSVTYPE=INS;SVLEN=900\tGT:AD\t0/1:20,20\n"
+            "chr1\t6000\t.\tA\tA[chr2:500[\t50\tPASS\t.\tGT:AD\t0/1:20,20\n"
+        )
+        self.assertEqual(list(varr["alt"]), ["T"])
+
+    def test_allele_inheriting_a_wider_records_span_is_dropped(self):
+        """Discriminates the span test from the allele test.
+
+        Every allele of a record carries that record's reach, so a plain SNP
+        beside a symbolic sibling arrives 400 kilobases wide. The second
+        record is the case that rules out judging the allele string alone at
+        any layer: the reader has already dropped ``<NON_REF>`` as a
+        non-allele, so the surviving ``C>G`` row is an ordinary SNP carrying a
+        gVCF reference block's span, with no symbolic allele left to test.
+        ``INFO/END`` is the end of the longest variant in the record, so
+        neither row's own coordinate is recoverable.
+        """
+        varr = self._load(
+            "chr1\t1000\t.\tA\tT\t50\tPASS\t.\tGT:AD\t0/1:20,20\n"
+            "chr1\t7000\t.\tA\tT,<DEL>\t50\tPASS\tSVTYPE=DEL;END=407000\tGT:AD\t1/2:5,20,20\n"
+            "chr1\t8000\t.\tC\tG,<NON_REF>\t50\tPASS\tEND=108000\tGT:AD\t0/1:20,20,0\n"
+        )
+        self.assertEqual(list(varr["start"]), [999])
+
+    def test_filter_is_inert_on_a_vcf_of_plain_snvs(self):
+        """No row of the reference fixture is touched, so no output moves."""
+        varr = tabio.read(
+            "formats/na12878_na12882_mix.vcf",
+            "vcf",
+            sample_id="NA12882",
+            normal_id="NA12878",
+        )
+        self.assertEqual(len(cmdutil._drop_unusable_baf_loci(varr)), len(varr))
+
+
+class LoadSnpSubsetsTests(unittest.TestCase):
+    """Tests for cmdutil.load_snp_subsets and _partition_snp_extras.
+
+    The partition surfaces LOH-evidence (tumor-homozygous loci) and somatic
+    SNVs separately from the heterozygous germline subset that drives BAF and
+    segment-overlay computation. Used by the scatter plot's ``--show-snvs``
+    modes (#290) to visualize previously-hidden variant evidence.
+    """
+
+    _VCF_TN = "formats/na12878_na12882_mix.vcf"
+    _TUMOR_ID = "NA12882"
+    _NORMAL_ID = "NA12878"
+
+    def test_default_returns_none_extras(self):
+        """Both include flags False -> behaves like load_het_snps for the het
+        subset, and emits None for both extras (zero-cost default path)."""
+        het, loh, somatic = cmdutil.load_snp_subsets(
+            self._VCF_TN, self._TUMOR_ID, self._NORMAL_ID, 15, None
+        )
+        ref_het = cmdutil.load_het_snps(
+            self._VCF_TN, self._TUMOR_ID, self._NORMAL_ID, 15, None
+        )
+        self.assertEqual(len(het), len(ref_het))
+        self.assertIsNone(loh)
+        self.assertIsNone(somatic)
+
+    def test_with_loh_matched_normal(self):
+        """With matched normal, LOH = (normal-het & tumor-hom & not somatic).
+
+        load_het_snps filters by *normal* zygosity when matched normal is
+        present, so a normal-het + tumor-hom locus is already in ``het`` (and
+        already drives the BAF trend correctly). LOH thus forms a *subset* of
+        ``het`` in matched-normal mode -- the visual layer overlays distinct
+        markers without changing the BAF math. Somatic remains disjoint from
+        het (load_het_snps drops somatic loci at read time).
+        """
+        het, loh, somatic = cmdutil.load_snp_subsets(
+            self._VCF_TN,
+            self._TUMOR_ID,
+            self._NORMAL_ID,
+            15,
+            None,
+            include_loh=True,
+            include_somatic=True,
+        )
+        self.assertIsNotNone(loh)
+        self.assertIsNotNone(somatic)
+        # LOH-evidence must be tumor-homozygous (zygosity in {0, 1}) and,
+        # when matched normal is present, normal-heterozygous (n_zyg == 0.5).
+        loh_zyg = loh["zygosity"]  # type: ignore[index]
+        self.assertTrue(((loh_zyg == 0.0) | (loh_zyg == 1.0)).all())
+        self.assertIn("n_zygosity", loh)  # type: ignore[operator]
+        self.assertTrue((loh["n_zygosity"] == 0.5).all())  # type: ignore[index]
+        # Somatic loci must carry the somatic flag (or be inferred via T/N).
+        self.assertGreater(len(somatic), 0)
+        # Identify each record uniquely by (chr, start, ref, alt) -- the VCF
+        # contains multiallelic sites decomposed into separate biallelic rows,
+        # so (chr, start) alone is not unique.
+        het_keys = {(r.chromosome, r.start, r.ref, r.alt) for r in het}
+        loh_keys = {(r.chromosome, r.start, r.ref, r.alt) for r in loh}  # type: ignore[union-attr]
+        som_keys = {(r.chromosome, r.start, r.ref, r.alt) for r in somatic}  # type: ignore[union-attr]
+        # loh is a strict subset of het: every LOH locus already drives the
+        # BAF trend; we just want to draw a distinct marker on top.
+        self.assertTrue(loh_keys.issubset(het_keys))
+        # Somatic is disjoint from both other subsets.
+        self.assertEqual(het_keys & som_keys, set())
+        self.assertEqual(loh_keys & som_keys, set())
+
+    def test_with_somatic_only(self):
+        """include_somatic=True surfaces the SOMATIC-flagged loci that
+        load_het_snps drops at read time via skip_somatic=True."""
+        _het, loh, somatic = cmdutil.load_snp_subsets(
+            self._VCF_TN,
+            self._TUMOR_ID,
+            self._NORMAL_ID,
+            15,
+            None,
+            include_loh=False,
+            include_somatic=True,
+        )
+        self.assertIsNone(loh)
+        self.assertIsNotNone(somatic)
+        self.assertGreater(len(somatic), 0)
+
+    def test_partition_tumor_only_loh_fallback(self):
+        """In tumor-only flows (no n_zygosity column), the LOH selector falls
+        back to tumor-homozygous regardless of normal genotype. Unit-tested
+        on _partition_snp_extras to avoid needing a tumor-only VCF fixture."""
+        # Build a synthetic VariantArray: 2 het, 2 tumor-hom, 1 somatic-flagged.
+        # No n_zygosity column (tumor-only flow).
+        varr = vary.VariantArray.from_rows(
+            [
+                ("chr1", 100, 101, "A", "G", False, 0.5),
+                ("chr1", 200, 201, "A", "G", False, 0.5),
+                ("chr1", 300, 301, "A", "G", False, 1.0),
+                ("chr1", 400, 401, "A", "G", False, 0.0),
+                ("chr1", 500, 501, "A", "G", True, 0.5),
+            ],
+            columns=[
+                "chromosome",
+                "start",
+                "end",
+                "ref",
+                "alt",
+                "somatic",
+                "zygosity",
+            ],
+        )
+        loh, somatic = cmdutil._partition_snp_extras(
+            varr, include_loh=True, include_somatic=True
+        )
+        self.assertEqual(len(loh), 2)  # type: ignore[arg-type]
+        self.assertEqual(len(somatic), 1)  # type: ignore[arg-type]
+        # The LOH subset captures both zygosity==0 and zygosity==1 rows.
+        loh_zyg = sorted(loh["zygosity"].tolist())  # type: ignore[index]
+        self.assertEqual(loh_zyg, [0.0, 1.0])
+
+    def test_partition_disjoint_when_both_requested(self):
+        """When both include flags are True the function must not double-count:
+        a somatic-flagged tumor-hom locus belongs to ``somatic``, not LOH."""
+        varr = vary.VariantArray.from_rows(
+            [
+                # A non-somatic tumor-hom locus -> LOH
+                ("chr1", 100, 101, "A", "G", False, 1.0),
+                # A somatic tumor-hom locus -> somatic only, NOT LOH
+                ("chr1", 200, 201, "A", "G", True, 1.0),
+            ],
+            columns=[
+                "chromosome",
+                "start",
+                "end",
+                "ref",
+                "alt",
+                "somatic",
+                "zygosity",
+            ],
+        )
+        loh, somatic = cmdutil._partition_snp_extras(
+            varr, include_loh=True, include_somatic=True
+        )
+        self.assertEqual(len(loh), 1)  # type: ignore[arg-type]
+        self.assertEqual(loh.start.iat[0], 100)  # type: ignore[union-attr]
+        self.assertEqual(len(somatic), 1)  # type: ignore[arg-type]
+        self.assertEqual(somatic.start.iat[0], 200)  # type: ignore[union-attr]
+
+
+class VerifySampleSexHetConfirmerTests(unittest.TestCase):
+    """Integration tests for the chrX-het-density confirmer plumbing inside
+    ``cmdutil.verify_sample_sex`` (#341).
+
+    The confirmer fires only when (a) the user did NOT pass --sample-sex,
+    (b) coverage inferred male, and (c) the VCF supplies enough chrX SNPs
+    to power a binomial test of the haploid-X null. A rejected null flips
+    is_sample_female to True; otherwise the coverage-based call stands.
+    """
+
+    def _make_male_cnarr(self):
+        """Build a tiny .cnr that the coverage inference will call male."""
+        rng = np.random.default_rng(0)
+        # 200 autosome bins centered on log2=0
+        rows = [
+            (c, i * 1000, i * 1000 + 100, "-", float(rng.normal(0, 0.05)), 1.0)
+            for c in ("chr1", "chr2")
+            for i in range(100)
+        ]
+        # 50 chrX bins at log2 ~ -1 (haploid-X relative to a diploid-X reference)
+        rows.extend(
+            (
+                "chrX",
+                i * 1000,
+                i * 1000 + 100,
+                "-",
+                float(rng.normal(-1.0, 0.05)),
+                1.0,
+            )
+            for i in range(50)
+        )
+        # 30 chrY bins around log2=0 (presence, autosome-like = male)
+        rows.extend(
+            (
+                "chrY",
+                i * 1000,
+                i * 1000 + 100,
+                "-",
+                float(rng.normal(0.0, 0.05)),
+                1.0,
+            )
+            for i in range(30)
+        )
+        return cnary.CopyNumArray(
+            pd.DataFrame(
+                rows,
+                columns=["chromosome", "start", "end", "gene", "log2", "weight"],
+            ),
+            {"sample_id": "synthetic_male"},
+        )
+
+    def _make_varr(self, n_total, n_het):
+        """Build a VariantArray with pre-stamped chrX meta counts."""
+        # Minimal VariantArray with the required schema (chromosome/start/end/ref/alt).
+        # Row contents don't matter for the confirmer -- only meta counts do.
+        varr = vary.VariantArray(
+            pd.DataFrame(
+                {
+                    "chromosome": ["chrX"],
+                    "start": [100],
+                    "end": [101],
+                    "ref": ["A"],
+                    "alt": ["G"],
+                }
+            )
+        )
+        varr.meta["chrx_snp_total"] = n_total
+        varr.meta["chrx_het_count"] = n_het
+        return varr
+
+    def test_high_chrx_het_density_overrides_male_to_female(self):
+        """Many chrX hets in the VCF flip a coverage-inferred male call."""
+        cnarr = self._make_male_cnarr()
+        # Sanity: coverage alone calls this sample male.
+        self.assertFalse(
+            cmdutil.is_female_default(cnarr.guess_xx(verbose=False)),
+            "Synthetic fixture must be male by coverage before the confirmer.",
+        )
+        varr = self._make_varr(n_total=50, n_het=15)  # ~30% het rate, clearly diploid
+        with self.assertLogs(level="WARNING") as ctx:
+            is_female = cmdutil.verify_sample_sex(
+                cnarr,
+                sex_arg=None,
+                is_haploid_x_reference=False,
+                diploid_parx_genome=None,
+                variants=varr,
+            )
+        self.assertTrue(is_female)
+        self.assertTrue(
+            any("rejects the haploid-X null" in msg for msg in ctx.output),
+            ctx.output,
+        )
+
+    def test_low_chrx_het_density_keeps_male_call(self):
+        """Few/no chrX hets do not override -- the male call stands."""
+        cnarr = self._make_male_cnarr()
+        varr = self._make_varr(n_total=50, n_het=1)  # consistent with haploid + noise
+        is_female = cmdutil.verify_sample_sex(
+            cnarr,
+            sex_arg=None,
+            is_haploid_x_reference=False,
+            diploid_parx_genome=None,
+            variants=varr,
+        )
+        self.assertFalse(is_female)
+
+    def test_user_override_wins_over_het_confirmer(self):
+        """``--sample-sex male`` suppresses the confirmer even with clear het signal."""
+        cnarr = self._make_male_cnarr()
+        varr = self._make_varr(n_total=50, n_het=15)  # would otherwise flip to female
+        is_female = cmdutil.verify_sample_sex(
+            cnarr,
+            sex_arg="male",
+            is_haploid_x_reference=False,
+            diploid_parx_genome=None,
+            variants=varr,
+        )
+        self.assertFalse(is_female)
+
+    def test_confirmer_inert_when_no_chrx_label(self):
+        """A non-human / yeast / autosome-only cnarr (chr_x_label is None)
+        short-circuits the confirmer regardless of VCF meta counts (#669).
+
+        The ``elif`` guard in verify_sample_sex requires
+        ``cnarr.chr_x_label is not None``. Independently, load_het_snps
+        wouldn't have set non-zero meta counts on such a VCF either, but
+        defending both sides keeps the confirmer safely inert on
+        unfamiliar assemblies.
+        """
+        rng = np.random.default_rng(0)
+        # Autosome-only (custom non-human assembly)
+        rows = [
+            (c, i * 1000, i * 1000 + 100, "-", float(rng.normal(0, 0.05)), 1.0)
+            for c in ("chrA", "chrB")
+            for i in range(50)
+        ]
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                rows,
+                columns=["chromosome", "start", "end", "gene", "log2", "weight"],
+            ),
+            {"sample_id": "fungus"},
+        )
+        self.assertIsNone(cnarr.chr_x_label)
+        # Even with VCF meta that WOULD reject haploid-X for a chrX-having
+        # sample, the confirmer must not fire here.
+        varr = self._make_varr(n_total=50, n_het=15)
+        is_female = cmdutil.verify_sample_sex(
+            cnarr,
+            sex_arg=None,
+            is_haploid_x_reference=False,
+            diploid_parx_genome=None,
+            variants=varr,
+        )
+        # is_female_default(None) -> True; the female default is preserved,
+        # not because the confirmer overrode anything but because the
+        # coverage layer returned None (no determination) for an assembly
+        # without sex chromosomes.
+        self.assertTrue(is_female)
+
+    def test_confirmer_inert_for_female_coverage_call(self):
+        """If coverage already says female, the confirmer doesn't run / matter."""
+        # A female-coverage fixture: chrX at autosome median, chrY missing.
+        rng = np.random.default_rng(0)
+        rows = [
+            (c, i * 1000, i * 1000 + 100, "-", float(rng.normal(0, 0.05)), 1.0)
+            for c in ("chr1", "chr2")
+            for i in range(100)
+        ]
+        rows.extend(
+            ("chrX", i * 1000, i * 1000 + 100, "-", float(rng.normal(0, 0.05)), 1.0)
+            for i in range(50)
+        )
+        cnarr = cnary.CopyNumArray(
+            pd.DataFrame(
+                rows,
+                columns=["chromosome", "start", "end", "gene", "log2", "weight"],
+            ),
+            {"sample_id": "synthetic_female"},
+        )
+        varr = self._make_varr(n_total=50, n_het=15)
+        # Whether the confirmer "fired" is invisible here -- the only observable
+        # is the final is_sample_female, which stays True (female) regardless.
+        is_female = cmdutil.verify_sample_sex(
+            cnarr,
+            sex_arg=None,
+            is_haploid_x_reference=False,
+            diploid_parx_genome=None,
+            variants=varr,
+        )
+        self.assertTrue(is_female)

@@ -1,0 +1,459 @@
+Plots and graphics
+==================
+
+The :ref:`scatter` and :ref:`heatmap` plots can be used in two ways:
+
+1. Open the plot in an interactive window with zoom and other features. This
+   is also compatible with Jupyter/IPython notebooks to render the plots inline.
+2. Generate a static image plot with the ``--output``/``-o`` option.
+
+    - While PDF is a good choice to generate publication-quality figures that
+      can be easily edited in Inkscape or Adobe Illustrator, other formats will
+      work, indicated by the output filename extension -- e.g. "-o myplot.png"
+      to create PNG, or "-o myplot.svg" to create SVG.
+
+(The :ref:`diagram` command can only generate a PDF file.)
+
+As with any CNVkit command, the ``-h`` option will show the complete list of
+options available::
+
+    cnvkit.py scatter -h
+    cnvkit.py diagram -h
+    cnvkit.py heatmap -h
+
+
+.. _scatter:
+
+``scatter``
+-----------
+
+Plot bin-level log2 coverages and segmentation calls together.  Without any
+further arguments, this plots the genome-wide copy number in a form familiar to
+those who have used array CGH.
+
+::
+
+    cnvkit.py scatter Sample.cnr -s Sample.cns
+    # Shell shorthand
+    cnvkit.py scatter -s TR_95_T.cn{s,r}
+
+.. image:: _static/TR_95_T-scatter.png
+
+
+The options ``--chromosome`` and ``--gene`` (or their single-letter equivalents)
+focus the plot on the specified region::
+
+    cnvkit.py scatter -s Sample.cn{s,r} -c chr7
+    cnvkit.py scatter -s Sample.cn{s,r} -c chr7:140434347-140624540
+    cnvkit.py scatter -s Sample.cn{s,r} -g BRAF
+
+In the latter two cases, the genes in the specified region or with the specified
+names will be highlighted and labeled in the plot.
+The arguments ``-c`` and ``-g`` can be combined to e.g. highlight specific genes
+in a wider context::
+
+    # Show a chromosome arm, highlight one gene
+    cnvkit.py scatter -s Sample.cn{s,r} -c chr5:100-50000000 -g TERT
+    # Show the whole chromosome, highlight two genes
+    cnvkit.py scatter -s Sample.cn{s,r} -c chr7 -g BRAF,MET
+    # Highlight two genes in a specified range
+    cnvkit.py scatter -s TR_95_T.cn{s,r} -c chr12:50000000-80000000 -g CDK4,MDM2
+
+.. image:: _static/TR_95_T-CDK4-MDM2-scatter.png
+
+When a chromosomal region is plotted with CNVkit's "scatter" command , the size
+of the plotted datapoints is proportional to the weight of each point used in
+segmentation -- a relatively small point indicates a less reliable bin.
+Therefore, if you see a cluster of smaller points in a short segment (or where
+you think there ought to be a segment, but there isn't one), then you can cast
+some doubt on the copy number call in that region. The dispersion of points
+around the segmentation line also visually indicates the level of noise or
+uncertainty.
+
+The bin-level log2 ratios or coverages can also be plotted without segmentation
+calls::
+
+    cnvkit.py scatter Sample.cnr
+
+This can be useful for viewing the raw, un-corrected coverage depths when
+deciding which samples to use to build a profile, or simply to see the coverages
+without being helped/biased by the called segments.
+
+The ``--trend`` option (``-t``) adds a smoothed trendline to the plot. This can
+be helpful if the segmentation is not available, or if you're skeptical of the
+segmentation in a region.
+
+Selection and highlighting
+``````````````````````````
+
+Chromosome-level views are controlled with the ``--chromosome``/``-c`` and
+``--gene``/``-g`` options:
+
+- A gene name (e.g. ``-g TERT``) or multiple gene names separated by commas
+  (e.g. ``-g CDK4,MDM2``) will plot the genomic around that gene, or genes, and
+  highlight the gene or genes with a vertical gold stripe.
+
+    - Each locus where a name occurs is highlighted separately, grouped as the
+      ``genemetrics`` command groups bins into genes. A name shared by many
+      loci -- a repeat family such as ``Y_RNA``, say -- therefore yields one
+      stripe per locus rather than one stripe reaching from the first
+      occurrence to the last.
+    - If multiple genes, they must all be on the same chromosome. A name
+      occurring on more than one chromosome likewise needs one chosen with
+      ``-c``, e.g. ``-c chr7 -g <name>``; only its loci on that chromosome are
+      plotted.
+    - The ``--width``/``-w`` argument determines the size of the plotted
+      genomic region, in terms of basepairs flanking the selected region.
+    - Any other genes in the plotted region will not be shown unless also
+      specified with ``-g``.
+
+- A chromosome name alone (e.g. ``-c chr5``) plots the whole chromosome. (No
+  genes are highlighted.)
+- A region label with chromosome name and 1-based start and end coordinates
+  (e.g. ``-c chr5:1000000-4000000``) plots the specified region, with the start
+  and end coordinates as the x-axis limits. All genes in this region (that are
+  labeled in the input .cnr file) are highlighted and labeled, each locus of a
+  recurring name separately, as with ``-g``. Genes that share a locus, as
+  overlapping genes labeled in one bin do, are labeled together on one stripe.
+
+    - If the start or end coordinate is left off (e.g. ``-c chr5:-4000000`` or
+      ``-c chr7:140000000-``), the region is extended to the end of the
+      chromosome in the direction of the open coordinate, i.e. it does what
+      you'd think. If both are left off but ``-`` remains (e.g. ``-c chrY:-``),
+      the whole chromosome is shown, with all genes highlighted.
+    - If ``-c`` is used, ``-w`` is ignored -- only the specified genomic region
+      will be shown, with no padding.
+    - The ``-g`` option overrides the default behavior of showing all genes in
+      the selection -- only the genes specified with ``-g`` will be highlighted
+      and labeled. To not show any genes, specify an empty string: ``-g ''``.
+      Only the loci within the selected region are highlighted; if a named gene
+      has no locus there at all, that is reported as an error.
+    - Special behavior occurs if there are no genes in the selected region:
+      Instead, the selection itself is treated as a "gene", highlighted and
+      labeled with the string "Selection", with padding controlled by ``-w``.
+      This behavior can be blocked by specifying an empty list of genes: ``-g
+      ''`` -- then the specified region will be plotted as usual, with nothing
+      highlighted and no padding.
+
+To create multiple region-specific plots at once, the regions of interest can be
+listed in a separate file and passed to the ``scatter`` command with the
+``-l``/``--range-list`` option. This is equivalent to creating the plots
+separately with the ``-c`` option and then combining the plots into a single
+multi-page PDF.
+
+.. note:: Only targeted genes can be highlighted and labeled; genes that are not
+    included in the list of targets are not labeled in the .cnn or .cnr files and
+    are therefore invisible to CNVkit.
+
+
+SNV b-allele frequencies
+````````````````````````
+
+The allelic frequencies of heterozygous SNPs can be viewed alongside copy number
+by passing variants as a :ref:`vcfformat` file with the ``-v`` option.
+These allele frequences are rendered in a subplot below the CNV scatter plot.
+
+::
+
+    cnvkit.py scatter Sample.cnr -s Sample.cns -v Sample.vcf
+
+If only the VCF file is given by itself, just the allelic frequencies are
+plotted::
+
+    cnvkit.py scatter -v Sample.vcf
+
+When given segments, the plot will show the median b-allele frequency values above
+and below 0.5 of SNVs falling within each segment. Divergence from 0.5 indicates
+loss of heterozygosity (LOH) or allelic imbalance in the tumor sample.
+
+::
+
+    cnvkit.py scatter -s Sample.cns -v Sample.vcf -i TumorID -n NormalID
+
+Given a VCF with only the tumor sample called, it is difficult to focus on just
+the informative SNPs because it's not known which SNVs are present and
+heterozygous in normal, germline cells.
+Better results can be had by giving CNVkit more information:
+
+- Call somatic mutations using paired tumor and normal samples.
+  In the VCF, the somatic variants should be flagged in the INFO column with the
+  string "SOMATIC". (MuTect does this automatically.) Then CNVkit will skip
+  these for plotting.
+- Add a "PEDIGREE" tag to the VCF header, listing the tumor sample as "Derived"
+  and the normal as "Original". (MuTect doesn't do this, but it does add a
+  nonstandard GATK header that CNVkit can extract the same information from.)
+- Tell CNVkit which sample IDs are the tumor and normal using the ``-i`` and
+  ``-n`` options, respectively. These take precedence over a PEDIGREE tag, so
+  a header naming the wrong pair need not be corrected first.
+- If no paired normal sample is available, you can still filter for likely
+  informative SNPs by intersecting your tumor VCF with a set of known SNPs such
+  as 1000 Genomes, ESP6500, or ExAC.
+  Drop the private SNVs that don't appear in these databases to create a VCF
+  more amenable to LOH detection.
+
+
+Highlighting LOH evidence and somatic mutations
+```````````````````````````````````````````````
+
+By default, the VAF panel shows only heterozygous germline SNPs and the
+mean-VAF trend within each segment, which is the appropriate signal for
+detecting allelic imbalance. Two related variant classes are filtered out of
+this view because including them in the BAF segment-mean would bias it:
+
+- **Tumor-homozygous loci at germline-heterozygous positions** are evidence of
+  loss of heterozygosity (LOH), the canonical second-hit mechanism for
+  tumor-suppressor inactivation in genes such as ``TP53``, ``RB1``, ``PTEN``,
+  and the ``BRCA1``/``BRCA2`` family.
+- **Somatic SNVs** (VCF ``SOMATIC`` flag, or T/N-inferred when matched normal
+  data are present) can be useful visual context alongside copy-number calls,
+  for example to assess tumor mutation burden over deleted segments.
+
+The ``--show-snvs`` flag overlays these subsets in the VAF panel with
+distinct colors while leaving the segment-mean trend driven solely by the
+het subset (so the underlying BAF math is unchanged)::
+
+    cnvkit.py scatter Sample.cnr -s Sample.cns -v Sample.vcf --show-snvs with-loh
+    cnvkit.py scatter Sample.cnr -s Sample.cns -v Sample.vcf --show-snvs with-somatic
+    cnvkit.py scatter Sample.cnr -s Sample.cns -v Sample.vcf --show-snvs all
+
+When a matched normal sample is available, LOH evidence is restricted to loci
+that are heterozygous in the normal and homozygous in the tumor -- the
+stricter T/N-aware definition. In tumor-only flows the selector falls back to
+any tumor-homozygous locus, with the caveat that true germline-homozygous
+positions are then indistinguishable from LOH-induced homozygosity.
+
+Equal-width bins
+~~~~~~~~~~~~~~~~
+
+The x-axis normally shows genomic coordinates, so on a targeted panel most of
+its width is the unprobed sequence between baits and the bins themselves are
+crowded into slivers. The ``--by-bin`` flag replaces those coordinates with
+bin indices, giving every bin the same width::
+
+    cnvkit.py scatter Sample.cnr -s Sample.cns -v Sample.vcf --by-bin
+
+Since the axis is an enumeration of the bins, positions that fall outside them
+have nowhere to go. A variant between two bins is drawn on the boundary
+between them, the gap having no width on this axis; one lying before the first
+bin or after the last of its chromosome is omitted, and the number omitted is
+reported. Leaving those in would place them on a bin they are nowhere near,
+claiming a position the data never supported -- on the genomic axis their
+distance from any covered region is plain to see, but here there is no way to
+show it. Variants sharing a bin are spread evenly across its width so that
+they remain individually visible.
+
+The B-allele frequency levels drawn over each segment are the same on either
+axis. A variant drawn on a gap boundary can land within a neighbouring
+segment's span once both are renumbered, so which segment a variant belongs to
+is settled on its genomic coordinates before the axis is rebuilt, not on the
+bin index afterwards. The level summarizes the variants actually drawn: those
+omitted above are left out of it, for the same reason they are not plotted.
+
+
+.. _diagram:
+
+``diagram``
+-----------
+
+Draw copy number (either individual bins (.cnn, .cnr) or segments (.cns)) on
+chromosomes as an ideogram. If both the bin-level log2 ratios and segmentation
+calls are given, show them side-by-side on each chromosome (segments on the left
+side, bins on the right side).
+
+::
+
+    cnvkit.py diagram Sample.cnr
+    cnvkit.py diagram -s Sample.cns
+    cnvkit.py diagram -s Sample.cns Sample.cnr
+
+If bin-level log2 ratios are provided (.cnr), genes with log2 ratio values
+beyond a fixed threshold will be labeled on the plot.
+This plot style works best with target panels of a few hundred genes at most;
+with whole-exome sequencing there are often so many genes affected by CNAs that
+the individual gene labels become difficult to read.
+
+The bin side is aggregated rather than drawn bin by bin. Every feature is
+stroked a point wide whatever its span, and a chromosome gets only a couple of
+hundred points of the page -- about 220 for a whole genome in two rows, about
+490 when a single contig has the page to itself -- so a panel that puts several
+hundred bins on one chromosome paints them over each other and the reader sees
+whichever bin was drawn last, not the data. Each targeted gene is therefore
+drawn as a single feature, carrying the same log2 ratio the :ref:`genemetrics`
+table reports for it, and every stretch the .cnr does not name -- off-target
+bins, and everything in an unannotated file -- is averaged onto the page's own
+resolution, one feature per drawn point. The two rules apply side by side, so an
+annotated whole-genome .cnr shows gene-level features at its genes and
+page-level features between them.
+
+Whatever still shares a drawn point after that is combined, since the page
+cannot show it separately. On a panel this changes nothing, genes being far
+apart in page terms, but an annotated whole-genome .cnr can put thousands of
+genes on a couple of hundred points, and there the gene-by-gene reading is
+already lost. Where genes and off-target bins share a point the genes decide
+the color, because a target is a few hundred bases inside an off-target bin of
+hundreds of kilobases and averaging the two would report the background. A
+combined feature is summarized by the biweight location of its bins rather
+than their mean, since bins with no coverage are recorded at a floor of -20
+and a mean over those reads as a deletion; the gene labels still name every
+gene that passed the threshold, one label apiece.
+
+``--no-squash-genes`` draws one feature per bin instead. That is legible only
+where a chromosome carries few enough bins to tell apart, such as a small
+genome or a short contig, and it is the one setting under which an annotated
+.cnr and an unannotated one render identically (#650).
+
+.. image:: _static/TR_95_T-diagram.png
+
+By default, the sex chromosomes X and Y are colorized relative to the expected
+ploidy, i.e. for male samples analyzed with default options, where the X
+chromosome in the input .cnr and .cns files has a log2 copy ratio near -1.0, in
+the output diagram it will be shown as neutral copy number (white or faint
+colors) rather than a loss (blue), because the sample's X chromosome (and Y) is
+recognized and expected to be haploid. (See :doc:`sex`.)
+The sample sex can be specified with the ``-x``/``--sample-sex`` option, or will
+otherwise be guessed automatically.
+This visual correction is done by default, but can be disabled with the option
+``--no-shift-xy``.
+
+To get the same results in text form, i.e. a table of the amplified and deleted
+genes in a sample, use the :ref:`genemetrics` command.
+
+Reducing cluttered gene labels
+``````````````````````````````
+
+With tumor WGS or exome samples, the ``diagram`` output often appears
+extremely cluttered with hundreds or thousands of genes labeled.
+
+You can reduce the number of labels by using a higher threshold (``diagram -t``)
+to limit labeling to deep deletions and high-level amplifications. The
+:ref:`genemetrics` command can help you determine the log2 value of genes of
+interest, and then a ``-t`` value slightly below that will display only
+alterations at least that extreme.
+
+The ``-t``/``--threshold`` option is symmetric: it labels any gene whose
+absolute log2 ratio meets the threshold. To label only gains or only losses,
+use the directional options instead:
+
+- ``--threshold-high`` labels only gain segments at or above the given log2
+  ratio (e.g. ``--threshold-high 0.5`` shows amplifications only).
+- ``--threshold-low`` labels only loss segments at or below the given log2
+  ratio, which is normally negative (e.g. ``--threshold-low -0.5`` shows
+  deletions only). Setting it very low, such as ``--threshold-low -25``,
+  suppresses loss labels entirely.
+
+Both directional options may be given together to apply asymmetric cutoffs to
+gains and losses. The directional options are mutually exclusive with the
+symmetric ``-t``/``--threshold``.
+
+To label a specific set of genes rather than every gene that meets the
+threshold, pass their names (comma-separated) to ``--gene``::
+
+    cnvkit.py diagram -s Sample.cns --gene MYC,ERBB2,KRAS
+
+Only the named genes are labeled, among those that pass the threshold; other
+genes co-binned with a requested gene are not shown. (Unlike :ref:`scatter`,
+``diagram`` has no ``-g`` short form for this option, because ``-g`` is the
+deprecated alias for ``--sample-sex``.)
+
+To reduce the number of false-positive calls in the .cns file (see
+:doc:`calling`), consider:
+
+- Making the initial segmentation more stringent with ``segment -t`` or a larger
+  bin size
+- Filtering segments by confidence interval via :ref:`segmetrics --ci
+  <segmetrics>` and :ref:`call --filter ci <call>`
+
+Alternatively, simply stick to the :ref:`scatter` and :ref:`heatmap` plots for
+visualizing these samples.
+
+
+.. _heatmap:
+
+``heatmap``
+-----------
+
+Draw copy number (either bins (.cnn, .cnr) or segments (.cns)) for multiple
+samples as a heatmap.
+
+To get an overview of the larger-scale CNVs in a cohort, use the
+"heatmap" command on all .cns files::
+
+    cnvkit.py heatmap *.cns
+
+.. image:: _static/heatmap-tr-nod.png
+
+The color range can be subtly rescaled with the ``-d`` option to de-emphasize
+low-amplitude segments, which are likely spurious CNAs::
+
+    cnvkit.py heatmap *.cns -d
+
+.. image:: _static/heatmap-tr.png
+
+A heatmap can also be drawn from bin-level log2 coverages or copy ratios (.cnn,
+.cnr), but this can be slow to render at the genome-wide level.
+Consider doing this with a smaller number of samples and only for one chromosome
+or chromosomal region at a time, using the ``-c`` option::
+
+    cnvkit.py heatmap TR_9*T.cnr -c chr12
+    cnvkit.py heatmap TR_9*T.cnr -c chr7:125000000-145000000
+
+.. image:: _static/heatmap-tr-chr12.png
+
+If an output file name is not specified with the ``-o`` option, an interactive
+matplotlib window will open, allowing you to select smaller regions, zoom in,
+and save the image as a PDF or PNG file.
+
+The samples are shown in the order there's given on the command line.
+If you use "\*.cns" then the filenames might always be fetched
+alphabetically (depending on your operating system), but if you type
+them out in the order you like, it should keep that order. You can use
+the Unix shell to pull the names out of a file on the fly, e.g.::
+
+    cnvkit.py heatmap `cat filenames.txt`
+
+
+As with :ref:`diagram`, the sex chromosomes X and Y are colorized relative to
+the expected ploidy, based on the sample and reference sex (see :doc:`sex`).
+This correction can be disabled with the option ``--no-shift-xy``.
+
+
+.. _plotcustom:
+
+Customizing plots
+-----------------
+
+The plots generated with the :ref:`scatter` and :ref:`heatmap` commands use the
+Python plotting library matplotlib.
+
+To quickly adjust the displayed area of the genome in a plot, run either
+plotting command without the ``-o`` option to generate an interactive plot in a
+new window. You can then resize that plot up to the full size of your screen,
+use the plot window's selection mode to select a smaller area of the genome, and
+use the plot window's save button to save the plot in your preferred format.
+
+You can customize font sizes and other aspects of the plots by `configuring
+matplotlib <https://matplotlib.org/stable/users/explain/customizing.html>`_.
+If you're running CNVkit on the command line and not using it as a Python
+library, you can place a ``matplotlibrc`` configuration file in the current
+working directory (matplotlib also reads one from
+``~/.config/matplotlib/matplotlibrc``).  For example, to shrink
+the font size of the x- and y-axis labels, put this line in the configuration
+file::
+
+    axes.labelsize      : small
+
+For more control, in the Python intepreter (or a script, or a Jupyter notebook),
+import the :doc:`cnvlib` module and call the ``do_scatter`` or ``do_heatmap``
+function to create a plot. Then you can use matplotlib.pyplot to get the current
+axis and modify the plot elements, change font sizes, or anything else you
+like::
+
+    from glob import glob
+    from matplotlib import pyplot as plt
+    import cnvlib
+
+    segments = [cnvlib.read(f) for f in glob("*.cns")]
+    ax = cnvlib.do_heatmap(segments)
+    ax.set_title("All my samples")
+    plt.rcParams["font.size"] = 9.0
+    plt.show()

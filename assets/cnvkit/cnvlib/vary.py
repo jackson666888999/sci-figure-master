@@ -1,0 +1,288 @@
+"""An array of genomic intervals, treated as variant loci."""
+
+from __future__ import annotations
+
+import logging
+
+import numpy as np
+import pandas as pd
+
+from skgenome import GenomicArray
+
+
+class VariantArray(GenomicArray):
+    """An array of genomic intervals, treated as variant loci.
+
+    Required columns: chromosome, start, end, ref, alt
+    """
+
+    _required_columns = ("chromosome", "start", "end", "ref", "alt")  # type: ignore[assignment]
+    _required_dtypes = (str, int, int, str, str)  # type: ignore[assignment]
+    # Extra: somatic, zygosity, depth, alt_count, alt_freq
+
+    def __init__(
+        self, data_table: pd.DataFrame, meta_dict: dict[str, str] | None = None
+    ) -> None:
+        GenomicArray.__init__(self, data_table, meta_dict)
+
+    def baf_by_ranges(
+        self, ranges, summary_func=np.nanmedian, above_half=None, tumor_boost=False
+    ):
+        """Aggregate variant (b-allele) frequencies in each given bin.
+
+        Get the average BAF in each of the bins of another genomic array:
+        BAFs are mirrored above/below 0.5 (per `above_half`), grouped in each
+        bin of `ranges`, and summarized into one value per bin with
+        `summary_func` (default median).
+
+        Parameters
+        ----------
+        ranges : GenomicArray or subclass
+            Bins for grouping the variants in `self`.
+        above_half : bool
+            The same as in `mirrored_baf`.
+        tumor_boost : bool
+            The same as in `mirrored_baf`.
+
+        Returns
+        -------
+        float array
+            Average b-allele frequency in each range; same length as `ranges`.
+            May contain NaN values where no variants overlap a range.
+        """
+        if "alt_freq" not in self:
+            logging.warning("VCF has no allele frequencies for BAF calculation")
+            # Length and index must match `ranges` (one value per bin), like
+            # the normal into_ranges path -- not the variant rows
+            # (self.data.index), which made a shorter/longer Series and crashed
+            # callers.
+            return pd.Series(np.repeat(np.nan, len(ranges)), index=ranges.data.index)
+
+        def summarize(vals):
+            mirrored = _mirrored_baf(vals, above_half)
+            # A bin whose het SNPs all lack allele frequencies (NaN) has no
+            # usable BAF; return NaN directly rather than letting np.nanmedian
+            # warn on an all-NaN slice (#407).
+            if mirrored.isna().all():
+                return np.nan
+            return summary_func(mirrored)
+
+        cnarr = self.heterozygous()
+        if tumor_boost and "n_alt_freq" in self:
+            cnarr = cnarr.add_columns(alt_freq=cnarr.tumor_boost())
+        return cnarr.into_ranges(ranges, "alt_freq", np.nan, summarize)
+
+    def baf_counts_by_ranges(self, ranges) -> tuple[pd.Series, pd.Series] | None:
+        """Aggregate minor allele counts and depths per bin.
+
+        For each bin in `ranges`, sum min(alt_count, depth - alt_count) and
+        depth across overlapping het SNPs.
+
+        Returns None if alt_count/depth columns are missing.
+        """
+        if "alt_count" not in self or "depth" not in self:
+            return None
+        cnarr = self.heterozygous()
+        alt = cnarr["alt_count"].to_numpy(dtype=np.float64)
+        dp = cnarr["depth"].to_numpy(dtype=np.float64)
+        # Clamp alt_count to [0, depth] to handle inconsistent VCF data
+        alt = np.clip(alt, 0, dp)
+        minor = np.minimum(alt, dp - alt)
+        cnarr = cnarr.add_columns(minor_count=minor)
+        minor_counts = cnarr.into_ranges(ranges, "minor_count", 0, np.nansum)
+        depths = cnarr.into_ranges(ranges, "depth", 0, np.nansum)
+        return minor_counts, depths
+
+    def het_frac_by_ranges(self, ranges):
+        """Fraction of the SNVs in each bin that are heterozygous."""
+        if "zygosity" not in self and "n_zygosity" not in self:
+            logging.warning("VCF has no genotype zygosities for this calculation")
+            return self.as_series(np.repeat(np.nan, len(ranges)))
+
+        # Use existing genotype/zygosity info
+        zygosity = self["n_zygosity" if "n_zygosity" in self else "zygosity"]
+        het_idx = (zygosity != 0.0) & (zygosity != 1.0)
+        cnarr = self.add_columns(is_het=het_idx)
+        het_frac = cnarr.into_ranges(ranges, "is_het", np.nan, np.nanmean)
+        return het_frac
+
+    def zygosity_from_freq(self, het_freq=0.0, hom_freq=1.0):
+        """Set zygosity (genotype) according to allele frequencies.
+
+        Creates or replaces 'zygosity' column if 'alt_freq' column is present,
+        and 'n_zygosity' if 'n_alt_freq' is present.
+
+        Parameters
+        ----------
+        het_freq : float
+            Assign zygosity 0.5 (heterozygous), otherwise 0.0 (i.e. reference
+            genotype), to variants with alt allele frequency of at least this
+            value.
+        hom_freq : float
+            Assign zygosity 1.0 (homozygous) to variants with alt allele
+            frequency of at least this value.
+        """
+        assert 0.0 <= het_freq <= hom_freq <= 1.0
+        self = self.copy()  # Don't modify the original
+        for freq_key, zyg_key in (
+            ("alt_freq", "zygosity"),
+            ("n_alt_freq", "n_zygosity"),
+        ):
+            if zyg_key in self:
+                zyg = np.repeat(0.5, len(self))
+                vals = self[freq_key].to_numpy()
+                zyg[vals >= hom_freq] = 1.0
+                zyg[vals < het_freq] = 0.0
+                self[zyg_key] = zyg
+        return self
+
+    def heterozygous(self) -> VariantArray:
+        """Subset to only heterozygous variants.
+
+        Use 'zygosity' or 'n_zygosity' genotype values (if present) to exclude
+        variants with value 0.0 or 1.0.
+        If these columns are missing, or there are no heterozygous variants,
+        then return the full (input) set of variants.
+
+        Returns
+        -------
+        VariantArray
+            The subset of `self` with heterozygous genotype, or allele frequency
+            between the specified thresholds.
+        """
+        if "zygosity" in self:
+            # Use existing genotype/zygosity info
+            zygosity = self["n_zygosity" if "n_zygosity" in self else "zygosity"]
+            het_idx = (zygosity != 0.0) & (zygosity != 1.0)
+            if het_idx.any():
+                # Only take het. subset if the subset is not empty
+                self = self[het_idx]
+        return self
+
+    def mirrored_baf(self, above_half=None, tumor_boost=False):
+        """Mirrored B-allele frequencies (BAFs).
+
+        Parameters
+        ----------
+        above_half : bool or None
+            If specified, flip BAFs to be all above 0.5 (True) or below 0.5
+            (False), respectively, for consistency. Otherwise, if None, mirror
+            in the direction of the majority of BAFs.
+        tumor_boost : bool
+            Normalize tumor-sample allele frequencies to the matched normal
+            sample's allele frequencies.
+
+        Returns
+        -------
+        float array
+            Mirrored b-allele frequencies, the same length as `self`. May
+            contain NaN values.
+        """
+        if tumor_boost and "n_alt_freq" in self:
+            alt_freq = self.tumor_boost()
+        else:
+            alt_freq = self["alt_freq"]
+        return _mirrored_baf(alt_freq, above_half)
+
+    def tumor_boost(self):
+        """TumorBoost normalization of tumor-sample allele frequencies.
+
+        De-noises the signal for detecting LOH.
+
+        See: TumorBoost, Bengtsson et al. 2010
+        """
+        if not ("alt_freq" in self and "n_alt_freq" in self):
+            raise ValueError(
+                "TumorBoost requires a matched tumor and normal "
+                "pair of samples in the VCF."
+            )
+        return _tumor_boost(self["alt_freq"].values, self["n_alt_freq"].values)
+
+
+def _mirrored_baf(vals: pd.Series, above_half: bool | None = None) -> pd.Series:
+    shift = (vals - 0.5).abs()
+    if above_half is None:
+        if vals.isna().all():
+            # No usable frequencies: the median is undefined and np.nanmedian
+            # warns ("Mean of empty slice") on an all-NaN slice under older
+            # numpy. The mirrored result is all-NaN regardless of direction. (#407)
+            return shift
+        above_half = vals.median() > 0.5
+    if above_half:
+        return 0.5 + shift
+    return 0.5 - shift
+
+
+def _tumor_boost(t_freqs, n_freqs):
+    """Normalize tumor-sample allele frequencies.
+
+    boosted = { 0.5 (t/n)           if t < n
+                1 - 0.5(1-t)/(1-n)  otherwise
+
+    See: TumorBoost, Bengtsson et al. 2010
+    """
+    lt_mask = t_freqs < n_freqs
+    lt_idx = np.nonzero(lt_mask)[0]
+    gt_idx = np.nonzero(~lt_mask)[0]
+    out = pd.Series(np.zeros_like(t_freqs))
+    out[lt_idx] = 0.5 * t_freqs.take(lt_idx) / n_freqs.take(lt_idx)
+    out[gt_idx] = 1 - 0.5 * (1 - t_freqs.take(gt_idx)) / (1 - n_freqs.take(gt_idx))
+    return out
+
+
+#: Maximum chrX heterozygous-SNP rate allowed under the "haploid X" null.
+#: True haploid X has zero het SNPs in principle; a small ceiling allows for
+#: sequencing-error het calls without rejecting the null on every panel.
+_HAPLOID_X_HET_RATE_CEILING = 0.05
+
+#: Minimum total chrX SNP count required to power the binomial test. With
+#: fewer than this many SNPs the test is too uncertain to override the
+#: coverage-based sex call, and the helper returns ``(False, None)``.
+_MIN_CHRX_SNPS_FOR_HET_TEST = 10
+
+#: One-sided p-value threshold for rejecting the haploid-X null. Set
+#: conservatively because rejection flips ``is_sample_female`` and so
+#: changes the chrX expected ploidy downstream of ``verify_sample_sex``.
+_HET_TEST_ALPHA = 0.001
+
+
+def chrx_het_density_rejects_haploid(
+    n_chrx_total: int,
+    n_chrx_het: int,
+    *,
+    haploid_x_het_rate_ceiling: float = _HAPLOID_X_HET_RATE_CEILING,
+    min_snps: int = _MIN_CHRX_SNPS_FOR_HET_TEST,
+    alpha: float = _HET_TEST_ALPHA,
+) -> tuple[bool, float | None]:
+    """One-sided binomial test of chrX heterozygous-SNP density vs. haploid X.
+
+    True diploid X has SNP heterozygosity comparable to autosomes
+    (~30% in panel-typical populations); true haploid X has essentially
+    zero heterozygous calls modulo sequencing-error noise. This test
+    compares the observed chrX het count against a permissive haploid-X
+    null (``haploid_x_het_rate_ceiling`` = 5% by default, generous enough
+    to absorb sequencing-error het calls), and rejects if the observation
+    exceeds what the null allows at the chosen ``alpha``.
+
+    Used by :func:`cnvlib.cmdutil.verify_sample_sex` as an independent
+    confirmer of chrX ploidy when the user supplies a VCF (#341). The
+    test only fires when coverage already inferred a male call -- a
+    rejected null means the VCF says diploid X, which overrides to
+    female. (A non-rejected null leaves the coverage call alone; "no
+    het signal" is consistent with either true haploid X or simply not
+    enough data, so it is non-evidence in the female direction.)
+
+    Returns ``(rejected, p_value)``. ``rejected`` is False when
+    ``n_chrx_total < min_snps`` because the test is then underpowered,
+    and ``p_value`` is None in that case to signal "no test was run."
+    """
+    if n_chrx_total < min_snps:
+        return False, None
+    # Imported locally so that callers that never touch sex inference don't
+    # pay the scipy import cost.
+    from scipy.stats import binom  # noqa: PLC0415
+
+    # binom.sf(k-1, n, p) = P(X >= k | n, p); a small value means the
+    # observation is unlikely under haploid X, so we reject the null.
+    p_value = float(binom.sf(n_chrx_het - 1, n_chrx_total, haploid_x_het_rate_ceiling))
+    return p_value < alpha, p_value

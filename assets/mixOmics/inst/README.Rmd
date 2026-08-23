@@ -1,0 +1,202 @@
+---
+output: github_document
+description: |
+  "This file creates README.md, README.md MUST NOT BE CHANGED MANUALLY"
+  "The last chunk includes the What's New file, can safely be excluded by eval=FALSE"
+  
+knit: (function(inputFile, encoding) {
+    rmarkdown::render(inputFile, output_file="README.md", encoding = encoding, output_dir = "../") })
+---
+
+<!-- PLEASE DO NOT EDIT ./README.md BY HAND, EDIT ./inst/README.Rmd AND RENDER TO CREATE ./README.md -->
+
+
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(
+  echo = TRUE,
+  eval = FALSE,
+  warning = FALSE,
+  fig.path = "whatsnew-files/",
+  fig.asp = 1,
+  out.width = "50%",
+  cache = FALSE
+)
+opts_knit$set(cache.path = "whatsnew-files/")
+```
+
+```{r create-badges, include=FALSE, eval=TRUE}
+# if (!requireNamespace('badger', quietly = TRUE))
+#   install.packages("badger")
+library(badger)
+pkg_license <- read.dcf("../DESCRIPTION")[, "License"]
+pkg_license_badge <- sprintf("https://img.shields.io/badge/license-%s-lightgrey.svg", pkg_license)
+```
+
+`r badge_bioc_download_rank('mixOmics')`
+`r badge_github_actions(re = "mixOmicsteam/mixOmics", action = "R-CMD-check.yml")`
+`r badge_last_commit("mixOmicsTeam/mixOmics", branch='master')`
+`r badge_codecov("mixOmicsTeam/mixOmics", branch='master')`
+[![license](`r pkg_license_badge`)](https://choosealicense.com/)
+[![dependencies](http://bioconductor.org/shields/dependencies/release/mixOmics.svg)](http://bioconductor.org/packages/release/bioc/html/mixOmics.html#since)
+
+![](http://mixomics.org/wp-content/uploads/2019/07/MixOmics-Logo-1.png)
+
+This repository contains the `R` package which is [hosted on Bioconductor](http://bioconductor.org/packages/release/bioc/html/mixOmics.html) and our development `GitHub` versions. Go to www.mixomics.org for information on how to use mixOmics. 
+
+## Installation
+
+(**macOS users only:** Ensure you have installed [XQuartz](https://www.xquartz.org/) first.)
+
+### From Bioconductor (recommended)
+
+The best way to install `mixOmics` is using `Bioconductor`. You can see the landing page for the release version of `mixOmics` on Bioconductor [here](https://bioconductor.org/packages/release/bioc/html/mixOmics.html). Make sure you have the latest R version and the latest `BiocManager` package installed following [these instructions](https://www.bioconductor.org/install/).
+
+```{r, eval=FALSE}
+## install BiocManager if not installed
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+## install mixOmics
+BiocManager::install('mixOmics')
+
+## load mixOmics
+library(mixOmics) 
+```
+
+### From Github
+
+Bioconductor versions are updated twice a year, between these updates you can download the latest version of `mixOmics` from `Github`. Note that this latest version of mixOmics is under development and may not be stable, check the gitHub page for releases which have passed package testing.
+
+```{r, eval=FALSE}
+## install devtools
+install.packages("devtools")
+
+## install latest github version of mixOmics
+devtools::install_github("mixOmicsTeam/mixOmics")
+```
+
+### From Docker container
+
+You can install our latest stable Github version of `mixOmics` via our Docker container. You can do this by downloading and using the Docker desktop application or via the command line as described below. 
+
+<details>
+  <summary>Click to expand</summary>
+  
+**Note: this requires root privileges**
+
+
+1) Install Docker following instructions at https://docs.docker.com/docker-for-mac/install/
+
+**if your OS is not compatible with the latest version** download an older version of Docker from the following link:
+
+* MacOS: https://docs.docker.com/docker-for-mac/release-notes/
+* Windows: https://docs.docker.com/docker-for-windows/release-notes/
+
+Then open your system's command line interface (e.g. Terminal for MacOS and Command Promot for Windows) for the following steps.
+
+**MacOS users only:** you will need to launch Docker Desktop to activate your root privileges before running any docker commands from the command line.
+    
+2) Pull mixOmics container
+
+```bash
+docker pull mixomicsteam/mixomics
+```
+
+3) Ensure it is installed
+
+The following command lists the running images:
+```bash
+docker images
+```
+
+This lists the installed images. The output should be something similar to the following:
+```
+$ docker images 
+  > REPOSITORY                       TAG       IMAGE ID       CREATED         SIZE
+  > mixomicsteam/mixomics            latest    e755393ac247   2 weeks ago     4.38GB
+```
+4) Activate the container
+
+Running the following command activates the container. You must change `your_password` to a custom password of your own. You can also customise ports (8787:8787) if desired/necessary. see https://docs.docker.com/config/containers/container-networking/ for details.
+
+```bash
+docker run -e PASSWORD=your_password --rm -p 8787:8787 mixomicsteam/mixomics
+```
+
+5) Run
+
+In your web browser, go to `http://localhost:8787/` (change port if necessary) and login with the following credentials:
+
+*username*: rstudio  
+*password*: (your_password set in step 4)
+
+6) Inspect/stop
+
+The following command lists the running containers:
+
+```bash
+sudo docker ps
+```
+
+The output should be something similar to the following:
+```bash
+$ sudo docker ps
+  > CONTAINER ID   IMAGE                   COMMAND   CREATED         STATUS         PORTS                    NAMES
+  > f14b0bc28326   mixomicsteam/mixomics   "/init"   7 minutes ago   Up 7 minutes   0.0.0.0:8787->8787/tcp   compassionate_mestorf
+```
+The listed image ID can then be used to stop the container (here `f14b0bc28326`)
+```bash
+docker stop f14b0bc28326
+```
+
+</details>
+
+
+## Contribution
+
+We welcome community contributions concordant with [our code of conduct](https://github.com/mixOmicsTeam/mixOmics/blob/master/CODE_OF_CONDUCT.md). We strongly recommend adhering to [Bioconductor's coding guide](https://bioconductor.org/developers/how-to/coding-style/) for software consistency if you wish to contribute to `mixOmics` R codes.
+
+### Bug reports and pull requests
+
+To report a bug (or offer a solution for a bug!) visit:  https://github.com/mixOmicsTeam/mixOmics/issues. We fully welcome and appreciate well-formatted and detailed pull requests. Preferably with tests on our datasets.
+
+<details>
+<summary>
+Set up development environment
+</summary>
+
+* Install the latest version of R
+* Install RStudio
+* Clone this repo, checkout master branch, pull origin and then run:
+
+```r
+install.packages("renv", Ncpus=4)
+install.packages("devtools", Ncpus=4)
+
+# restore the renv environment
+renv::restore()
+
+# or to initialise renv
+# renv::init(bioconductor = TRUE)
+
+# update the renv environment if needed
+# renv::snapshot()
+
+# test installation
+devtools::install()
+devtools::test()
+
+# complete package check (takes a while)
+devtools::check()
+```
+
+</details>
+
+### Discussion forum
+
+We wish to make our discussions transparent so please direct your analysis questions to our discussion forum https://mixomics-users.discourse.group. This forum is aimed to host discussions on choices of multivariate analyses, as well as comments and suggestions to improve the package. We hope to create an active community of users, data analysts, developers and R programmers alike! Thank you!
+
+
+```{r, eval=TRUE, child = 'README-WhatsNew.Rmd'}
+```

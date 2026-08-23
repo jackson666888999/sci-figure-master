@@ -1,0 +1,198 @@
+"""The 'import-rna' command."""
+
+import logging
+import os
+
+import numpy as np
+import pandas as pd
+
+from . import rna
+
+
+def do_import_rna(
+    gene_count_fnames,
+    in_format,
+    gene_resource_fname,
+    correlations_fname=None,
+    normal_fnames=(),
+    do_gc=True,
+    do_txlen=True,
+    max_log2=3,
+    diploid_parx_genome=None,
+    min_sample_fraction=0.5,
+    normalize_method="polish",
+):
+    """Convert a cohort of per-gene read counts to CNVkit .cnr format.
+
+    The expected data source is TCGA gene-level expression counts for individual
+    samples, but other sources should be fine, too.
+
+    Parameters
+    ----------
+    gene_count_fnames : list of str
+        Paths to gene count files for all samples.
+    in_format : str
+        Input file format: 'rsem' or 'counts'.
+    gene_resource_fname : str
+        Path to gene metadata/resource file.
+    correlations_fname : str, optional
+        Path to TCGA gene expression/CNV correlation profiles.
+    normal_fnames : tuple of str, optional
+        Paths to normal/control sample count files.
+    do_gc : bool, optional
+        Apply GC bias correction. Default is True.
+    do_txlen : bool, optional
+        Apply transcript length correction. Default is True.
+    max_log2 : float, optional
+        Maximum log2 ratio to cap values at. Default is 3.
+    diploid_parx_genome : str, optional
+        Reference genome name for pseudo-autosomal region handling
+        (e.g., 'hg19', 'hg38').
+    min_sample_fraction : float, optional
+        Minimum fraction of samples in which a gene must be expressed
+        (count >= 1) for it to be retained. Default 0.5 preserves the legacy
+        filter. Lower it for single-cell or sparse cohorts. See
+        :func:`cnvlib.rna.filter_probes`.
+    normalize_method : {'polish', 'size-factors'}, optional
+        Read-depth normalization strategy. 'polish' (default) is the historical
+        cohort-wide median polish anchored on the normal median. 'size-factors'
+        uses DESeq2-style median-of-ratios size factors estimated from the
+        control samples only, with leave-one-out anchoring for the normals. See
+        :func:`cnvlib.rna.normalize_read_depths`.
+
+    Returns
+    -------
+    tuple
+        (all_data DataFrame, cnrs generator)
+        - all_data: Summary table with gene info and log2-normalized values
+        - cnrs: Generator of CopyNumArray objects, one per sample
+
+    Raises
+    ------
+    RuntimeError
+        If input format is not recognized.
+    """
+    # Deduplicate and ensure all normals are included in the analysis
+    gene_count_fnames = sorted(set(list(gene_count_fnames) + list(normal_fnames)))
+
+    if in_format == "rsem":
+        sample_counts, tx_lengths = aggregate_rsem(gene_count_fnames)
+    elif in_format == "counts":
+        sample_counts = aggregate_gene_counts(gene_count_fnames)
+        tx_lengths = None
+    else:
+        raise RuntimeError(f"Unrecognized input format name: {in_format!r}")
+    sample_counts = rna.filter_probes(
+        sample_counts, min_sample_fraction=min_sample_fraction
+    )
+
+    logging.info(
+        "Loading gene metadata%s",
+        " and TCGA gene expression/CNV profiles" if correlations_fname else "",
+    )
+    gene_info = rna.load_gene_info(gene_resource_fname, correlations_fname)
+
+    logging.info("Aligning gene info to sample gene counts")
+    normal_ids = [os.path.basename(f).split(".")[0] for f in normal_fnames]
+    if 0 < len(normal_ids) < 3:
+        # The normal-anchoring step in normalize_read_depths divides each gene's
+        # row by the median across normal samples. With fewer than three normals
+        # that median is a high-variance per-gene estimator, and in the single-
+        # normal case it reduces to a self-divide that drives the normal
+        # sample's own log2 .cnr to ~0 everywhere by construction. See
+        # doc/rna.rst "Considerations" for the recommended cohort design.
+        logging.warning(
+            "import-rna --normal: %d normal sample(s) provided. "
+            "With fewer than 3 normals, the per-gene normal-median used as the "
+            "anchor is a noisy estimator, and with exactly 1 normal the "
+            "anchored value is a tautological self-divide -- the normal "
+            "sample's .cnr will be ~0 everywhere by construction and cannot "
+            "be used for QC of that normal. Provide >=3 normals for robust "
+            "anchoring; see doc/rna.rst.",
+            len(normal_ids),
+        )
+    gene_info, sample_counts, sample_data_log2 = rna.align_gene_info_to_samples(
+        gene_info,
+        sample_counts,
+        tx_lengths,
+        normal_ids,
+        normalize_method=normalize_method,
+    )
+
+    # Summary table has log2-normalized values, not raw counts
+    # ENH show both, with column header suffixes to distinguish?
+    all_data = pd.concat([gene_info, sample_data_log2], axis=1)
+    # CNVkit files have both absolute and log2-normalized read counts
+    cnrs = rna.attach_gene_info_to_cnr(sample_counts, sample_data_log2, gene_info)
+    cnrs = (
+        rna.correct_cnr(cnr, do_gc, do_txlen, max_log2, diploid_parx_genome)
+        for cnr in cnrs
+    )
+    return all_data, cnrs
+
+
+def aggregate_gene_counts(filenames):
+    prev_row_count = None
+    sample_cols = {}
+    for fname in filenames:
+        d = pd.read_csv(
+            fname,
+            sep="\t",
+            comment="_",
+            header=None,
+            names=["gene_id", "expected_count"],
+            converters={"gene_id": rna.before(".")},
+        ).set_index("gene_id")
+        # .drop(["__no_feature", "__ambiguous", "__too_low_aQual",
+        # "__not_aligned", "__alignment_not_unique"]))
+        if prev_row_count is None:
+            prev_row_count = len(d)
+        elif len(d) != prev_row_count:
+            raise RuntimeError("Number of rows in each input file is not equal")
+        sample_id = rna.before(".")(os.path.basename(fname))
+        sample_cols[sample_id] = d.expected_count.fillna(0)
+    sample_counts = pd.DataFrame(sample_cols)
+    return sample_counts
+
+
+def aggregate_rsem(fnames):
+    """Pull out the expected read counts from each RSEM file.
+
+    The format of RSEM's ``*_rsem.genes.results`` output files is tab-delimited
+    with a header row. We extract the Ensembl gene ID, expected read counts, and
+    transcript lengths from each file.
+
+    Returns
+    -------
+    sample_counts : DataFrame
+        Row index is Ensembl gene ID, column index is filename.
+    tx_lengths : Series
+        Gene lengths.
+    """
+    prev_row_count = None
+    sample_cols = {}
+    length_cols = []
+    length_colname = "length"  # or: 'effective_length'
+    for fname in fnames:
+        # NB: read_csv(index_col=_) works independently of combine=, dtype=
+        #   so index column needs to be set after parsing, not during.
+        #   https://github.com/pandas-dev/pandas/issues/9435
+        d = pd.read_csv(
+            fname,
+            sep="\t",
+            usecols=["gene_id", length_colname, "expected_count"],
+            #  index_col='gene_id',
+            converters={"gene_id": rna.before(".")},
+        ).set_index("gene_id")
+        if prev_row_count is None:
+            prev_row_count = len(d)
+        elif len(d) != prev_row_count:
+            raise RuntimeError("Number of rows in each input file is not equal")
+        sample_id = rna.before(".")(os.path.basename(fname))
+        sample_cols[sample_id] = d.expected_count.fillna(0)
+        length_cols.append(d[length_colname])
+    sample_counts = pd.DataFrame(sample_cols)
+    tx_lengths = pd.Series(
+        np.vstack(length_cols).mean(axis=0), index=sample_counts.index
+    )
+    return sample_counts, tx_lengths
