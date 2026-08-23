@@ -1,0 +1,848 @@
+from __future__ import annotations
+
+from typing import Any, cast
+
+import matplotlib as mpl
+import matplotlib.colorbar  # noqa: F401  # ensure submodule is importable for isinstance checks
+import matplotlib.legend  # noqa: F401  # ensure submodule is importable for isinstance checks
+import matplotlib.pyplot as plt
+import num2tex
+import numpy as np
+import pandas as pd
+import PyComplexHeatmap as pch
+import seaborn as sns
+from anndata import AnnData
+from anndata.abc import CSCDataset, CSRDataset
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from natsort import natsort_keygen
+from scipy import sparse
+from scipy.stats import fisher_exact
+
+from cnsplots._settings import settings
+import cnsplots._utils as utils
+import cnsplots.helpers._heatmap as helper_heatmap
+from cnsplots.helpers._heatmap import ClusterMapPlotterNew, DotClustermapPlotterNew
+from cnsplots._utils import _legend_fontsize
+from cnsplots._validation import (
+    validate_adata_layer,
+    validate_adata_obs_columns,
+    validate_adata_var_columns,
+    validate_columns_exist,
+    validate_dataframe,
+    validate_dataframe_not_empty,
+    validate_no_nulls,
+)
+
+
+_MAX_DENSE_HEATMAP_BYTES = 512 * 1024**2
+
+
+def _anndata_to_heatmap_dataframe(adata: AnnData, layer: str | None) -> pd.DataFrame:
+    if layer is None and adata.X is None:
+        raise ValueError("X is None, cannot convert to dataframe.")
+
+    matrix = adata.X if layer is None else adata.layers[layer]
+    is_backed_sparse = isinstance(matrix, (CSRDataset, CSCDataset))
+    if sparse.issparse(matrix) or is_backed_sparse:
+        sparse_matrix = cast(Any, matrix)
+        dense_nbytes = (
+            int(sparse_matrix.shape[0])
+            * int(sparse_matrix.shape[1])
+            * np.dtype(sparse_matrix.dtype).itemsize
+        )
+        if dense_nbytes > _MAX_DENSE_HEATMAP_BYTES:
+            dense_mib = dense_nbytes / 1024**2
+            raise ValueError(
+                "Sparse heatmap data would require approximately "
+                f"{dense_mib:.1f} MiB when densified; subset AnnData before plotting."
+            )
+        if is_backed_sparse:
+            sparse_matrix = sparse_matrix.to_memory()
+        matrix = sparse_matrix.toarray()
+
+    return pd.DataFrame(matrix, index=adata.obs_names, columns=adata.var_names)
+
+
+def _to_heatmap_dataframe(
+    data: AnnData | pd.DataFrame | np.ndarray, layer: str | None
+) -> pd.DataFrame:
+    if isinstance(data, AnnData):
+        return _anndata_to_heatmap_dataframe(data, layer)
+    if isinstance(data, np.ndarray):
+        if data.ndim != 2:
+            raise ValueError("[heatmapplot] Input data must be two-dimensional.")
+        data = pd.DataFrame(data)
+    elif not isinstance(data, pd.DataFrame):
+        raise TypeError(
+            "[heatmapplot] Parameter 'adata' must be an AnnData, pandas DataFrame, "
+            f"or numpy ndarray, got {type(data).__name__}"
+        )
+    validate_dataframe_not_empty(data, "heatmapplot")
+    return data
+
+
+def _style_plotter_colorbars(cbars: list[Any]) -> None:
+    font_family = mpl.rcParams.get("font.family")
+    legend_fontsize = _legend_fontsize()
+    for cbar in cbars:
+        if not isinstance(cbar, mpl.colorbar.Colorbar):
+            continue
+        cbar.outline.set_linewidth(0.3)
+        cbar.ax.tick_params(
+            size=0,
+            labelsize=legend_fontsize,
+            colors=settings.ytick_color,
+            pad=settings.ytick_major_pad,
+        )
+        if font_family:
+            for tick_label in cbar.ax.get_yticklabels():
+                tick_label.set_fontfamily(font_family)
+        cbar.ax.yaxis.set_label_position("left")
+        pos = cbar.ax.get_position()
+        cbar.ax.set_position([pos.x0, pos.y0, pos.width * 0.4, pos.height])
+
+
+def heatmapplot(
+    adata: AnnData | pd.DataFrame | np.ndarray,
+    layer: str | None = None,
+    row_annotation: list[str] | None = None,
+    col_annotation: list[str] | None = None,
+    row_cluster: bool = False,
+    col_cluster: bool = False,
+    row_split: str | int | None = None,
+    col_split: str | int | None = None,
+    cmap: str | None = None,
+    label: str = "value",
+    xlabel: str = "xlabel",
+    ylabel: str = "ylabel",
+    legend_hpad: int = 2,
+    legend_vpad: int = 0,
+    linewidth: float = 0,
+    colors: dict[str, dict[str, str]] | None = None,
+    rasterized: bool = True,
+    xticklabels_rotation: int = 45,
+    xticklabels_fontsize: int = 7,
+    yticklabels_fontsize: int = 7,
+    xlabel_labelpad: float = 5,
+    ylabel_labelpad: float = 3,
+    *,
+    ax: Axes | None = None,
+    **kwargs: Any,
+) -> ClusterMapPlotterNew:
+    """
+    Create a clustered heatmap with optional annotations and dendrograms.
+
+    This function generates a complex heatmap visualization using PyComplexHeatmap,
+    supporting hierarchical clustering, row/column annotations, and customizable
+    color schemes.
+
+    Parameters
+    ----------
+    adata : AnnData, pandas.DataFrame, or numpy.ndarray
+        Matrix to plot. DataFrame index and column labels are preserved. ndarray
+        inputs use integer row and column labels.
+    layer : str, optional
+        Key in `adata.layers` to use for the heatmap data. If None, uses `adata.X`.
+        Only supported when `adata` is an AnnData object.
+    row_annotation : list of str, optional
+        Column names from `adata.obs` to display as row annotations. Only supported
+        when `adata` is an AnnData object.
+    col_annotation : list of str, optional
+        Column names from `adata.var` to display as column annotations. Only supported
+        when `adata` is an AnnData object.
+    row_cluster : bool, default: False
+        Whether to perform hierarchical clustering on rows.
+    col_cluster : bool, default: False
+        Whether to perform hierarchical clustering on columns.
+    row_split : str or int, optional
+        Column name from `adata.obs` or number of splits for row grouping. String
+        values are only supported when `adata` is an AnnData object.
+    col_split : str or int, optional
+        Column name from `adata.var` or number of splits for column grouping. String
+        values are only supported when `adata` is an AnnData object.
+    cmap : str, optional
+        Colormap for the heatmap. Can be categorical (Set1, Set2, Ecotyper1, Dark2,
+        Ecotyper2, Set3) or continuous (parula, gnuplot, bwr, hot).
+    label : str, default: 'value'
+        Label for the colorbar.
+    xlabel : str, default: 'xlabel'
+        Label for the x-axis.
+    ylabel : str, default: 'ylabel'
+        Label for the y-axis.
+    legend_hpad : int, default: 10
+        Horizontal padding for the legend.
+    legend_vpad : int, default: 0
+        Vertical padding for the legend.
+    linewidth : float, default: 0
+        Width of lines between heatmap cells.
+    colors : dict, optional
+        Custom color mapping for categorical annotations.
+    rasterized : bool, default: True
+        Whether to rasterize the heatmap for reduced file size.
+    xticklabels_rotation : int, default: 45
+        Rotation angle for x-axis tick labels.
+    xticklabels_fontsize : int, default: 7
+        Font size for x-axis tick labels.
+    yticklabels_fontsize : int, default: 7
+        Font size for y-axis tick labels.
+    xlabel_labelpad : float, default: 5
+        Padding between the x-axis label and the tick labels.
+    ylabel_labelpad : float, default: 3
+        Padding between the y-axis label and the tick labels.
+    ax : matplotlib.axes.Axes, optional
+        Host axes for the heatmap layout. If None, uses the current axes.
+    **kwargs
+        Additional keyword arguments passed to `ClusterMapPlotterNew`.
+
+    Returns
+    -------
+    ClusterMapPlotterNew
+        The heatmap plotter object containing axes and layout information.
+
+    See Also
+    --------
+    dotplot : Create a dot plot matrix with size and color encoding.
+    confusionplot : Plot confusion matrix as a heatmap.
+
+    Notes
+    -----
+    Categorical annotations automatically use predefined color palettes (Set1, Set2, etc.),
+    while continuous annotations use sequential colormaps (parula, gnuplot, bwr, hot).
+    The function cycles through available palettes when multiple annotations are present.
+
+    Examples
+    --------
+    >>> import cnsplots as cns
+    >>> cns.heatmapplot(
+    ...     adata, row_annotation=["cell_type", "batch"], col_cluster=True, cmap="bwr"
+    ... )
+    >>> cns.heatmapplot(expression_df, row_cluster=True, col_cluster=True)
+    """
+    if isinstance(adata, AnnData):
+        if layer is not None:
+            validate_adata_layer(adata, layer, "heatmapplot")
+        if row_annotation is not None:
+            validate_adata_obs_columns(adata, row_annotation, "heatmapplot")
+        if col_annotation is not None:
+            validate_adata_var_columns(adata, col_annotation, "heatmapplot")
+        if isinstance(row_split, str):
+            validate_adata_obs_columns(adata, row_split, "heatmapplot")
+        if isinstance(col_split, str):
+            validate_adata_var_columns(adata, col_split, "heatmapplot")
+        row_metadata = adata.obs
+        col_metadata = adata.var
+    else:
+        if (
+            layer is not None
+            or row_annotation is not None
+            or col_annotation is not None
+            or isinstance(row_split, str)
+            or isinstance(col_split, str)
+        ):
+            raise ValueError(
+                "[heatmapplot] layer, row_annotation, col_annotation, and string "
+                "row_split/col_split are only supported for AnnData inputs."
+            )
+        row_metadata = None
+        col_metadata = None
+
+    df = _to_heatmap_dataframe(adata, layer)
+
+    if cmap is None:
+        cmap = settings.palette_seq
+    cat_palettes = ["Set1", "Set2", "Ecotyper1", "Dark2", "Ecotyper2", "Set3"]
+    cont_palettes = ["parula", "gnuplot", "bwr", "hot"]
+    cbar_titles = [label]
+    if cmap in cat_palettes:
+        cat_palettes.remove(cmap)
+    if cmap in cont_palettes:
+        cont_palettes.remove(cmap)
+    cat_counter, cont_counter = 0, 0
+
+    def _annot_helper(df, rc_annotation):
+        rc_dict = {}
+        nonlocal cat_counter, cont_counter
+        for annot in rc_annotation:
+            series = df[annot]
+            is_numeric_annotation = pd.api.types.is_numeric_dtype(
+                series
+            ) and not pd.api.types.is_bool_dtype(series)
+
+            if not is_numeric_annotation:
+                if series.isna().any():
+                    rc_dict[annot] = pch.anno_label(
+                        series,
+                        colors="black",
+                        va="top",
+                        ha="right",
+                        relpos=(0, 0.4),
+                    )
+                else:
+                    annot_colors = colors.get(annot) if colors else None
+                    # Only use custom colors if they cover all unique values
+                    # Compare using string representation to handle int/str mismatches
+                    if annot_colors is not None:
+                        unique_vals_str = {str(v) for v in series.dropna().unique()}
+                        color_keys_str = {str(k) for k in annot_colors}
+                        if not unique_vals_str.issubset(color_keys_str):
+                            annot_colors = None
+                    rc_dict[annot] = pch.anno_simple(
+                        series.sort_values(key=natsort_keygen()),
+                        cmap=cat_palettes[cat_counter % len(cat_palettes)],
+                        legend_kws={
+                            "frameon": False,
+                            "labelspacing": 0.2,
+                            "handletextpad": 0.4,
+                            "color_text": False,
+                        },
+                        height=3,
+                        rasterized=True,
+                        linewidth=0,
+                        colors=annot_colors,
+                    )
+                    cat_counter += 1
+            else:
+                rc_dict[annot] = pch.anno_simple(
+                    series,
+                    cmap=cont_palettes[cont_counter % len(cont_palettes)],
+                    height=3,
+                    rasterized=True,
+                    linewidth=0,
+                )
+                cont_counter += 1
+                cbar_titles.append(annot)
+        return rc_dict
+
+    left_annotation: Any = None
+    top_annotation: Any = None
+    if row_annotation is not None:
+        assert row_metadata is not None
+        rc_dict = _annot_helper(row_metadata, row_annotation)
+        left_annotation = pch.HeatmapAnnotation(
+            axis=0,
+            verbose=0,
+            label_side="bottom",
+            label_kws={
+                "horizontalalignment": "right",
+                "rotation": xticklabels_rotation,
+                "rotation_mode": "anchor",
+            },
+            **rc_dict,
+        )
+    if col_annotation is not None:
+        assert col_metadata is not None
+        ca_dict = _annot_helper(col_metadata, col_annotation)
+        top_annotation = pch.HeatmapAnnotation(axis=1, verbose=0, **ca_dict)
+
+    row_split_val: Any = row_split
+    col_split_val: Any = col_split
+    if row_split is not None and not isinstance(row_split, int):
+        assert row_metadata is not None
+        row_split_val = row_metadata[row_split]
+    if col_split is not None and not isinstance(col_split, int):
+        assert col_metadata is not None
+        col_split_val = col_metadata[col_split]
+
+    host_ax = ax
+    fig = None if host_ax is None else host_ax.figure
+    layout_fig = (
+        None if host_ax is None else cast(Figure, host_ax.get_figure(root=True))
+    )
+    layout_engine = None if layout_fig is None else layout_fig.get_layout_engine()
+    existing_axes = set() if fig is None else set(fig.axes)
+    if layout_fig is not None:
+        layout_fig.set_layout_engine("none")
+    try:
+        cmp = helper_heatmap.ClusterMapPlotterNew(
+            data=df,
+            left_annotation=left_annotation,
+            top_annotation=top_annotation,
+            row_cluster=row_cluster,
+            col_cluster=col_cluster,
+            row_split=row_split_val,
+            col_split=col_split_val,
+            cmap=cmap,
+            rasterized=rasterized,
+            label=label,
+            xlabel=xlabel,
+            ylabel=ylabel,
+            legend_hpad=legend_hpad,
+            legend_vpad=legend_vpad,
+            row_dendrogram_size=10,
+            col_dendrogram_size=10,
+            linewidth=linewidth,
+            xticklabels_kws={
+                "labelrotation": xticklabels_rotation,
+                "labelsize": xticklabels_fontsize,
+            },
+            yticklabels_kws={"labelsize": yticklabels_fontsize},
+            ylabel_kws={"labelpad": ylabel_labelpad},
+            xlabel_kws={"labelpad": xlabel_labelpad},
+            verbose=0,
+            ax=ax,
+            row_names_side="left" if left_annotation is None else "right",
+            xticklabels=True,
+            yticklabels=True,
+            **kwargs,
+        )
+
+    finally:
+        if layout_fig is not None:
+            layout_fig.set_layout_engine(layout_engine)
+
+    plt.setp(
+        cmp.heatmap_axes[-1, 0].get_xticklabels(), rotation_mode="anchor", ha="right"
+    )
+
+    cmp.ax_heatmap.set_axis_on()
+    sns.despine(ax=cmp.ax_heatmap, bottom=False, left=False, top=False, right=False)
+    for s in ["top", "bottom", "left", "right"]:
+        cmp.ax_heatmap.spines[s].set_linewidth(settings.axes_linewidth)
+
+    cmp.cbars = getattr(cmp, "cbars", [])
+    _style_plotter_colorbars(cmp.cbars)
+    helper_heatmap._capture_detached_colorbar_layout(cmp)
+    if fig is not None and host_ax is not None:
+        utils._anchor_axes_to_host(
+            host_ax,
+            [plot_ax for plot_ax in fig.axes if plot_ax not in existing_axes],
+        )
+    return cmp
+
+
+def dotplot(
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    color: str,
+    size: str,
+    value: str | None = None,
+    legend_width: int = 20,
+    legend_hpad: int = 10,
+    legend_vpad: int = 0,
+    xticklabels_rotation: int = 45,
+    xticklabels_fontsize: int = 7,
+    yticklabels_fontsize: int = 7,
+    *,
+    ax: Axes | None = None,
+    **kwargs: Any,
+) -> DotClustermapPlotterNew:
+    """
+    Create a dot plot matrix with color and size encodings.
+
+    This function generates a dot matrix plot where each dot's size and color
+    represent different data dimensions, commonly used for visualizing expression
+    patterns across groups.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Input DataFrame containing the data to plot.
+    x : str
+        Column name to use for x-axis categories.
+    y : str
+        Column name to use for y-axis categories.
+    color : str
+        Column name to use for dot color encoding.
+    size : str
+        Column name to use for dot size encoding.
+    value : str
+        Column name containing the values to display.
+    legend_width : int, default: 20
+        Width of the legend area.
+    legend_hpad : int, default: 10
+        Horizontal padding for the legend.
+    legend_vpad : int, default: 0
+        Vertical padding for the legend.
+    xticklabels_rotation : int, default: 45
+        Rotation angle for x-axis tick labels.
+    xticklabels_fontsize : int, default: 7
+        Font size for x-axis tick labels.
+    yticklabels_fontsize : int, default: 7
+        Font size for y-axis tick labels.
+    ax : matplotlib.axes.Axes, optional
+        Host axes for the dot plot layout. If None, uses the current axes.
+    **kwargs
+        Additional keyword arguments passed to `DotClustermapPlotter`.
+
+    Returns
+    -------
+    DotClustermapPlotterNew
+        The dot plot plotter object containing axes and layout information.
+
+    See Also
+    --------
+    heatmapplot : Create a clustered heatmap.
+    scatterplot : Create a scatter plot with optional hue encoding.
+
+    Notes
+    -----
+    The dot size and color scales are automatically determined from the data range.
+    Uses the 'gnuplot' colormap by default for color encoding.
+
+    Examples
+    --------
+    >>> import cnsplots as cns
+    >>> cns.dotplot(
+    ...     data=df,
+    ...     x="condition",
+    ...     y="gene",
+    ...     color="expression",
+    ...     size="pct_expressed",
+    ...     value="mean_expr",
+    ... )
+    """
+    # Validate inputs
+    validate_dataframe(data, "data", "dotplot")
+    columns_to_check = [x, y, color, size]
+    if value is not None:
+        columns_to_check.append(value)
+    validate_columns_exist(data, columns_to_check, "dotplot")
+    validate_dataframe_not_empty(data, "dotplot")
+
+    cmap = kwargs.pop("cmap", "gnuplot")
+    plotter_kwargs = {
+        "data": data,
+        "x": x,
+        "y": y,
+        "c": color,
+        "s": size,
+        "row_cluster": False,
+        "col_cluster": False,
+        "show_rownames": True,
+        "show_colnames": True,
+        "verbose": 0,
+        "cmap": cmap,
+        "grid": False,
+        "rasterized": True,
+        "row_names_side": "left",
+        "xlabel": x,
+        "ylabel": y,
+        "ylabel_kws": {"labelpad": 10},
+        "xlabel_kws": {"labelpad": 15},
+        "legend_width": legend_width,
+        "legend_hpad": legend_hpad,
+        "legend_vpad": legend_vpad,
+        "xticklabels_kws": {
+            "labelrotation": xticklabels_rotation,
+            "labelsize": xticklabels_fontsize,
+        },
+        "yticklabels_kws": {"labelsize": yticklabels_fontsize},
+        "dot_legend_kws": {"frameon": False},
+        "ax": ax,
+    }
+    if value is not None:
+        plotter_kwargs["value"] = value
+    plotter_kwargs.update(kwargs)
+    plotter_kwargs.setdefault("plot_legend", plotter_kwargs.get("legend", True))
+    host_ax = ax
+    fig = None if host_ax is None else host_ax.figure
+    layout_fig = (
+        None if host_ax is None else cast(Figure, host_ax.get_figure(root=True))
+    )
+    layout_engine = None if layout_fig is None else layout_fig.get_layout_engine()
+    existing_axes = set() if fig is None else set(fig.axes)
+    if layout_fig is not None:
+        layout_fig.set_layout_engine("none")
+    try:
+        cmp = helper_heatmap.DotClustermapPlotterNew(**plotter_kwargs)
+    finally:
+        if layout_fig is not None:
+            layout_fig.set_layout_engine(layout_engine)
+    cmp.cbars = getattr(cmp, "cbars", [])
+
+    hm_ax = cmp.heatmap_axes[-1, 0]
+    cmp.hm_ax = hm_ax
+    cmp.colorbar = next(
+        (cbar for cbar in cmp.cbars if isinstance(cbar, mpl.colorbar.Colorbar)),
+        None,
+    )
+    cmp.dot_legend = next(
+        (legend for legend in cmp.cbars if isinstance(legend, mpl.legend.Legend)),
+        None,
+    )
+    cmp.cbar_ax = None if cmp.colorbar is None else cmp.colorbar.ax
+    cmp.legend_ax = None if cmp.dot_legend is None else cmp.dot_legend.axes
+
+    for ax in [cmp.ax_heatmap, hm_ax]:
+        ax.minorticks_off()
+        ax.tick_params(
+            axis="both",
+            which="major",
+            direction="out",
+            length=1.5,
+            width=settings.axes_linewidth,
+            bottom=True,
+            left=True,
+            top=False,
+            right=False,
+        )
+    plt.setp(hm_ax.get_xticklabels(), rotation_mode="anchor", ha="right")
+
+    cmp.ax_heatmap.set_axis_on()
+    for ax in cmp.heatmap_axes.flat:
+        ax.grid(False)
+    cmp.ax_heatmap.grid(False)
+    sns.despine(ax=cmp.ax_heatmap, top=True, right=True, bottom=False, left=False)
+    for s in ["bottom", "left"]:
+        cmp.ax_heatmap.spines[s].set_linewidth(settings.axes_linewidth)
+
+    _style_plotter_colorbars(cmp.cbars)
+    if fig is not None and host_ax is not None:
+        utils._anchor_axes_to_host(
+            host_ax,
+            [plot_ax for plot_ax in fig.axes if plot_ax not in existing_axes],
+        )
+    return cmp
+
+
+def _resolve_confusion_order(
+    values: pd.Series,
+    order: list[str] | None,
+    order_name: str,
+) -> list[Any]:
+    observed = list(pd.unique(values))
+    if order is None:
+        return observed
+
+    resolved = list(order)
+    observed_index = pd.Index(observed)
+    order_index = pd.Index(resolved)
+    missing = observed_index[~observed_index.isin(order_index)].tolist()
+    extra = order_index[~order_index.isin(observed_index)].tolist()
+    duplicates = order_index[order_index.duplicated()].unique().tolist()
+    if missing or extra or duplicates:
+        raise ValueError(
+            f"[confusionplot] {order_name} must contain each observed label exactly "
+            f"once and no other labels. Missing labels: {missing}; Extra labels: "
+            f"{extra}; Duplicate labels: {duplicates}."
+        )
+
+    return resolved
+
+
+def confusionplot(
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    add_pvalue: bool = False,
+    x_order: list[str] | None = None,
+    y_order: list[str] | None = None,
+    positive_x: str | None = None,
+    positive_y: str | None = None,
+    annot: bool = True,
+    cmap: Any = "Blues",
+    pvalue_x_pad: float = 0.25,
+    pvalue_y_pad: float = 1.5,
+    *,
+    ax: Axes | None = None,
+) -> Axes:
+    """
+    Create a confusion matrix heatmap with optional classification metrics.
+
+    This function creates a confusion matrix visualization comparing predicted
+    versus true labels. For binary classification (2x2 matrix), it can compute
+    and display comprehensive classification metrics.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame containing predicted and true labels.
+    x : str
+        Column name containing predicted labels.
+    y : str
+        Column name containing true (ground truth) labels.
+    add_pvalue : bool, default: False
+        Whether to compute and display classification metrics. Only applicable
+        for 2x2 confusion matrices.
+    x_order : list, optional
+        Display ordering of prediction labels (columns). Must contain each
+        observed label exactly once; it does not filter observations.
+    y_order : list, optional
+        Display ordering of true labels (rows). Must contain each observed
+        label exactly once; it does not filter observations.
+    positive_x : hashable, optional
+        The label to treat as 'positive' class in predictions.
+    positive_y : hashable, optional
+        The label to treat as 'positive' class in true labels.
+    annot : bool, default: True
+        Whether to display count values in each cell of the matrix.
+    cmap : matplotlib colormap, default: plt.cm.Blues
+        Colormap for the heatmap.
+    pvalue_x_pad : float, default: 0.25
+        Horizontal padding for positioning the statistics text to the left of
+        the plot. Larger values move the statistics block farther left.
+    pvalue_y_pad : float, default: 1.5
+        Vertical padding for positioning the statistics text below the plot.
+        Larger values move the statistics block farther down.
+    ax : matplotlib.axes.Axes, optional
+        Axes to draw on. If None, uses the current axes. The optional statistics
+        overlay is anchored to this axes.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The matplotlib Axes object containing the plot.
+
+    See Also
+    --------
+    heatmapplot : Create a general heatmap with clustering.
+    rocplot : Create an ROC curve for binary classification.
+
+    Examples
+    --------
+    >>> import cnsplots as cns
+    >>> ax = cns.confusionplot(data=df, x="predicted", y="true_label")
+    >>> ax.set_title("Confusion Matrix")
+
+    >>> # Binary classification with metrics
+    >>> ax = cns.confusionplot(
+    ...     data=df,
+    ...     x="prediction",
+    ...     y="actual",
+    ...     add_pvalue=True,
+    ...     pvalue_x_pad=0.4,
+    ...     pvalue_y_pad=1.8,
+    ...     x_order=["Negative", "Positive"],
+    ...     y_order=["Negative", "Positive"],
+    ...     positive_x="Positive",
+    ...     positive_y="Positive",
+    ... )
+    """
+    # Validate inputs
+    validate_dataframe(data, "data", "confusionplot")
+    validate_columns_exist(data, [x, y], "confusionplot")
+    validate_dataframe_not_empty(data, "confusionplot")
+    validate_no_nulls(data, [x, y], "confusionplot")
+
+    x_order = _resolve_confusion_order(data[x], x_order, "x_order")
+    y_order = _resolve_confusion_order(data[y], y_order, "y_order")
+
+    y_cat = pd.Categorical(data[y], categories=y_order, ordered=True)
+    x_cat = pd.Categorical(data[x], categories=x_order, ordered=True)
+
+    cm_df = pd.crosstab(y_cat, x_cat, dropna=False)
+    counted_rows = cm_df.to_numpy().sum()
+    if pd.isna(counted_rows) or counted_rows != len(data):
+        raise RuntimeError(
+            "[confusionplot] Confusion matrix count mismatch: "
+            f"expected {len(data)} input rows, counted {counted_rows}."
+        )
+
+    # Plot
+    if ax is None:
+        ax = plt.gca()
+    fig = ax.figure
+    im = ax.imshow(cm_df.values, interpolation="nearest", cmap=cmap)
+    ax.set_xlabel(x)
+    ax.set_ylabel(y)
+
+    # Ticks & tick labels
+    ax.set_xticks(np.arange(len(x_order)))
+    ax.set_yticks(np.arange(len(y_order)))
+    ax.set_xticklabels([str(v) for v in x_order], rotation=0, ha="center")
+    ax.set_yticklabels([str(v) for v in y_order], rotation=0, va="center")
+
+    # Draw cell borders for readability
+    for _, spine in ax.spines.items():
+        spine.set_visible(True)
+
+    # Optional annotations
+    if annot:
+        for i in range(cm_df.shape[0]):
+            for j in range(cm_df.shape[1]):
+                cell_value = cm_df.iat[i, j]
+                r, g, b, _ = im.cmap(im.norm(cell_value))
+                ax.text(
+                    j,
+                    i,
+                    str(int(cell_value)),
+                    ha="center",
+                    va="center",
+                    color=utils._annotation_text_color((r, g, b, 1.0)),
+                )
+
+    # Remove colorbar to match your original style
+    cb = fig.colorbar(im, ax=ax)
+    cb.remove()
+
+    # Optional stats (binary only)
+    if add_pvalue:
+        if cm_df.shape != (2, 2):
+            raise ValueError(
+                "add_pvalue=True requires a 2x2 confusion matrix. "
+                "Provide y_order and x_order with exactly two labels each."
+            )
+
+        # Decide which labels are positive/negative on each axis
+        pos_y = y_order[-1] if positive_y is None else positive_y
+        neg_y = next(lbl for lbl in y_order if lbl != pos_y)
+
+        pos_x = x_order[-1] if positive_x is None else positive_x
+        neg_x = next(lbl for lbl in x_order if lbl != pos_x)
+
+        # Extract counts in tn/fp/fn/tp layout
+        try:
+            tn_val = cm_df.loc[neg_y, neg_x]
+            fp_val = cm_df.loc[neg_y, pos_x]
+            fn_val = cm_df.loc[pos_y, neg_x]
+            tp_val = cm_df.loc[pos_y, pos_x]
+        except KeyError as e:
+            raise ValueError(
+                "[confusionplot] Could not find a required cell for stats. "
+                f"Check x_order/y_order and positive_x/positive_y. Missing: {e}"
+            ) from e
+
+        tn = int(tn_val)
+        fp = int(fp_val)
+        fn = int(fn_val)
+        tp = int(tp_val)
+
+        # Compute stats safely (avoid zero-division)
+        def _safe_div(a, b):
+            return np.nan if b == 0 else a / b
+
+        specificity = _safe_div(tn, tn + fp)
+        sensitivity = _safe_div(tp, tp + fn)
+        ppv = _safe_div(tp, tp + fp)
+        npv = _safe_div(tn, tn + fn)
+        total = tp + tn + fp + fn
+        po = _safe_div(tp + tn, total)
+
+        # Expected agreement for kappa (binary)
+        pe = _safe_div((tp + fp) * (tp + fn) + (tn + fp) * (tn + fn), total**2)
+        kappa = np.nan if (pe is np.nan or pe == 1) else _safe_div(po - pe, 1 - pe)
+
+        # Fisher exact & odds ratio
+        try:
+            _, p_value = fisher_exact([[tp, fp], [fn, tn]])
+        except (ValueError, RuntimeError) as e:
+            raise ValueError(
+                "[confusionplot] Fisher's exact test failed. Ensure confusion matrix "
+                f"has valid counts. Details: {e}"
+            ) from e
+
+        odds_ratio = _safe_div(tp * tn, fp * fn)
+
+        # Overlay the stats block
+        pos = ax.get_position()
+        ax2 = fig.add_axes((pos.x0, pos.y0, pos.width, pos.height), frameon=False)
+        utils._anchor_axes_to_host(ax, [ax2], use_original_position=False)
+        ax2.tick_params(
+            labelcolor="none", top=False, bottom=False, left=False, right=False
+        )
+
+        msg = rf"""
+        Specificity: {specificity:.2f}
+        Sensitivity: {sensitivity:.2f}
+        PPV: {ppv:.2f}
+        NPV: {npv:.2f}
+        Cohen's kappa: {kappa:.2f}
+        Fisher's exact test: ${num2tex.num2tex(p_value, precision=2):.2g}$
+        Odds ratio: {odds_ratio:.2f}
+        """
+        # place just below the plot area; tweak as needed
+        ax2.text(-pvalue_x_pad, -pvalue_y_pad, msg, ha="left", va="bottom")
+
+    return ax

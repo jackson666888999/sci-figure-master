@@ -1,0 +1,479 @@
+//
+// Created by Kez Cleal on 25/07/2022.
+//
+
+#pragma once
+
+#include <iostream>
+#ifdef __APPLE__
+    #include <OpenGL/gl.h>
+#endif
+
+#include "htslib/faidx.h"
+#include "htslib/hfile.h"
+#include "htslib/hts.h"
+#include "htslib/vcf.h"
+#include "htslib/sam.h"
+#include "htslib/tbx.h"
+
+#include <chrono>
+#include <future>
+#include <filesystem>
+#include <GLFW/glfw3.h>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+struct ImFont;  // Forward declaration for Dear ImGui font handle
+
+#include "ankerl_unordered_dense.h"
+#include "BS_thread_pool.h"
+#include "drawing.h"
+#include "glfw_keys.h"
+#include "hts_funcs.h"
+#include "menu.h"
+#include "parser.h"
+#include "utils.h"
+#include "segments.h"
+#include "themes.h"
+#include "export_definitions.h"
+
+#define SK_GL
+#if !defined(OLD_SKIA) || OLD_SKIA == 0
+    #include "include/gpu/ganesh/GrBackendSurface.h"
+    #include "include/gpu/ganesh/gl/GrGLDirectContext.h"
+    #include "include/gpu/ganesh/gl/GrGLInterface.h"
+    #include "include/gpu/ganesh/gl/GrGLBackendSurface.h"
+    #include "include/gpu/ganesh/SkSurfaceGanesh.h"
+#else
+    #include "include/gpu/GrBackendSurface.h"
+    #include "include/gpu/GrDirectContext.h"
+    #include "include/gpu/gl/GrGLInterface.h"
+#endif
+#include "include/encode/SkPngEncoder.h"
+#include "include/core/SkCanvas.h"
+#include "include/core/SkColorSpace.h"
+#include "include/core/SkSurface.h"
+
+
+namespace Manager {
+
+    class CloseException : public std::exception {};
+
+    typedef ankerl::unordered_dense::map< std::string, std::vector<int>> map_t;
+    typedef std::vector< map_t > linked_t;
+
+    enum Show {
+        SINGLE,
+        TILED,
+        SETTINGS
+    };
+
+
+    class HiddenWindow {
+    public:
+        HiddenWindow () = default;
+        ~HiddenWindow () = default;
+        GLFWwindow *window{nullptr};
+        void init(int width, int height);
+    };
+
+    /*
+     * Deals with managing all data and plotting
+     */
+    class EXPORT GwPlot {
+    public:
+        GwPlot(std::string reference, std::vector<std::string> &bampaths, Themes::IniOptions &opts, std::vector<Utils::Region> &regions,
+               std::vector<std::string> &track_paths);
+        ~GwPlot();
+        long frameId;  // number of frames rendered
+        int fb_width, fb_height;  // frame buffer size
+        double xPos_fb, yPos_fb;  // mouse position in frame buffer coords
+        float monitorScale, gap;
+        int samMaxY;
+        int regionSelection, variantFileSelection;
+        bool drawToBackWindow;
+        bool triggerClose;
+        bool redraw;
+        bool processed;
+        bool drawLine;
+        bool drawLocation;
+        bool commandDialogOpen{false};
+        bool openDialogOpen{false};
+        bool helpDialogOpen{false};
+        bool closeDialogOpen{false};
+        bool labelTableDialogOpen{false};
+        bool terminalOutput;  // recoverable runtime errors and output sent to terminal or outStr
+        bool debug_gw{false};    // general debug information
+        bool showUIOverlay{false};  // set to true when startUI loop is entered, reserves top menu space
+        float totalCovY, covY, totalTabixY, tabixY, trackY, regionWidth, bamHeight, refSpace, sliderSpace, topMenuSpace{0};
+        int boundaryIndex{0};
+        // Minimum vertical extents (multiply by monitorScale). Shared by setScaling()
+        // and the divider-drag handler so the annotation panel can never squeeze the
+        // alignment area out and paint over the reference row.
+        static constexpr float MIN_TRACK_PX = 20.0f;  // per annotation track
+        static constexpr float MIN_ALIGN_PX = 60.0f;  // reserved for coverage + reads
+
+        // track pixel heights are determined by the below cached values. Here we cache them
+        // and if they change the track heights are re-calculated
+        void computeTrackHeights(float availableHeight);
+        bool   tracksLayoutDirty{true};
+        float  cachedAvailableHeight{-1.0f};
+        size_t cachedNbams{SIZE_MAX};
+        size_t cachedNTracks{SIZE_MAX};
+        double cachedTabTrackHeight{-1.0};
+        float  cachedMonitorScale{-1.0f};
+
+        Drawing::drawContext ctx;
+
+        std::ostringstream outStr;
+
+        std::vector<char> pixelMemory;
+
+        std::string reference;
+
+        std::string ideogram_path;
+
+        std::string inputText;
+
+        std::string target_qname;
+
+        std::vector<std::string> bam_paths;
+        std::vector<htsFile* > bams;
+        std::vector<sam_hdr_t* > headers;
+        std::vector<hts_idx_t* > indexes;
+
+        std::vector<HGW::GwTrack> tracks;  // tracks that are plotted at the bottom of screen
+        std::string outLabelFile;
+
+        std::vector<Utils::Region> regions;
+
+        std::vector<std::string> labelChoices;  // enumeration of labels to use
+
+        std::vector<Segs::ReadCollection> collections;  // stores alignments
+
+        std::vector<HGW::GwVariantTrack> variantTracks; // make image tiles from these
+
+        std::unordered_map<std::string, std::vector<Ideo::Band>> ideogram;
+
+        std::vector< std::string > commandHistory, commandsApplied;
+
+        HGW::GwVariantTrack *currentVarTrack;  // var track with current focus/event
+        int mouseOverTileIndex;  // tile with mouse over
+
+        std::vector<Parse::Parser> filters;
+
+        std::unordered_map< int, sk_sp<SkImage>> imageCache;  // Cace of tiled images
+        std::deque< std::pair<long, sk_sp<SkImage> > > imageCacheQueue;  // cache of previously draw main screen images
+
+        // keys are variantFilename and variantId
+        ankerl::unordered_dense::map< std::string, ankerl::unordered_dense::map< std::string, Utils::Label>> inputLabels;
+        ankerl::unordered_dense::map< std::string, ankerl::unordered_dense::set<std::string>> seenLabels;
+
+        Themes::IniOptions opts;
+        Themes::Fonts fonts;
+
+        ImFont* monoFont{nullptr};  // Monospace font for ImGui (reference sequence popup)
+
+        faidx_t* fai{nullptr};
+        GLFWwindow* window;
+
+        sk_sp<SkSurface> rasterSurface;
+        sk_sp<SkSurface>* rasterSurfacePtr{nullptr};  // option to use externally managed surface (faster)
+        SkCanvas* rasterCanvas;
+
+        Show mode;
+        Show last_mode;
+
+        std::string selectedAlign;  // SAM text of most-recently clicked read (used by commands)
+        std::string selectedIntron;  // TSV (chrom,start,end,strand,count) of most-recently clicked intron
+        std::string selectedFeature;  // TAB record "TITLE\tkey\tval..." for a clicked gff/coverage/reference element
+        std::string selectedIntronChrom;  // identity of the highlighted intron (persists across redraws)
+        int selectedIntronStart{-1};
+        int selectedIntronEnd{-1};
+        int selectedIntronStrand{-2};  // -2 = none (0/1/2 are valid gw strands)
+        // Identity of a highlighted gff exon/intron segment (persists across redraws).
+        std::string selectedFeatureChrom;
+        std::string selectedFeatureName;   // transcript name, to disambiguate overlapping features
+        std::string selectedFeatureParent; // unique GFF transcript id (Parent), to isolate one isoform
+        int selectedFeatureStart{-1};
+        int selectedFeatureEnd{-1};
+
+        struct ReadPopup {
+            std::string ansi;  // ANSI-coded read info text
+            std::string sam;   // plain SAM text for clipboard copy
+            std::string qname; // read name captured when the popup was opened
+            float x{0}, y{0};
+            int uid{0};
+            int regionSelection{-1};
+        };
+        std::vector<ReadPopup> readPopups;
+
+        struct CovPopup {
+            std::string ansi;      // ANSI-coded coverage text
+            std::string chromPos;  // e.g. "chr1:28,440"
+            float x{0}, y{0};     // screen position for initial placement
+            int uid{0};
+        };
+        std::vector<CovPopup> covPopups;
+
+        struct TrackPopup {
+            std::string ansi;     // ANSI-coded track info text
+            float x{0}, y{0};    // screen position near click
+            int uid{0};
+            bool isVcf{false};   // true for VCF/BCF tracks (changes copy-all behaviour)
+        };
+        std::vector<TrackPopup> trackPopups;
+
+        struct RefPopup {
+            std::string ansi;    // ANSI-coded output from printRefSeq
+            float x{0}, y{0};   // screen position near click
+            int uid{0};
+        };
+        std::vector<RefPopup> refPopups;
+
+        // Cache for Ctrl+click point-zoom toggle: stores the original view's
+        // region bounds, read collections, and rendered image so a second
+        // Ctrl+click in the zoomed area can restore it without reloading BAMs
+        // or redrawing.
+        bool zoomCacheActive{false};
+        int zoomCacheOriginalSelection{0};
+        int zoomCacheOriginalStart{0};
+        int zoomCacheOriginalEnd{0};
+        int zoomCacheZoomedSelection{0};
+        int zoomCacheZoomedStart{0};
+        int zoomCacheZoomedEnd{0};
+        int zoomCacheSamMaxY{0};
+        std::string zoomCacheChrom;
+        std::vector<Segs::ReadCollection> zoomCacheCollections;
+        sk_sp<SkImage> zoomCacheImage;
+
+        int nextPopupUid{0};
+
+        // Initialisation functions
+        void init(int width, int height);
+        void initBack(int width, int height);
+        void setGlfwFrameBufferSize();
+        void setImageSize(int width, int height);
+        int makeRasterSurface();
+
+        // Data loading functions
+        void loadGenome(std::string genome_tag_or_path, std::ostream& outerr);
+        void addBam(std::string &bam_path);
+        void removeBam(int index);
+        bool addTrack(std::string &path, bool print_message, bool vcf_as_track, bool bed_as_track);
+        void removeTrack(int index);
+        // addRegion missing todo
+        void removeRegion(int index);
+        void addVariantTrack(std::string &path, int startIndex, bool cacheStdin, bool useFullPath);
+        void removeVariantTrack(int index);
+        void reloadPathBackedTracks();
+        bool selectVariantFile(int index);
+        bool toggleCurrentVariantTiledView();
+        void addIdeogram(std::string path);
+        bool loadIdeogramTag();
+        // removeIdeogram missing todo
+        void loadSession();
+
+        // State functions
+        void fetchRefSeq(Utils::Region &rgn);
+        void fetchRefSeqs();
+        void addFilter(std::string &filter_str);
+        void setLabelChoices(std::vector<std::string> & labels);
+        void setOutLabelFile(const std::string &path);
+        void clearCollections();
+        void processBam();
+        void resetCollectionRegionPtrs();
+        void setScaling();
+        void setVariantSite(std::string &chrom, long start, std::string &chrom2, long stop);
+        int startUI(GrDirectContext* sContext, SkSurface *sSurface, int delay, std::vector<std::string> &extra_commands);
+#ifdef __EMSCRIPTEN__
+        int startUIwasm(GrDirectContext* sContext, SkSurface* sSurface, GLFWwindow* wind, int delay,
+                        std::chrono::high_resolution_clock::time_point autoSaveTimer);
+#endif
+
+        // Interactions
+        void keyPress(int key, int scancode, int action, int mods);
+        void mouseButton(int button, int action, int mods);
+        void mousePos(double x, double y);
+        void scrollGesture(double xoffset, double yoffset);
+        void windowResize(int x, int y);
+        void pathDrop(int count, const char** paths);
+        bool commandProcessed();
+        void prepareSelectedRegion();
+        void addAlignmentToSelectedRegion();
+        void setVScroll(int value);  // set absolute vertical read-scroll offset and re-layout
+
+        // Draw functions
+        void drawBackground();
+        void drawScreen(bool force_buffered_reads=false);
+        void drawScreenNoBuffer();
+        void runDraw(bool force_buffered_reads=false);
+        void runDrawOnCanvas(SkCanvas *canvas, bool force_buffered_reads=false);
+        void runDrawNoBuffer();  // draws to canvas managed by GwPlot (slower)
+        void runDrawNoBufferOnCanvas(SkCanvas* canvas);  // draws to external canvas (faster)
+        void syncImageCacheQueue();
+        void clearImageCacheQueue();
+        void clearZoomCache();
+        bool collectionsNeedRedrawing();
+
+        // Printing information functions
+        void printIndexInfo();
+        int printRegionInfo();
+        void highlightQname();
+        std::string flushLog();
+
+        // Output functions
+        sk_sp<SkImage> makeImage();
+        void saveSession(std::string out_session);
+        void rasterToPng(const char* path);
+#ifndef __EMSCRIPTEN__
+        void saveToPdf(const char* path, bool force_buffered_reads=false);
+        void saveToSvg(const char* path, bool force_buffered_reads=false);
+#endif
+
+        std::pair<const uint8_t*, size_t> encodeToPng(int compression_level=6);
+        std::pair<const uint8_t*, size_t> encodeToJpeg(int quality=80);
+        void saveLabels();
+
+        // Get properties
+        size_t sizeOfBams();
+        size_t sizeOfRegions();
+
+//        void getTerminalSize();
+
+    private:
+
+        bool resizeTriggered;
+        bool regionSelectionTriggered;
+        bool textFromSettings;
+
+        std::chrono::high_resolution_clock::time_point resizeTimer, regionTimer;
+
+        std::string cursorGenomePos;
+
+        int target_pos;
+
+        bool captureText, shiftPress, ctrlPress, processText;
+        bool tabBorderPress;
+        bool skipNextChar;  // suppress the activating '/' or ':' from landing in the command box
+
+        int commandIndex, charIndex;
+
+        double pointSlop, textDrop, pH;
+
+        double xDrag, xOri, lastX, yDrag, yOri, lastY;
+        bool mouseDragged;  // true if any significant drag (x or y) occurred since last press
+        int windowW, windowH;  // Window width dn height
+
+        double yScaling;
+
+        uint32_t minGapSize;
+
+        sk_sp<SkData> m_encodedPngData, m_encodedJpegData;
+
+        GLFWcursor* vCursor;
+        GLFWcursor* normalCursor;
+
+        Utils::Region clicked;
+        int clickedIdx;
+        int commandToolTipIndex;
+
+        // Scale-bar drag-to-zoom state
+        bool scaleBarDragging{false};
+        double scaleBarDragStartX{0};
+        int scaleBarDragRegionIdx{0};
+
+        std::vector<Utils::BoundingBox> bboxes;
+
+        BS::thread_pool pool;
+
+        void drawOverlay(SkCanvas* canvas);
+        void overlayImGui(bool& pending_settings_close);
+
+        void tileDrawingThread();
+
+        void tileLoadingThread();
+
+        void drawTiles();
+
+        int registerKey(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+        void updateSettings();
+
+        int getCollectionIdx(float x, float y);
+
+        void updateSlider(float xPos);
+
+        void drawCursorPosOnRefSlider(SkCanvas *canvas);
+
+        void setDrawContext(Drawing::drawContext& ctx);
+
+        // Helper methods for mouse interaction
+        void calculateCursorCoordinates(int button, int action, float& xW, float& yW);
+        bool handleToolButtons(int button, int action, float xW, float yW);
+        void toggleSettingsMode();
+        void toggleCommandCapture();
+        bool handleCommandTooltipInteraction(int button, int action, float xW, float yW);
+        void updateDragState();
+        void updateCursorGenomePos(float xOffset, float xScaling, float xPos_fb, Utils::Region* region, int bamIdx);
+
+        // Mode-specific handlers
+        void handleSingleModeLeftClick(int button, int action, float xW, float yW);
+        void handleSingleModeRightClick();
+        void handleTiledModeRightClick(float xW, float yW);
+        void handleTiledModeLeftClick(float xW, float yW);
+        void handleSettingsModeClick();
+
+        // Track-specific handlers
+        bool handleTrackClick(int idx, int action, float xW, float yW);
+        void printReferenceSequence(float xW, float yW);
+        void printTrackInformation(int idx, float xW, float yW);
+
+        // Region handlers
+        void selectRegion(int idx);
+        void handleReadSelection(int idx, float xW, float yW);
+        void zoomToPosition(int pos);
+        void selectReadAtPosition(Segs::ReadCollection &cl, int pos, float xW, float yW);
+        void toggleReadHighlight(std::vector<Segs::Align>::iterator bnd, Segs::ReadCollection &cl, int pos);
+        void handleRegionDragging();
+        void updateRegionReads(bool lt_last);
+
+        // Mode switching
+        void switchToTiledMode();
+        void switchToSingleMode();
+
+        // UI helpers
+        int findBoxIndex(float xW, float yW);
+        void resetDragState();
+        void resetTextCapture();
+
+        // Tiled mode handlers
+        void handleMultiRegionSelection(int boxIdx);
+        void handleImageSelection(int boxIdx, float xW);
+        void handleTiledModeScroll();
+        void handleTiledModeBoxClick(float xW, float yW);
+
+    };
+
+    void imageToPng(sk_sp<SkImage> &img, std::filesystem::path &outdir);
+
+    void imagePngToStdOut(sk_sp<SkImage> &img);
+
+    void imagePngToFile(sk_sp<SkImage> &img, std::string path);
+
+    void savePlotToPdfFile(Manager::GwPlot *plot, std::string path);
+
+    struct VariantJob {
+        std::string chrom;
+        std::string chrom2;
+        std::string rid;
+        std::string varType;
+        long start;
+        long stop;
+    };
+
+    void drawImageCommands(Manager::GwPlot &p, SkCanvas *canvas, std::vector<std::string> &extra_commands);
+
+}

@@ -1,0 +1,43 @@
+name: Stale
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  # Schedule-only workflows are invisible until midnight, so a bad bump of the
+  # action or a bad option is only noticed once it has already acted on issues.
+  # This allows a run on demand, with a dry run as the default.
+  workflow_dispatch:
+    inputs:
+      debug-only:
+        description: "Dry run: log what would be marked or closed, change nothing"
+        type: boolean
+        default: true
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@v11
+        with:
+          # Only ever true for a manual run; the scheduled run is unaffected.
+          debug-only: ${{ inputs.debug-only || false }}
+          stale-issue-message: >
+            This issue has had no activity for 90 days and is being marked
+            stale. Comment to keep it open; otherwise it will be closed in 30
+            days. A closed issue is not a rejection and can be reopened.
+          stale-pr-message: >
+            This pull request has had no activity for 90 days and is being
+            marked stale. Comment or push to keep it open; otherwise it will be
+            closed in 30 days. A closed PR is not a rejection and can be
+            reopened.
+          close-issue-message: >
+            Closing after 30 days without activity. Comment to reopen.
+          close-pr-message: >
+            Closing after 30 days without activity. Comment or push to reopen.
+          days-before-stale: 90
+          days-before-close: 30
+          exempt-issue-labels: "security,pinned,blocked"
+          exempt-pr-labels: "dependencies,security,pinned,blocked"

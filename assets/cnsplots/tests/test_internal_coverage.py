@@ -1,0 +1,1249 @@
+"""Internal branch-coverage tests for private and helper implementation paths."""
+
+from __future__ import annotations
+
+import builtins
+from collections.abc import Mapping, Sequence
+import sys
+import types
+from pathlib import Path
+from typing import Any, cast
+
+import anndata as ad
+import lifelines as ll
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pytest
+from matplotlib.collections import PathCollection, QuadMesh
+from matplotlib.patches import PathPatch, Rectangle, Wedge
+
+import cnsplots as cns
+from cnsplots import _methods, _setup, _svg, _utils, _validation
+from cnsplots.helpers import _heatmap as helper_heatmap, _phylo, _sankey
+from cnsplots.plots import _distribution as dist_mod
+from cnsplots.plots import _genomics as genomics_mod
+from cnsplots.plots import _heatmap as heatmap_mod
+from cnsplots.plots import _sets as sets_mod
+from cnsplots.plots import _specialized as specialized_mod
+
+
+def test_methods_internal_coverage(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeCoxPHFitter:
+        def __init__(self) -> None:
+            self.summary = pd.DataFrame(
+                {
+                    "exp(coef)": [1.0],
+                    "exp(coef) lower 95%": [0.9],
+                    "exp(coef) upper 95%": [1.1],
+                    "p": [0.5],
+                    "covariate": ["123"],
+                },
+                index=pd.Index(["123"]),
+            )
+
+        def fit(
+            self, data: pd.DataFrame, duration_col: str, event_col: str, formula: str
+        ) -> None:
+            return None
+
+    monkeypatch.setattr(ll, "CoxPHFitter", FakeCoxPHFitter)
+    model = cns.CoxModel(
+        pd.DataFrame({"time": [1, 2], "event": [1, 0], "x": [0, 1]}),
+        duration="time",
+        event="event",
+        variates=["123"],
+    )
+    model.fit()
+    assert model.results is not None
+    assert model.results["display_label"].isna().all()
+
+    samples = [np.array([0, 0, 0, 0]), np.array([0, 1, 2, 3])]
+
+    def fake_choice(n: int, size: int, replace: bool = True) -> np.ndarray:
+        return samples.pop(0)
+
+    monkeypatch.setattr(_methods.np.random, "choice", fake_choice)
+    logistic = cns.LogisticModel(
+        pd.DataFrame({"event": [0, 0, 1, 1]}), event="event", variates=["1"]
+    )
+    auc, lower, upper = logistic._compute_auc_ci(
+        np.array([0, 0, 1, 1]),
+        np.array([0.1, 0.2, 0.8, 0.9]),
+        n_bootstrap=2,
+    )
+    assert lower <= auc <= upper
+
+
+def test_multipanel_internal_coverage(monkeypatch: pytest.MonkeyPatch) -> None:
+    mp = cns.multipanel()
+    mp._panels = cast(Any, [{"label": "A", "_below": "missing"}])
+    assert mp._get_panel_position(0) == (0, 0)
+
+    mp_title = cns.multipanel(title="Overview")
+    assert mp_title._get_content_horizontal_bounds_px() == (0.0, 540.0)
+
+    mp2 = cns.multipanel()
+    mp2._panels = cast(
+        Any,
+        [
+            {
+                "label": "A",
+                "width": 10,
+                "height": 10,
+                "pad_left": 0,
+                "pad_top": 0,
+                "margin_left": 0,
+                "margin_top": 0,
+                "margin_right": 0,
+                "margin_bottom": 0,
+            }
+        ],
+    )
+    assert mp2._get_panel_position(0) == (0, 0)
+
+    mp3 = cns.multipanel(max_width=200)
+    mp3.panel(None, width=40, height=20)
+    mp3.panel("B", width=40, height=20)
+    assert mp3._get_panel_position(1)[0] > 0
+
+    mp_spacer = cns.multipanel(max_width=200, title="Overview")
+    mp_spacer.panel("A", width=40, height=20)
+    mp_spacer.newline()
+    mp_spacer.panel("B", width=40, height=20)
+    assert mp_spacer._title_text is not None
+
+    mp4 = cns.multipanel()
+    monkeypatch.setattr(mp4, "_create_or_update_figure", lambda: None)
+    with pytest.raises(RuntimeError, match="axes was not created"):
+        mp4.panel("A", width=10, height=10)
+
+
+def test_multipanel_calculate_layout_wraps_to_new_row() -> None:
+    mp = cns.multipanel(max_width=100)
+    mp._panels = cast(
+        Any,
+        [
+            {
+                "label": "A",
+                "width": 60,
+                "height": 20,
+                "pad_left": 0,
+                "pad_top": 0,
+                "margin_left": 0,
+                "margin_top": 0,
+                "margin_right": 0,
+                "margin_bottom": 0,
+            },
+            {
+                "label": "B",
+                "width": 60,
+                "height": 30,
+                "pad_left": 0,
+                "pad_top": 0,
+                "margin_left": 0,
+                "margin_top": 0,
+                "margin_right": 0,
+                "margin_bottom": 0,
+            },
+        ],
+    )
+
+    mp._calculate_layout()
+
+    assert mp._rows == [[0], [1]]
+    assert mp._row_heights == [20, 30]
+
+
+def test_setup_internal_coverage(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    real_import = builtins.__import__
+    real_exists = Path.exists
+
+    def fake_exists(self: Path) -> bool:
+        if str(self) == "/System/Library/Fonts/Helvetica.ttc":
+            return True
+        if str(self).endswith("Helvetica-Bold.ttf"):
+            return False
+        return real_exists(self)
+
+    monkeypatch.setattr(Path, "exists", fake_exists)
+    monkeypatch.setattr(_setup, "_HELVETICA_BOLD_REGISTERED", False)
+    monkeypatch.setattr(_setup.sys, "platform", "darwin")
+    monkeypatch.setattr(_setup.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(
+        _setup.fm,
+        "fontManager",
+        types.SimpleNamespace(ttflist=[], addfont=lambda path: None),
+    )
+
+    def missing_fonttools(
+        name: str,
+        globals: Mapping[str, object] | None = None,
+        locals: Mapping[str, object] | None = None,
+        fromlist: Sequence[str] = (),
+        level: int = 0,
+    ) -> object:
+        if name == "fontTools.ttLib":
+            raise ImportError("missing")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", missing_fonttools)
+    _setup._ensure_helvetica_bold()
+
+    class FakeNameTable:
+        def __init__(self, family: str, subfamily: str) -> None:
+            self.family = family
+            self.subfamily = subfamily
+
+        def getDebugName(self, index: int) -> str:
+            return self.family if index == 1 else self.subfamily
+
+    class FakeRegularFace(dict):
+        def __init__(self) -> None:
+            super().__init__(name=FakeNameTable("Helvetica", "Regular"))
+
+        def save(self, path: str) -> None:
+            raise AssertionError("regular face should not be saved")
+
+    class NoBoldCollection:
+        def __init__(self, path: str) -> None:
+            self.fonts = [FakeRegularFace()]
+
+    def import_fonttools_without_bold(
+        name: str,
+        globals: Mapping[str, object] | None = None,
+        locals: Mapping[str, object] | None = None,
+        fromlist: Sequence[str] = (),
+        level: int = 0,
+    ) -> object:
+        if name == "fontTools.ttLib":
+            return types.SimpleNamespace(TTCollection=NoBoldCollection)
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", import_fonttools_without_bold)
+    _setup._ensure_helvetica_bold()
+
+    class FakeFace(dict):
+        def __init__(self) -> None:
+            super().__init__(name=FakeNameTable("Helvetica", "Bold"))
+            self.saved = False
+
+        def save(self, path: str) -> None:
+            self.saved = True
+
+    face = FakeFace()
+
+    class FakeCollection:
+        def __init__(self, path: str) -> None:
+            self.fonts = [face]
+
+    font_manager = types.SimpleNamespace(
+        ttflist=[],
+        addfont=lambda path: font_manager.ttflist.append(
+            types.SimpleNamespace(name="Helvetica", weight=700)
+        ),
+    )
+    monkeypatch.setattr(_setup.fm, "fontManager", font_manager)
+
+    def import_fonttools(
+        name: str,
+        globals: Mapping[str, object] | None = None,
+        locals: Mapping[str, object] | None = None,
+        fromlist: Sequence[str] = (),
+        level: int = 0,
+    ) -> object:
+        if name == "fontTools.ttLib":
+            return types.SimpleNamespace(TTCollection=FakeCollection)
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", import_fonttools)
+    _setup._ensure_helvetica_bold()
+    assert _setup._HELVETICA_BOLD_REGISTERED is True
+    assert face.saved is True
+
+    monkeypatch.setattr(_setup, "_HELVETICA_BOLD_REGISTERED", False)
+    bad_font_manager = types.SimpleNamespace(
+        ttflist=[], addfont=lambda path: (_ for _ in ()).throw(RuntimeError("boom"))
+    )
+    monkeypatch.setattr(_setup.fm, "fontManager", bad_font_manager)
+    _setup._ensure_helvetica_bold()
+
+
+def test_import_upsetplot_module_skips_local_shadow_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    shadow_dir = tmp_path / "shadow"
+    shadow_dir.mkdir()
+    (shadow_dir / "upsetplot.py").write_text(
+        "import cnsplots as cns\ncns.upsetplot({'A': ['x']})\n",
+        encoding="utf-8",
+    )
+
+    package_dir = tmp_path / "package"
+    package_root = package_dir / "upsetplot"
+    package_root.mkdir(parents=True)
+    (package_root / "__init__.py").write_text(
+        "\n".join(
+            [
+                "def from_memberships(memberships):",
+                "    return memberships",
+                "",
+                "class UpSet:",
+                "    def __init__(self, data, **kwargs):",
+                "        self.data = data",
+                "",
+                "    def plot(self, fig=None):",
+                "        return {}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    shadow_module = types.ModuleType("upsetplot")
+    shadow_module.__file__ = str(shadow_dir / "upsetplot.py")
+
+    monkeypatch.setitem(sys.modules, "upsetplot", shadow_module)
+    monkeypatch.setattr(
+        sys,
+        "path",
+        [str(shadow_dir), str(package_dir), *sys.path],
+    )
+
+    usp = sets_mod._import_upsetplot_module()
+
+    assert hasattr(usp, "from_memberships")
+    assert hasattr(usp, "UpSet")
+    assert Path(usp.__file__).resolve() == (package_root / "__init__.py").resolve()
+
+
+def test_import_upsetplot_module_tolerates_path_resolution_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    valid_module = types.ModuleType("upsetplot")
+    setattr(valid_module, "from_memberships", lambda memberships: memberships)
+    setattr(valid_module, "UpSet", object)
+
+    monkeypatch.setitem(sys.modules, "upsetplot", valid_module)
+    monkeypatch.setattr(
+        sets_mod.Path,
+        "resolve",
+        lambda self: (_ for _ in ()).throw(OSError("bad path")),
+    )
+
+    usp = sets_mod._import_upsetplot_module()
+
+    assert usp is valid_module
+
+
+def test_upsetplot_clears_white_figure_patch(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakePatch:
+        def __init__(self) -> None:
+            self.facecolor: object = (1.0, 1.0, 1.0, 1.0)
+            self.alpha: object = None
+
+        def get_facecolor(self) -> object:
+            return self.facecolor
+
+        def set_facecolor(self, value: object) -> None:
+            self.facecolor = value
+
+        def set_alpha(self, value: object) -> None:
+            self.alpha = value
+
+    class FakeAxes:
+        def __init__(self, figure: object) -> None:
+            self.figure = figure
+            self.facecolor: object = None
+            self.texts: list[object] = []
+
+        def set_facecolor(self, value: object) -> None:
+            self.facecolor = value
+
+        def tick_params(self, *args: object, **kwargs: object) -> None:
+            return None
+
+    class FakeUpSet:
+        def __init__(self, data: object, **kwargs: object) -> None:
+            self.data = data
+            self.kwargs = kwargs
+
+        def plot(self, fig: object = None) -> dict[str, object]:
+            patch = FakePatch()
+            figure = types.SimpleNamespace(patch=patch)
+            return {
+                "matrix": FakeAxes(figure),
+                "shading": FakeAxes(figure),
+                "intersections": FakeAxes(figure),
+                "totals": None,
+            }
+
+    fake_module = types.SimpleNamespace(
+        from_memberships=lambda memberships: memberships,
+        UpSet=FakeUpSet,
+    )
+    monkeypatch.setattr(sets_mod, "_import_upsetplot_module", lambda: fake_module)
+    monkeypatch.setattr(sets_mod, "setup_ax", lambda ax: None)
+
+    axes = cast(Any, cns.upsetplot({"A": {"x"}, "B": {"x", "y"}}))
+
+    assert axes["matrix"].figure.patch.facecolor == "none"
+    assert axes["matrix"].figure.patch.alpha == 0
+
+
+def test_svg_internal_coverage() -> None:
+    class FakeText:
+        def getparent(self) -> None:
+            return None
+
+        def xpath(self, pattern: str, namespaces: dict[str, str]) -> list[object]:
+            return []
+
+    class FakeRoot:
+        def xpath(self, pattern: str, namespaces: dict[str, str]) -> list[object]:
+            return [FakeText()]
+
+    _svg._process_text_elements_lxml(FakeRoot(), {"svg": "http://www.w3.org/2000/svg"})
+
+    class FakeGroup:
+        def getparent(self) -> None:
+            return None
+
+    class FakeGroupRoot:
+        def xpath(self, pattern: str, namespaces: dict[str, str]) -> list[object]:
+            return [FakeGroup()]
+
+    _svg._flatten_groups(FakeGroupRoot(), {"svg": "http://www.w3.org/2000/svg"})
+    _svg._restore_bold_fonts(
+        types.SimpleNamespace(), {"svg": "http://www.w3.org/2000/svg"}, set()
+    )
+
+
+def test_utils_internal_coverage(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    cns.figure(100, 100)
+    plt.plot([0, 1], [0, 1])
+    nested_path = tmp_path / "nested" / "plot.png"
+    cns.savefig(str(nested_path))
+    assert nested_path.exists()
+
+    monkeypatch.chdir(tmp_path)
+    cns.figure(100, 100)
+    plt.plot([0, 1], [0, 1])
+    cns.savefig("plot.png")
+    assert Path("plot.png").exists()
+
+    fig, ax = plt.subplots()
+    plt.sca(ax)
+    _utils.take_legend_out()
+    legend = ax.get_legend()
+    assert legend is not None
+    assert legend.get_title().get_text() == ""
+
+    assert _utils._is_qualitative_cmap(["a"]) is True
+    assert _utils._is_qualitative_cmap({"a": "#111111"}) is True
+
+    plt.figure()
+    plt.title("β")
+    _utils.apply_unicode_font()
+
+    class DummyResult:
+        test_short_name = "T"
+        significance_suffix = ""
+
+        def __init__(self, pvalue: float) -> None:
+            self.pvalue = pvalue
+
+    class DummyAnnotator:
+        def __init__(self, ax: object, pairs: object, **plotting: object) -> None:
+            self._pvalue_format: Any = None
+
+        def configure(self, **kwargs: object) -> None:
+            return None
+
+        def apply_and_annotate(self) -> None:
+            return None
+
+        def set_pvalues(self, pvalues: list[float]) -> None:
+            return None
+
+        def annotate(self) -> None:
+            return None
+
+    monkeypatch.setattr(_utils, "Annotator", DummyAnnotator)
+    formatter_ax = plt.subplots()[1]
+    _utils._p_value_helper(
+        "Mann-Whitney",
+        pd.DataFrame({"g": ["A", "B"], "v": [1, 2]}),
+        formatter_ax,
+        {"x": "g", "y": "v"},
+        "all",
+        format="full",
+    )
+    formatter = DummyAnnotator(formatter_ax, [])._pvalue_format
+    formatter = formatter or _utils.Annotator(formatter_ax, [])._pvalue_format
+
+    class CaptureAnnotator(DummyAnnotator):
+        last: CaptureAnnotator | None = None
+
+        def __init__(self, ax: object, pairs: object, **plotting: object) -> None:
+            super().__init__(ax, pairs, **plotting)
+            CaptureAnnotator.last = self
+
+    monkeypatch.setattr(_utils, "Annotator", CaptureAnnotator)
+    fig2, ax2 = plt.subplots()
+    _utils._p_value_helper(
+        "Mann-Whitney",
+        pd.DataFrame({"g": ["A", "B"], "v": [1, 2]}),
+        ax2,
+        {"x": "g", "y": "v"},
+        "all",
+        format="full",
+    )
+    captured_annotator = CaptureAnnotator.last
+    assert captured_annotator is not None
+    formatted = captured_annotator._pvalue_format.format_data(DummyResult(0.2))
+    assert formatted.startswith("$T P = ")
+    assert r"\times 10^{-1}$" in formatted
+
+    with pytest.raises(ValueError, match="requires a hue column"):
+        _utils._p_value_helper(
+            "Mann-Whitney",
+            pd.DataFrame({"group": ["A", "B"], "value": [1, 2]}),
+            ax2,
+            {"x": "value", "y": "group"},
+            "hue",
+        )
+
+    for name in [
+        "Set3",
+        "Pastel1",
+        "Pastel2",
+        "Paired",
+        "Dark2",
+        "Accent",
+        "Bold",
+        "Cell",
+        "Nature",
+        "Science",
+    ]:
+        assert _utils.palettes(name)
+
+
+def test_validation_internal_coverage(heatmap_adata: ad.AnnData) -> None:
+    wide_df = pd.DataFrame(
+        np.zeros((1, 11)), columns=pd.Index([f"c{i}" for i in range(11)])
+    )
+    with pytest.raises(ValueError, match="11 total columns"):
+        _validation.validate_column_exists(wide_df, "missing", "x", "func")
+    with pytest.raises(ValueError, match="11 total columns"):
+        _validation.validate_columns_exist(wide_df, ["missing"], "func")
+
+    adata = heatmap_adata.copy()
+    for i in range(11):
+        adata.obs[f"obs{i}"] = i
+        adata.var[f"var{i}"] = i
+    with pytest.raises(ValueError, match="13 total columns"):
+        _validation.validate_adata_obs_columns(adata, "missing", "func")
+    with pytest.raises(ValueError, match="13 total columns"):
+        _validation.validate_adata_var_columns(adata, "missing", "func")
+    with pytest.raises(ValueError, match="Null values found"):
+        _validation.validate_no_nulls(pd.DataFrame({"a": [1, None]}), "a", "func")
+
+
+def test_helper_heatmap_internal_coverage(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[object] = []
+
+    def fake_plot(self: Any) -> None:
+        self.ax = plt.gca()
+        self.ax_heatmap = plt.gca()
+        self.yticklabels = []
+
+    monkeypatch.setattr(helper_heatmap.ClusterMapPlotterNew, "plot", fake_plot)
+    monkeypatch.setattr(
+        helper_heatmap.ClusterMapPlotterNew, "post_processing", lambda self: None
+    )
+    monkeypatch.setattr(
+        helper_heatmap.ClusterMapPlotterNew,
+        "plot_legends",
+        lambda self, ax=None: calls.append(ax),
+    )
+
+    annotation = types.SimpleNamespace(
+        plot_legend=False,
+        legend_list=[],
+        label_max_width=0,
+        collect_legends=lambda: None,
+    )
+    cns.figure(100, 100)
+    plotter = helper_heatmap.ClusterMapPlotterNew(
+        data=pd.DataFrame([[1]]),
+        right_annotation=annotation,
+        plot=True,
+        plot_legend=True,
+        legend_anchor="auto",
+        verbose=0,
+    )
+    assert calls[-1] is plotter.ax
+    assert plotter.legend_order == "auto"
+    assert plotter.legend_vgap == 7
+    assert plotter.legend_hgap == 7
+
+    cns.figure(100, 100)
+    plotter2 = helper_heatmap.ClusterMapPlotterNew(
+        data=pd.DataFrame([[1]]),
+        plot=True,
+        plot_legend=True,
+        legend_anchor="auto",
+        verbose=0,
+    )
+    assert calls[-1] is plotter2.ax_heatmap
+
+    plotter_gap_override = helper_heatmap.ClusterMapPlotterNew(
+        data=pd.DataFrame([[1]]),
+        plot=False,
+        legend_gap=9,
+        legend_vgap=3,
+        legend_hgap=1,
+        verbose=0,
+    )
+    assert plotter_gap_override.legend_vgap == 3
+    assert plotter_gap_override.legend_hgap == 1
+
+    cns.figure(100, 100)
+    plotter3 = helper_heatmap.ClusterMapPlotterNew(
+        data=pd.DataFrame([[0, 1], [1, 0]]),
+        cmap=["red", "blue"],
+        plot=False,
+        verbose=1,
+    )
+    plotter3.data = cast(Any, np.array([[0, 1], [1, 0]]))
+    plotter3.ax = plt.gca()
+    plotter3.yticklabels = []
+    plotter3.collect_legends()
+    assert plotter3.legend_list
+
+    cns.figure(100, 100)
+    plotter4 = helper_heatmap.ClusterMapPlotterNew(
+        data=pd.DataFrame([[0, 1], [1, 0]]),
+        cmap={"0": "red", "1": "blue"},
+        plot=False,
+        verbose=0,
+    )
+    plotter4.data = cast(Any, np.array([[0, 1], [1, 0]]))
+    plotter4.ax = plt.gca()
+    plotter4.yticklabels = []
+    plotter4.collect_legends()
+    assert plotter4.legend_list
+
+    cns.figure(100, 100)
+    plotter5 = helper_heatmap.ClusterMapPlotterNew(
+        data=pd.DataFrame([[0, 1], [1, 0]]),
+        plot=False,
+        verbose=0,
+    )
+    plotter5.ax = plt.gca()
+    plotter5.widths = [1, 1, 1]
+    plotter5.heights = [1, 1, 1]
+    gs = plt.gcf().add_gridspec(1, 1)
+    plotter5._define_axes(gs[0])
+
+    dot_calls: dict[str, object] = {}
+
+    def fake_dot_define_axes(self: object, subplot_spec: object = None) -> None:
+        dot_calls["subplot_spec"] = subplot_spec
+
+    monkeypatch.setattr(
+        helper_heatmap.DotClustermapPlotter,
+        "_define_axes",
+        fake_dot_define_axes,
+    )
+    plotter_dot = object.__new__(helper_heatmap.DotClustermapPlotterNew)
+    subplot_spec = object()
+    plotter_dot._define_axes(subplot_spec)
+    assert dot_calls["subplot_spec"] is subplot_spec
+
+    monkeypatch.undo()
+
+    cns.figure(120, 120)
+    plotter6 = helper_heatmap.ClusterMapPlotterNew(
+        data=pd.DataFrame([[0, 1], [1, 0]], columns=pd.Index(["A", "B"])),
+        cmap="Set1",
+        show_rownames=True,
+        show_colnames=True,
+        plot=True,
+        plot_legend=True,
+        legend_anchor="ax_heatmap",
+        verbose=0,
+    )
+    assert plotter6.ax_heatmap is not None
+
+
+def test_phylo_and_sankey_internal_coverage() -> None:
+    fig, ax = plt.subplots()
+    out_ax, cmap = _phylo._heatmap(
+        np.array([["A"], ["B"]]),
+        cmap={"A": "red"},
+        ax=ax,
+        leg_pos="right",
+    )
+    assert out_ax is ax
+    assert set(cmap) == {"A", "B"}
+
+    assert len(_phylo._gen_colors(["red", "blue"], 2)) == 2
+    assert _phylo._is_categorical(np.array([[1, 2], [3, 4]])) == [False, False]
+    assert _phylo._is_categorical("plain text") is False
+
+    def fail_palette(name: str, n: int) -> list[object]:
+        raise ValueError("fallback")
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(_phylo.sns, "color_palette", fail_palette)
+    try:
+        assert len(_phylo._gen_colors("viridis", 2)) == 2
+    finally:
+        monkeypatch.undo()
+
+    _sankey.check_data_matches_labels({"A", "B"}, {"A", "B"}, "left")
+    _sankey.check_data_matches_labels(["A", "B"], ["A", "B"], "left")
+    data_frame = pd.DataFrame(
+        {
+            "left": ["A", "B"],
+            "right": ["C", "D"],
+            "leftWeight": [1, 1],
+            "rightWeight": [1, 1],
+        }
+    )
+    _sankey.identify_labels(data_frame, ["A", "B"], ["C", "D"])
+    fig2, ax2 = plt.subplots()
+    widths_left, _ = _sankey._get_positions_and_total_widths(
+        data_frame, ["A", "B"], "left"
+    )
+    widths_right, _ = _sankey._get_positions_and_total_widths(
+        data_frame, ["C", "D"], "right"
+    )
+    assert set(widths_left) == {"A", "B"}
+    assert set(widths_right) == {"C", "D"}
+    _sankey.plot_strips(
+        ax2,
+        {"A": "red", "B": "blue", "C": "green", "D": "black"},
+        data_frame,
+        ["A", "B"],
+        {"A": {"bottom": 0, "left": 1}, "B": {"bottom": 1.04, "left": 1}},
+        {"A": {"C": 1, "D": 0}, "B": {"C": 0, "D": 1}},
+        {"A": {"C": 1, "D": 0}, "B": {"C": 0, "D": 1}},
+        True,
+        ["C", "D"],
+        {"C": {"bottom": 0, "right": 1}, "D": {"bottom": 1.04, "right": 1}},
+        np.float64(1.0),
+    )
+
+
+def test_plot_internal_coverage(
+    categorical_df: pd.DataFrame,
+    stack_df: pd.DataFrame,
+    heatmap_adata: ad.AnnData,
+    confusion_df: pd.DataFrame,
+    survival_df: pd.DataFrame,
+    phylo_adata: ad.AnnData,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with pytest.raises(ValueError, match="errorbar must be one of"):
+        cns.lollipopplot(
+            categorical_df, x="group", y="value", add_tip=True, errorbar="bad"
+        )
+
+    cns.figure(120, 120)
+    lollipop_ax = cns.lollipopplot(categorical_df, x="group", y="value", add_tip=True)
+    lollipop_points = [
+        collection
+        for collection in lollipop_ax.collections
+        if isinstance(collection, PathCollection)
+    ]
+    assert len(lollipop_points) == 1
+    np.testing.assert_allclose(
+        np.asarray(lollipop_points[0].get_offsets(), dtype=float),
+        [[0, 1.2], [1, 2.15], [2, 3.15]],
+    )
+    assert [text.get_text() for text in lollipop_ax.texts] == [
+        "1.20",
+        "2.15",
+        "3.15",
+    ]
+
+    cns.figure(120, 120)
+    grouped_lollipop_ax = cns.lollipopplot(
+        categorical_df,
+        x="group",
+        y="value",
+        hue="hue",
+        color="black",
+        order=["A", "B", "C"],
+        hue_order=["H1", "H2"],
+        pairs=[(("A", "H1"), ("A", "H2"))],
+    )
+    grouped_lollipop_points = [
+        collection
+        for collection in grouped_lollipop_ax.collections
+        if isinstance(collection, PathCollection)
+    ]
+    assert len(grouped_lollipop_points) == 2
+    np.testing.assert_allclose(
+        np.asarray(grouped_lollipop_points[0].get_offsets(), dtype=float),
+        [[-0.2, 1.15], [0.8, 2.1], [1.8, 3.05]],
+    )
+    np.testing.assert_allclose(
+        np.asarray(grouped_lollipop_points[1].get_offsets(), dtype=float),
+        [[0.2, 1.25], [1.2, 2.2], [2.2, 3.25]],
+    )
+
+    cns.figure(120, 120)
+    horizontal_lollipop_ax = cns.lollipopplot(
+        categorical_df.rename(columns={"group": "cat", "value": "num"}),
+        x="num",
+        y="cat",
+        hue="hue",
+        add_tip=True,
+        errorbar="se",
+    )
+    horizontal_lollipop_points = [
+        collection
+        for collection in horizontal_lollipop_ax.collections
+        if isinstance(collection, PathCollection)
+    ]
+    assert len(horizontal_lollipop_points) == 2
+    np.testing.assert_allclose(
+        np.asarray(horizontal_lollipop_points[0].get_offsets(), dtype=float),
+        [[1.15, -0.2], [2.1, 0.8], [3.05, 1.8]],
+    )
+    np.testing.assert_allclose(
+        np.asarray(horizontal_lollipop_points[1].get_offsets(), dtype=float),
+        [[1.25, 0.2], [2.2, 1.2], [3.25, 2.2]],
+    )
+    assert [text.get_text() for text in horizontal_lollipop_ax.texts] == [
+        "1.15",
+        "2.10",
+        "3.05",
+        "1.25",
+        "2.20",
+        "3.25",
+    ]
+
+    cns.figure(120, 120)
+    stack_ax = cns.stackplot(
+        stack_df,
+        y="treatment",
+        stack="response",
+        normalize=True,
+        add_count=True,
+        order=["C", "B", "A"],
+    )
+    stack_widths = []
+    for patch in stack_ax.patches:
+        assert isinstance(patch, Rectangle)
+        stack_widths.append(patch.get_width())
+    assert stack_widths == pytest.approx([0.5] * 6)
+    assert [tick.get_text() for tick in stack_ax.get_yticklabels()] == [
+        "C\n(n=4)",
+        "B\n(n=4)",
+        "A\n(n=4)",
+    ]
+
+    class SizeHandle:
+        def __init__(self) -> None:
+            self.sizes = None
+
+        def set_sizes(self, sizes: list[float]) -> None:
+            self.sizes = sizes
+
+    fake_legend = types.SimpleNamespace(legend_handles=[SizeHandle()])
+    monkeypatch.setattr(
+        type(plt.gca()),
+        "get_legend",
+        lambda self: fake_legend,
+        raising=False,
+    )
+
+    cns.figure(120, 120)
+    strip_ax = cns.stripplot(categorical_df, x="group", y="value", hue="hue")
+    strip_points = [
+        collection
+        for collection in strip_ax.collections
+        if isinstance(collection, PathCollection)
+    ]
+    np.testing.assert_allclose(
+        np.sort(
+            np.concatenate(
+                [
+                    np.asarray(points.get_offsets(), dtype=float)[:, 1]
+                    for points in strip_points
+                ]
+            )
+        ),
+        np.sort(categorical_df["value"].to_numpy()),
+    )
+    assert fake_legend.legend_handles[0].sizes == [4]
+
+    cns.figure(120, 120)
+    scatter_data = categorical_df.rename(columns={"value": "x"}).assign(
+        y=lambda df: df["x"] * 2
+    )
+    scatter_ax = cns.scatterplot(
+        scatter_data,
+        x="x",
+        y="y",
+        hue="hue",
+    )
+    scatter_points = [
+        collection
+        for collection in scatter_ax.collections
+        if isinstance(collection, PathCollection)
+    ]
+    assert len(scatter_points) == 1
+    np.testing.assert_allclose(
+        np.asarray(scatter_points[0].get_offsets(), dtype=float),
+        scatter_data[["x", "y"]].to_numpy(),
+    )
+    assert fake_legend.legend_handles[0].sizes == [7]
+
+    cns.figure(120, 120)
+    regression_data = scatter_data.assign(color_col=["A"] * 12)
+    regression_ax = cns.regplot(
+        regression_data,
+        x="x",
+        y="y",
+        color="color_col",
+    )
+    regression_points = [
+        collection
+        for collection in regression_ax.collections
+        if isinstance(collection, PathCollection)
+    ]
+    assert len(regression_points) == 1
+    np.testing.assert_allclose(
+        np.asarray(regression_points[0].get_offsets(), dtype=float),
+        regression_data[["x", "y"]].to_numpy(),
+    )
+    np.testing.assert_allclose(
+        np.asarray(regression_ax.lines[0].get_ydata(), dtype=float),
+        2 * np.asarray(regression_ax.lines[0].get_xdata(), dtype=float),
+    )
+    assert [text.get_text() for text in regression_ax.texts] == [r"$r$=1.00, $P=0$"]
+    assert fake_legend.legend_handles[0].sizes == [6]
+
+    monkeypatch.undo()
+
+    cns.figure(120, 120)
+    pie_ax = cns.pieplot(categorical_df, x="group")
+    pie_wedges = [patch for patch in pie_ax.patches if isinstance(patch, Wedge)]
+    assert len(pie_wedges) == 3
+    np.testing.assert_allclose(
+        [wedge.theta2 - wedge.theta1 for wedge in pie_wedges], [120] * 3
+    )
+    assert [text.get_text() for text in pie_ax.texts] == ["33%"] * 3
+
+    cns.figure(120, 120)
+    donut_ax = cns.donutplot(categorical_df, x="group")
+    donut_wedges = [patch for patch in donut_ax.patches if isinstance(patch, Wedge)]
+    assert len(donut_wedges) == 3
+    np.testing.assert_allclose(
+        [wedge.theta2 - wedge.theta1 for wedge in donut_wedges], [120] * 3
+    )
+    assert [wedge.width for wedge in donut_wedges] == pytest.approx([0.4] * 3)
+
+    class FakeArtist:
+        def __init__(self) -> None:
+            self.facecolor: object = (1, 0, 0, 1)
+            self.edgecolor: object = None
+
+        def get_facecolor(self) -> object:
+            return self.facecolor
+
+        def set_edgecolor(self, value: object) -> None:
+            self.edgecolor = value
+
+        def set_facecolor(self, value: object) -> None:
+            self.facecolor = value
+
+    class FakeLine:
+        def __init__(self) -> None:
+            self.color: object = None
+            self.marker_facecolor: object = None
+            self.marker_edgecolor: object = None
+
+        def set_color(self, value: object) -> None:
+            self.color = value
+
+        def set_mfc(self, value: object) -> None:
+            self.marker_facecolor = value
+
+        def set_mec(self, value: object) -> None:
+            self.marker_edgecolor = value
+
+    class FakeAxes:
+        def __init__(self) -> None:
+            self.patches: list[PathPatch] = []
+            self.artists = [FakeArtist()]
+            self.lines = [FakeLine() for _ in range(5)]
+
+        def get_legend_handles_labels(self) -> tuple[list[object], list[str]]:
+            return [], []
+
+        def legend(self, handles: list[object], labels: list[str]) -> None:
+            return None
+
+    monkeypatch.setattr(dist_mod.sns, "boxplot", lambda **kwargs: FakeAxes())
+    monkeypatch.setattr(cns.utils, "_remove_edge_from_legend_items", lambda ax: None)
+    box_ax = cast(Any, cns.boxplot(categorical_df, x="group", y="value"))
+    assert box_ax.artists[0].edgecolor == "None"
+    assert box_ax.artists[0].facecolor == (1, 0, 0, 1)
+    assert [line.color for line in box_ax.lines] == [
+        (1, 0, 0, 1),
+        (1, 0, 0, 1),
+        "white",
+        (1, 0, 0, 1),
+        (1, 0, 0, 1),
+    ]
+
+    cns.figure(120, 120)
+    hist_ax = cns.histplot(
+        data=categorical_df.rename(columns={"value": "x", "group": "y"}), y="x"
+    )
+    histogram_widths = []
+    for patch in hist_ax.patches:
+        assert isinstance(patch, Rectangle)
+        histogram_widths.append(patch.get_width())
+    assert sum(histogram_widths) == pytest.approx(len(categorical_df))
+
+    adata_nan = heatmap_adata.copy()
+    adata_nan.obs["cluster"] = pd.Series(
+        ["A", None, "B"], index=adata_nan.obs_names, dtype=object
+    )
+    cns.figure(120, 120)
+    heatmap = cns.heatmapplot(adata_nan, row_annotation=["cluster"], cmap=None)
+    pd.testing.assert_frame_equal(heatmap.data2d, adata_nan.to_df())
+
+    with pytest.raises(ValueError, match="required cell for stats"):
+        cns.confusionplot(
+            confusion_df,
+            x="pred",
+            y="truth",
+            add_pvalue=True,
+            x_order=["neg", "pos"],
+            y_order=["neg", "pos"],
+            positive_x="missing",
+        )
+
+    original_crosstab = heatmap_mod.pd.crosstab
+    monkeypatch.setattr(
+        heatmap_mod.pd,
+        "crosstab",
+        lambda *args, **kwargs: pd.DataFrame(
+            [[np.nan, 1], [1, 1]],
+            index=pd.Index(["neg", "pos"]),
+            columns=pd.Index(["neg", "pos"]),
+        ),
+    )
+    with pytest.raises(RuntimeError, match="count mismatch"):
+        cns.confusionplot(
+            confusion_df,
+            x="pred",
+            y="truth",
+            add_pvalue=True,
+            annot=False,
+            x_order=["neg", "pos"],
+            y_order=["neg", "pos"],
+        )
+    monkeypatch.setattr(heatmap_mod.pd, "crosstab", original_crosstab)
+
+    monkeypatch.setattr(
+        heatmap_mod,
+        "fisher_exact",
+        lambda table: (_ for _ in ()).throw(ValueError("bad")),
+    )
+    with pytest.raises(ValueError, match="Fisher's exact test failed"):
+        cns.confusionplot(
+            confusion_df,
+            x="pred",
+            y="truth",
+            add_pvalue=True,
+            x_order=["neg", "pos"],
+            y_order=["neg", "pos"],
+        )
+
+    bad_survival = survival_df.copy()
+    bad_survival["time"] = bad_survival["time"] * 20
+    cns.figure(120, 120)
+    ax = cns.survivalplot(bad_survival, "time", "event", "group")
+    assert ax.get_xlabel() == "Time"
+
+    import lifelines
+    import lifelines.statistics as lifelines_statistics
+
+    original_logrank_test = lifelines_statistics.multivariate_logrank_test
+
+    monkeypatch.setattr(
+        lifelines_statistics,
+        "multivariate_logrank_test",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("bad")),
+    )
+    with pytest.raises(RuntimeError, match="Log-rank test failed"):
+        cns.survivalplot(survival_df, "time", "event", "group")
+    monkeypatch.setattr(
+        lifelines_statistics,
+        "multivariate_logrank_test",
+        original_logrank_test,
+    )
+
+    class BadCox:
+        def fit(self, *args: object, **kwargs: object) -> None:
+            raise RuntimeError("bad")
+
+    monkeypatch.setattr(lifelines, "CoxPHFitter", BadCox)
+    with pytest.raises(RuntimeError, match="Cox proportional hazards model failed"):
+        cns.survivalplot(
+            pd.DataFrame(
+                {
+                    "time": [1, 2, 3, 4, 5, 6],
+                    "event": [1, 0, 1, 0, 1, 0],
+                    "group": ["A", "A", "B", "B", "C", "C"],
+                }
+            ),
+            "time",
+            "event",
+            "group",
+            hue_order=["A", "B", "C"],
+            overall_test="trend",
+        )
+    with pytest.raises(RuntimeError, match="Could not compute hazard ratios"):
+        cns.survivalplot(survival_df, "time", "event", "group")
+
+    cns.figure(120, 120)
+    cns.phyloplot(phylo_adata)
+    phylo_matrices = [
+        np.asarray(collection.get_array())
+        for axis in plt.gcf().axes
+        for collection in axis.collections
+        if isinstance(collection, QuadMesh)
+        and np.asarray(collection.get_array()).shape == phylo_adata.shape
+    ]
+    assert len(phylo_matrices) == 1
+    np.testing.assert_array_equal(
+        phylo_matrices[0], phylo_adata.layers["trisicell_output"]
+    )
+
+    cns.figure(120, 120)
+    venn = cns.vennplot([{1, 2}, {2, 3}, {3, 4}], labels=["A", "B", "C"])
+    assert {
+        area: (
+            None
+            if venn.get_label_by_id(area) is None
+            else venn.get_label_by_id(area).get_text()
+        )
+        for area in ["100", "010", "001", "110", "101", "011", "111"]
+    } == {
+        "100": "1",
+        "010": "0",
+        "001": "1",
+        "110": "1",
+        "101": None,
+        "011": "1",
+        "111": None,
+    }
+    assert [venn.get_label_by_id(name).get_text() for name in ["A", "B", "C"]] == [
+        "A",
+        "B",
+        "C",
+    ]
+
+
+def test_remaining_visual_internal_coverage(
+    confusion_df: pd.DataFrame,
+    heatmap_adata: ad.AnnData,
+    numeric_df: pd.DataFrame,
+    volcano_df: pd.DataFrame,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_isinstance = builtins.isinstance
+
+    def fake_isinstance(obj: object, typ: Any) -> bool:
+        if typ is object and getattr(obj, "kind", None) in {"b", "i", "u", "f"}:
+            return False
+        return real_isinstance(obj, typ)
+
+    monkeypatch.setattr(heatmap_mod, "isinstance", fake_isinstance, raising=False)
+    cns.figure(180, 180)
+    cmp = cns.heatmapplot(
+        heatmap_adata,
+        row_annotation=["score"],
+        col_annotation=["importance"],
+        cmap="parula",
+    )
+    assert cmp.ax_heatmap is not None
+
+    class MarkerHandle:
+        def __init__(self) -> None:
+            self.marker_size = None
+
+        def set_markersize(self, size: float) -> None:
+            self.marker_size = size
+
+    reg_legend = types.SimpleNamespace(legend_handles=[MarkerHandle()])
+    monkeypatch.setattr(
+        type(plt.gca()),
+        "get_legend",
+        lambda self: reg_legend,
+        raising=False,
+    )
+    cns.figure(120, 120)
+    cns.regplot(numeric_df, x="x", y="y", color="color_group", s=9)
+    assert reg_legend.legend_handles[0].marker_size is not None
+
+    class SizeHandle:
+        def __init__(self) -> None:
+            self.sizes = None
+
+        def set_sizes(self, sizes: list[float]) -> None:
+            self.sizes = sizes
+
+    volcano_legend = types.SimpleNamespace(legend_handles=[SizeHandle()])
+    monkeypatch.setattr(
+        type(plt.gca()),
+        "get_legend",
+        lambda self: volcano_legend,
+        raising=False,
+    )
+    monkeypatch.setattr(genomics_mod.utils, "take_legend_out", lambda **kwargs: None)
+    cns.figure(120, 120)
+    cns.volcanoplot(volcano_df)
+    assert volcano_legend.legend_handles[0].sizes == [20]
+
+    cox_like_model = types.SimpleNamespace(
+        name="cox",
+        hue="group",
+        results=pd.DataFrame(
+            {
+                "display_label": ["Age", "Stage"],
+                "exp(coef)": [1.2, 0.9],
+                "log10_pvalue": [1.1, 0.7],
+                "exp(coef) lower_err": [0.1, 0.1],
+                "exp(coef) upper_err": [0.2, 0.15],
+                "hue_group": ["All", "All"],
+            }
+        ),
+    )
+    cns.figure(120, 120)
+    ax = cns.forestplot(cox_like_model)
+    assert ax.get_xlabel() == "Hazard ratio (95% CI)"
+
+    monkeypatch.setattr(
+        specialized_mod, "validate_dataframe", lambda data, name, fn: None
+    )
+    with pytest.raises(TypeError, match="Internal type validation failed"):
+        cns.forestplot(
+            types.SimpleNamespace(name="cox", results=["not", "a", "dataframe"])
+        )

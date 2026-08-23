@@ -1,0 +1,8 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=2.0.0
+Type=Application
+Terminal=true
+Exec=bash -c "/usr/bin/gw"
+Name=gw
+Icon=/usr/share/icons/gw_icon.png

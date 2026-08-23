@@ -1,0 +1,1042 @@
+import { useRef, useCallback, useEffect, useMemo, useState } from "react";
+import { Device } from "@luma.gl/core";
+
+// Hooks
+import { useDataManager } from "@/hooks/useDataManager";
+import { useDeckLayers } from "@/hooks/useDeckLayers";
+import { useViewStates } from "@/hooks/useViewStates";
+import { useAnnotationStates } from "@/hooks/useAnnotationStates";
+import { useUIStates } from "@/hooks/useUIStates";
+import { useSectionStates } from "@/hooks/useSectionStates";
+import { useLayoutMode } from "@/hooks/useLayoutMode";
+
+// Components
+import { VisHeader } from "@/components/layout/VisHeader";
+import { AnnotationPanel } from "@/components/layout/AnnotationPanel";
+import { ControlPanel } from "@/components/layout/ControlPanel";
+import {
+  AlignmentPanel,
+  type AlignmentWorkflow,
+} from "@/components/layout/AlignmentPanel";
+import { VisualizationArea } from "@/components/layout/VisualizationArea";
+import { ContinuousSelectionDialog } from "@/components/dialogs/ContinuousSelectionDialog";
+import { ColorPickerDialog } from "@/components/dialogs/ColorPickerDialog";
+
+import { useWidgetModel } from "@/widget_context";
+import { parseContinuousArray } from "@/utils/helpers";
+import { decodeFloat16 } from "@/utils/helpers";
+import { applySectionSpacing } from "@/utils/sectionSpacing";
+import {
+  applySectionAlignment,
+  IDENTITY_SECTION_TRANSFORM,
+  suggestSectionAlignment,
+  type AlignmentMode,
+  type SectionTransform,
+  type SectionTransforms,
+} from "@/utils/sectionAlignment";
+import type {
+  AnnotationConfig,
+  ContinuousConfig,
+  ContinuousField,
+} from "@/types";
+
+const normalizeSelectionIndices = (selection: unknown) => {
+  const raw =
+    typeof selection === "object" && selection !== null
+      ? ((selection as { indices?: unknown; orders?: unknown }).indices ??
+        (selection as { indices?: unknown; orders?: unknown }).orders)
+      : [];
+
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const seen = new Set<number>();
+  const indices: number[] = [];
+
+  for (const value of raw) {
+    const index = Number(value);
+
+    if (Number.isInteger(index) && index >= 0 && !seen.has(index)) {
+      seen.add(index);
+      indices.push(index);
+    }
+  }
+
+  return indices;
+};
+
+export default function Vis({
+  onLoad,
+  device,
+}: {
+  onLoad?: (data: { count: number; progress: number }) => void;
+  device?: Device;
+}) {
+  // Refs
+  const glRef = useRef<WebGLRenderingContext | null>(null);
+
+  // New: reference to visualization container for measuring width
+  const vizContainerRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+
+  // UI States Hook
+  const uiStates = useUIStates();
+
+  // View States Hook
+  const viewStates = useViewStates(); // Will be updated by data manager
+
+  const model = useWidgetModel();
+  // Read global_config from model and track changes
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [globalConfig, setGlobalConfig] = useState<any | null>(() =>
+    model
+      ? (model.get("global_config") ?? model.get("GlobalConfig") ?? null)
+      : null,
+  );
+
+  useEffect(() => {
+    if (!model) return;
+    const handler = () =>
+      setGlobalConfig(
+        model.get("global_config") ?? model.get("GlobalConfig") ?? null,
+      );
+
+    model.on("change:global_config", handler);
+    model.on("change:GlobalConfig", handler);
+    handler(); // pick up initial value
+
+    return () => {
+      model.off("change:global_config", handler);
+      model.off("change:GlobalConfig", handler);
+    };
+  }, [model]);
+
+  // Extract mode and sliceKey from globalConfig
+  const mode = globalConfig?.GlobalConfig?.Mode ?? "3D"; // default to "3D"
+  useEffect(() => {
+    if (mode === "2D") {
+      viewStates.setLayoutMode("2d");
+      // For 2D mode from backend, we don't automatically show scatterplot
+      // User needs to have section data and manually toggle
+    } else {
+      // mode === "3D": default behavior (point cloud)
+      uiStates.setshowPointCloud(true);
+      uiStates.setShowScatterplot(false);
+    }
+    // Only depend on mode, not uiStates or viewStates to avoid re-running
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+  // laz URL State
+  const [lazUrl, setLazUrl] = useState<string | null>(null);
+
+  // AnnotaionsConfig Hook
+  const [annotationConfig, setAnnotationConfig] =
+    useState<AnnotationConfig | null>(null);
+  const [annotationBins, setAnnotationBins] = useState<
+    Record<string, Uint8Array | Uint16Array | Uint32Array>
+  >({});
+
+  // Continuous Fields State
+  const [continuousFields, setContinuousFields] = useState<
+    Record<string, ContinuousField>
+  >({});
+
+  const [activeContinuous, setActiveContinuous] = useState<string | null>(null);
+  const [lassoEnabled, setLassoEnabled] = useState(false);
+  const [selectedCellIndices, setSelectedCellIndices] = useState<number[]>([]);
+  const [selectionVersion, setSelectionVersion] = useState(0);
+  const [sectionTransforms, setSectionTransforms] = useState<SectionTransforms>(
+    {},
+  );
+  const [activeAlignmentSection, setActiveAlignmentSection] = useState(0);
+  const [referenceAlignmentSection, setReferenceAlignmentSection] = useState(0);
+  const [alignmentAnnotation, setAlignmentAnnotation] = useState("");
+  const [allowAutoScale, setAllowAutoScale] = useState(false);
+  const [alignmentMode, setAlignmentMode] = useState<AlignmentMode>("hybrid");
+  const [alignmentAnnotationWeight, setAlignmentAnnotationWeight] =
+    useState(0.5);
+  const [autoAlignStatus, setAutoAlignStatus] = useState("");
+  const [workflowRunning, setWorkflowRunning] = useState(false);
+
+  const selectedPointIndices = useMemo(
+    () => new Set(selectedCellIndices),
+    [selectedCellIndices],
+  );
+
+  const writeSelectedCellsToModel = useCallback(
+    (indices: number[], source: "lasso" | "clear") => {
+      const normalized = normalizeSelectionIndices({ indices });
+
+      setSelectedCellIndices(normalized);
+      setSelectionVersion((version) => version + 1);
+
+      model.set("selected_cells", {
+        indices: normalized,
+        orders: normalized,
+        count: normalized.length,
+        source,
+        mode: uiStates.showPointCloud ? "3D" : "2D",
+        timestamp: Date.now(),
+      });
+      model.save_changes?.();
+    },
+    [model, uiStates.showPointCloud],
+  );
+
+  useEffect(() => {
+    if (!model) return;
+
+    const handler = () => {
+      const indices = normalizeSelectionIndices(model.get("selected_cells"));
+      setSelectedCellIndices(indices);
+      setSelectionVersion((version) => version + 1);
+    };
+
+    model.on("change:selected_cells", handler);
+    handler();
+
+    return () => {
+      model.off("change:selected_cells", handler);
+    };
+  }, [model]);
+
+  useEffect(() => {
+    if (!model) return;
+
+    const configMap: Record<string, ContinuousConfig> =
+      model.get("continuous_config");
+    const bins = model.get("continuous_bins");
+
+    if (!configMap || !bins) return;
+
+    const parsed: Record<string, ContinuousField> = {};
+
+    for (const [name, config] of Object.entries(configMap) as [
+      string,
+      ContinuousConfig,
+    ][]) {
+      const dv = bins[name] as DataView | undefined;
+      if (!dv) continue;
+
+      const raw = parseContinuousArray(dv, config.DType);
+
+      const values =
+        config.DType === "float16" ? decodeFloat16(raw as Uint16Array) : raw;
+
+      parsed[name] = {
+        name,
+        values,
+        ContinuousConfig: config,
+      };
+    }
+
+    setContinuousFields(parsed);
+  }, [model]);
+
+  useEffect(() => {
+    if (!model) return;
+
+    const config = model.get("annotation_config");
+    const bins = model.get("annotation_bins");
+
+    if (!config || !bins) return;
+
+    const parsedBins: Record<string, Uint8Array | Uint16Array | Uint32Array> =
+      {};
+
+    for (const anno of config.AvailableAnnoTypes) {
+      const dv = bins[anno] as DataView | undefined;
+      if (!dv) continue;
+
+      const dtype = config.AnnoDtypes?.[anno];
+
+      if (!dtype) {
+        console.warn(
+          `[SpatialVista] Missing AnnoDtypes for annotation "${anno}", skip.`,
+        );
+        continue;
+      }
+
+      switch (dtype) {
+        case "uint8":
+          parsedBins[anno] = new Uint8Array(
+            dv.buffer,
+            dv.byteOffset,
+            dv.byteLength,
+          );
+          break;
+
+        case "uint16":
+          parsedBins[anno] = new Uint16Array(
+            dv.buffer,
+            dv.byteOffset,
+            dv.byteLength / 2,
+          );
+          break;
+
+        case "uint32":
+          parsedBins[anno] = new Uint32Array(
+            dv.buffer,
+            dv.byteOffset,
+            dv.byteLength / 4,
+          );
+          break;
+
+        default:
+          console.error(
+            `[SpatialVista] Unsupported annotation dtype "${dtype}" for "${anno}"`,
+          );
+      }
+    }
+
+    setAnnotationConfig(config);
+    setAnnotationBins(parsedBins);
+  }, [model]);
+
+  useEffect(() => {
+    let currentUrl: string | null = null;
+
+    const handler = () => {
+      const bytes = model.get("laz_bytes");
+      if (!bytes) return;
+
+      console.log(
+        "Vis: received laz_bytes from model, byte length:",
+        bytes?.length,
+      );
+
+      const blob = new Blob([bytes], { type: "application/octet-stream" });
+
+      if (currentUrl) {
+        console.log("Vis: revoking previous object URL:", currentUrl);
+        URL.revokeObjectURL(currentUrl);
+      }
+      currentUrl = URL.createObjectURL(blob);
+
+      console.log("Vis: created object URL for blob:", currentUrl);
+      setLazUrl(currentUrl);
+    };
+
+    model.on("change:laz_bytes", handler);
+    handler(); // 处理初始化时已经有数据的情况
+
+    return () => {
+      model.off("change:laz_bytes", handler);
+      if (currentUrl) {
+        console.log("Vis: cleanup revoking object URL:", currentUrl);
+        URL.revokeObjectURL(currentUrl);
+      }
+    };
+  }, [model]);
+
+  // measure viz container width and keep it updated
+  useEffect(() => {
+    const el = vizContainerRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const w = el.clientWidth;
+      setContainerWidth(w > 0 ? w : null);
+    };
+
+    // set initial
+    update();
+
+    // observe resize
+    const ro = new ResizeObserver(() => {
+      update();
+    });
+    ro.observe(el);
+
+    return () => {
+      ro.disconnect();
+    };
+  }, [vizContainerRef]);
+  // Data Manager Hook
+  const {
+    isLoaded,
+    loadedData,
+    loadedAnnotations,
+    numericField,
+    loadNumericField,
+    onDataLoad,
+  } = useDataManager({
+    onLoad,
+    updateViewState: viewStates.updateViewState,
+    setInitialCamera: viewStates.setInitialCamera,
+    setActiveZoom: viewStates.setActiveZoom,
+    annotationConfig,
+    annotationBins,
+    parentWidth: containerWidth,
+  });
+
+  const handleSelectContinuous = useCallback(
+    (name: string | null) => {
+      setActiveContinuous(name);
+
+      if (!loadedData) return;
+
+      if (!name) {
+        loadNumericField(null, loadedData);
+        return;
+      }
+
+      const field = continuousFields[name];
+      if (!field) {
+        loadNumericField(null, loadedData);
+        return;
+      }
+
+      loadNumericField(field, loadedData);
+
+      uiStates.setNumericThreshold(field.ContinuousConfig.Min);
+    },
+    [loadedData, continuousFields, loadNumericField, uiStates],
+  );
+  useEffect(() => {
+    viewStates.setIsLoaded?.(isLoaded);
+  }, [isLoaded, viewStates]);
+
+  // Annotation States Hook
+  const annotationStates = useAnnotationStates(annotationConfig);
+
+  // Section States Hook
+  const slicekey =
+    model.get("global_config")?.GlobalConfig?.SliceKey || "section";
+  const sectionStates = useSectionStates(
+    loadedData!,
+    uiStates.showPointCloud,
+    uiStates.showScatterplot,
+    annotationStates.categoryColors,
+    annotationConfig,
+    slicekey,
+  );
+
+  // Layout Mode Hook
+  const layoutMode = useLayoutMode(
+    viewStates.layoutMode,
+    viewStates.setLayoutMode,
+    activeContinuous,
+    annotationStates.coloringAnnotation,
+    loadedData,
+    viewStates.initialCamera,
+    viewStates.updateViewState,
+    uiStates.setPointSize,
+  );
+
+  // After deck gl render
+  const handleAfterRender = useCallback(
+    ({ gl }: { gl: WebGLRenderingContext }) => {
+      // save gl context
+      glRef.current = gl;
+    },
+    [],
+  );
+
+  const captureCurrentImage = useCallback(() => {
+    if (!glRef.current) return;
+
+    // construct a temporary link element
+    const link = document.createElement("a");
+
+    // current timestamp
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/:/g, "-")
+      .substring(0, 19);
+    link.download = `spatial-vista-vis-${timestamp}.png`;
+
+    // get image data from canvas
+    const canvas = glRef.current.canvas as HTMLCanvasElement;
+    link.href = canvas.toDataURL("image/png");
+
+    // download the image
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  // judege if section key existed
+  const hasSections =
+    mode === "3D" &&
+    slicekey &&
+    annotationConfig?.AvailableAnnoTypes.includes(slicekey);
+
+  const sectionOptions = useMemo(
+    () => annotationConfig?.AnnoMaps[slicekey]?.Items ?? [],
+    [annotationConfig, slicekey],
+  );
+
+  useEffect(() => {
+    if (sectionOptions.length === 0) return;
+    const codes = sectionOptions.map((item) => item.Code);
+    if (!codes.includes(referenceAlignmentSection)) {
+      setReferenceAlignmentSection(codes[0]);
+    }
+    if (
+      !codes.includes(activeAlignmentSection) ||
+      (codes.length > 1 && activeAlignmentSection === referenceAlignmentSection)
+    ) {
+      setActiveAlignmentSection(
+        codes.find((code) => code !== referenceAlignmentSection) ?? codes[0],
+      );
+    }
+  }, [activeAlignmentSection, referenceAlignmentSection, sectionOptions]);
+
+  useEffect(() => {
+    const keys = annotationConfig?.AvailableAnnoTypes ?? [];
+    if (!keys.includes(alignmentAnnotation)) {
+      setAlignmentAnnotation(
+        keys.find((key) => key !== slicekey) ?? keys[0] ?? "",
+      );
+    }
+  }, [alignmentAnnotation, annotationConfig, slicekey]);
+
+  const canLasso =
+    isLoaded && uiStates.showPointCloud && viewStates.layoutMode === "3d";
+
+  useEffect(() => {
+    if (!canLasso) {
+      setLassoEnabled(false);
+    }
+  }, [canLasso]);
+
+  const handleLassoToggle = useCallback(() => {
+    if (!canLasso) return;
+
+    setLassoEnabled((enabled) => !enabled);
+  }, [canLasso]);
+
+  const handleLassoSelect = useCallback(
+    (indices: number[]) => {
+      writeSelectedCellsToModel(indices, "lasso");
+    },
+    [writeSelectedCellsToModel],
+  );
+
+  const handleSelectionClear = useCallback(() => {
+    writeSelectedCellsToModel([], "clear");
+  }, [writeSelectedCellsToModel]);
+
+  // Toggle DeckGL Display
+  const toggleDeckGLDisplay = useCallback(async () => {
+    if (uiStates.showPointCloud) {
+      // turn off DeckGL
+      uiStates.setshowPointCloud(false);
+      const sectionAnnotations = loadedData?.extData.annotations[slicekey];
+      // get available section IDs
+      if (sectionStates.availableSectionIDs.length === 0) {
+        const uniqueSectionIDs = Array.from(new Set(sectionAnnotations)).sort(
+          (a, b) => a - b,
+        );
+        sectionStates.setAvailableSectionIDs(uniqueSectionIDs);
+
+        // first section as default
+        if (
+          uniqueSectionIDs.length > 0 &&
+          (!sectionStates.currentSectionID ||
+            !uniqueSectionIDs.includes(sectionStates.currentSectionID))
+        ) {
+          sectionStates.setCurrentSectionID(uniqueSectionIDs[0]);
+        }
+      }
+
+      uiStates.setShowScatterplot(true);
+      // force reset 2D view state when switching to 2D
+      if (loadedData && loadedData.header && loadedData.header.boundingBox) {
+        const [mins, maxs] = loadedData.header.boundingBox;
+        const widthForZoom =
+          typeof containerWidth === "number" && containerWidth > 0
+            ? containerWidth
+            : window.innerWidth;
+        viewStates.updateStviewState({
+          target: [(mins[0] + maxs[0]) / 2, (mins[1] + maxs[1]) / 2, 0],
+          zoom: Math.log2(widthForZoom / (maxs[0] - mins[0])) - 2,
+          minZoom: -10,
+          maxZoom: 10,
+        });
+      }
+    } else {
+      uiStates.setshowPointCloud(true);
+      uiStates.setShowScatterplot(false);
+      console.log("now loaded anns:", loadedAnnotations);
+    }
+  }, [
+    uiStates,
+    loadedData,
+    slicekey,
+    sectionStates,
+    containerWidth,
+    viewStates,
+    loadedAnnotations,
+  ]);
+
+  // Dynamic layers with combined color params
+  const colorParams = useMemo(
+    () => ({
+      ...annotationStates.colorParams,
+      NumericThreshold: uiStates.numericThreshold,
+      selectedPointIndices,
+    }),
+    [
+      annotationStates.colorParams,
+      selectedPointIndices,
+      uiStates.numericThreshold,
+    ],
+  );
+
+  const sectionAnnotations = hasSections
+    ? loadedData?.extData.annotations[slicekey]
+    : null;
+  const adjustedPositions = useMemo(() => {
+    const positions = loadedData?.extData.POSITION?.value;
+    if (!positions || !sectionAnnotations) return null;
+    const aligned = applySectionAlignment(
+      positions,
+      sectionAnnotations,
+      sectionTransforms,
+    );
+    return applySectionSpacing(
+      aligned,
+      sectionAnnotations,
+      uiStates.sectionSpacingMode,
+      uiStates.sectionSpacingMode === "fixed"
+        ? uiStates.fixedSectionSpacing
+        : uiStates.sectionSpacing,
+    );
+  }, [
+    loadedData,
+    sectionAnnotations,
+    sectionTransforms,
+    uiStates.fixedSectionSpacing,
+    uiStates.sectionSpacing,
+    uiStates.sectionSpacingMode,
+  ]);
+
+  const alignmentPayload = useMemo(() => {
+    const labelsByCode = new Map(
+      sectionOptions.map((item) => [item.Code, item.Name]),
+    );
+    return {
+      version: 1,
+      section_key: slicekey,
+      reference_section: labelsByCode.get(referenceAlignmentSection) ?? null,
+      active_section: labelsByCode.get(activeAlignmentSection) ?? null,
+      annotation: alignmentAnnotation,
+      auto_alignment: {
+        mode: alignmentMode,
+        annotation_weight: alignmentAnnotationWeight,
+        allow_scale: allowAutoScale,
+      },
+      z_spacing: {
+        mode: uiStates.sectionSpacingMode,
+        value:
+          uiStates.sectionSpacingMode === "fixed"
+            ? uiStates.fixedSectionSpacing
+            : uiStates.sectionSpacing,
+      },
+      transforms: Object.fromEntries(
+        sectionOptions.map((item) => {
+          const transform =
+            sectionTransforms[item.Code] ?? IDENTITY_SECTION_TRANSFORM;
+          return [
+            item.Name,
+            {
+              translate_x: transform.translateX,
+              translate_y: transform.translateY,
+              rotation: transform.rotation,
+              scale: transform.scale,
+              flip_x: transform.flipX,
+              flip_y: transform.flipY,
+            },
+          ];
+        }),
+      ),
+    };
+  }, [
+    activeAlignmentSection,
+    alignmentAnnotation,
+    alignmentAnnotationWeight,
+    alignmentMode,
+    allowAutoScale,
+    referenceAlignmentSection,
+    sectionOptions,
+    sectionTransforms,
+    slicekey,
+    uiStates.fixedSectionSpacing,
+    uiStates.sectionSpacing,
+    uiStates.sectionSpacingMode,
+  ]);
+
+  useEffect(() => {
+    if (!hasSections) return;
+    model.set("alignment_transforms", alignmentPayload);
+    model.save_changes?.();
+  }, [alignmentPayload, hasSections, model]);
+
+  const updateActiveTransform = useCallback(
+    (transform: SectionTransform) => {
+      setSectionTransforms((current) => ({
+        ...current,
+        [activeAlignmentSection]: transform,
+      }));
+    },
+    [activeAlignmentSection],
+  );
+
+  const handleAutoAlign = useCallback(() => {
+    const positions = loadedData?.extData.POSITION?.value;
+    const annotations = loadedData?.extData.annotations[alignmentAnnotation];
+    if (!positions || !sectionAnnotations) {
+      setAutoAlignStatus("Position or section data is not available.");
+      return;
+    }
+    if (alignmentMode === "annotation" && !annotations) {
+      setAutoAlignStatus("The selected annotation is not loaded.");
+      return;
+    }
+    try {
+      const suggestion = suggestSectionAlignment(
+        positions,
+        sectionAnnotations,
+        annotations ?? null,
+        activeAlignmentSection,
+        referenceAlignmentSection,
+        allowAutoScale,
+        alignmentMode,
+        alignmentAnnotationWeight,
+      );
+      if (suggestion) {
+        updateActiveTransform(suggestion);
+        setAutoAlignStatus("Alignment applied.");
+      } else {
+        setAutoAlignStatus("No usable outline or shared landmarks were found.");
+      }
+    } catch (error) {
+      setAutoAlignStatus(
+        error instanceof Error ? error.message : "Auto align failed.",
+      );
+    }
+  }, [
+    activeAlignmentSection,
+    alignmentAnnotation,
+    alignmentAnnotationWeight,
+    alignmentMode,
+    loadedData,
+    referenceAlignmentSection,
+    sectionAnnotations,
+    updateActiveTransform,
+    allowAutoScale,
+  ]);
+
+  const handleAlignmentWorkflow = useCallback(
+    async (workflow: AlignmentWorkflow) => {
+      const positions = loadedData?.extData.POSITION?.value;
+      const annotations = loadedData?.extData.annotations[alignmentAnnotation];
+      if (!positions || !sectionAnnotations || sectionOptions.length < 2) {
+        setAutoAlignStatus("At least two sections are required.");
+        return;
+      }
+      if (alignmentMode === "annotation" && !annotations) {
+        setAutoAlignStatus("The selected annotation is not loaded.");
+        return;
+      }
+
+      setWorkflowRunning(true);
+      const nextTransforms: SectionTransforms = {};
+      let alignedCount = 0;
+      try {
+        for (let index = 1; index < sectionOptions.length; index += 1) {
+          const referenceIndex = workflow === "fixed-first" ? 0 : index - 1;
+          const referenceSection = sectionOptions[referenceIndex].Code;
+          const activeSection = sectionOptions[index].Code;
+          setReferenceAlignmentSection(referenceSection);
+          setActiveAlignmentSection(activeSection);
+          setAutoAlignStatus(
+            `Aligning ${sectionOptions[index].Name} (${index}/${sectionOptions.length - 1})…`,
+          );
+          await new Promise<void>((resolve) =>
+            requestAnimationFrame(() => resolve()),
+          );
+
+          const currentPositions = applySectionAlignment(
+            positions,
+            sectionAnnotations,
+            nextTransforms,
+          );
+          const suggestion = suggestSectionAlignment(
+            currentPositions,
+            sectionAnnotations,
+            annotations ?? null,
+            activeSection,
+            referenceSection,
+            allowAutoScale,
+            alignmentMode,
+            alignmentAnnotationWeight,
+          );
+          if (suggestion) {
+            nextTransforms[activeSection] = suggestion;
+            alignedCount += 1;
+            setSectionTransforms({ ...nextTransforms });
+          }
+        }
+        setAutoAlignStatus(
+          `Workflow complete: ${alignedCount}/${sectionOptions.length - 1} sections aligned.`,
+        );
+      } catch (error) {
+        setAutoAlignStatus(
+          error instanceof Error ? error.message : "Alignment workflow failed.",
+        );
+      } finally {
+        setWorkflowRunning(false);
+      }
+    },
+    [
+      alignmentAnnotation,
+      alignmentAnnotationWeight,
+      alignmentMode,
+      allowAutoScale,
+      loadedData,
+      sectionAnnotations,
+      sectionOptions,
+    ],
+  );
+
+  const exportAlignment = useCallback(() => {
+    const blob = new Blob([JSON.stringify(alignmentPayload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "spatialvista-alignment.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [alignmentPayload]);
+
+  const layers = useDeckLayers({
+    showPointCloud: uiStates.showPointCloud,
+    showScatterplot: uiStates.showScatterplot,
+    loadedData,
+    onDataLoad,
+    filteredSectionPoints: sectionStates.filteredSectionPoints,
+    NumericThreshold: uiStates.numericThreshold,
+    numericField,
+    pointOpacity: uiStates.pointOpacity,
+    pointSize: uiStates.pointSize,
+    layoutMode: viewStates.layoutMode,
+    FancyPositions: layoutMode.FancyPositions,
+    colorParams,
+    lazUrl,
+    selectedPointIndices,
+    selectionVersion,
+    adjustedPositions,
+  });
+  // [number, number] | null
+  const minMaxValue: [number, number] | null =
+    numericField !== null
+      ? [numericField.ContinuousConfig.Min, numericField.ContinuousConfig.Max]
+      : null;
+
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {/* Header */}
+      <VisHeader
+        isLoaded={isLoaded}
+        showPointCloud={uiStates.showPointCloud}
+        hasSections={hasSections}
+        lassoEnabled={lassoEnabled}
+        canLasso={canLasso}
+        selectedCount={selectedCellIndices.length}
+        onContinuousOpen={() => uiStates.setContinuousOpen(true)}
+        onToggleView={toggleDeckGLDisplay}
+        onCapture={captureCurrentImage}
+        onLassoToggle={handleLassoToggle}
+        onSelectionClear={handleSelectionClear}
+      />
+
+      <div className="flex min-h-0 flex-1 items-stretch overflow-hidden">
+        {/* Annotation Panel */}
+        <div className="hidden min-h-0 self-stretch p-2 md:flex md:w-[10%] md:min-w-[120px] md:flex-col">
+          <AnnotationPanel
+            annotationConfig={annotationConfig}
+            loadedAnnotations={loadedAnnotations}
+            coloringAnnotation={annotationStates.coloringAnnotation}
+            selectedCategories={annotationStates.selectedCategories}
+            hiddenCategoryIds={annotationStates.hiddenCategoryIds}
+            categoryColors={annotationStates.categoryColors}
+            customColors={annotationStates.customColors}
+            currentNumericName={activeContinuous}
+            isLoaded={isLoaded}
+            onColorPickerOpen={() => uiStates.setColorPickerOpen(true)}
+            onSetAnnotationForColoring={
+              annotationStates.setAnnotationForColoring
+            }
+            onSelectedCategoriesChange={annotationStates.setSelectedCategories}
+            onHiddenCategoryIdsChange={annotationStates.setHiddenCategoryIds}
+          />
+        </div>
+
+        {/* Visualization Area */}
+        <div
+          className="relative min-h-0 min-w-0 flex-1 self-stretch lg:w-[70%]"
+          ref={vizContainerRef}
+        >
+          {
+            <VisualizationArea
+              isLoaded={isLoaded}
+              showPointCloud={uiStates.showPointCloud}
+              showScatterplot={uiStates.showScatterplot}
+              layoutMode={viewStates.layoutMode}
+              viewState={viewStates.viewState}
+              stviewState={viewStates.stviewState}
+              initialCamera={viewStates.initialCamera}
+              layers={layers}
+              loadedData={loadedData}
+              loadedAnnotations={loadedAnnotations}
+              availableSectionIDs={sectionStates.availableSectionIDs}
+              currentSectionID={sectionStates.currentSectionID}
+              sectionPreviews={sectionStates.sectionPreviews}
+              NumericThreshold={uiStates.numericThreshold}
+              minMaxValue={minMaxValue}
+              lassoEnabled={lassoEnabled}
+              selectedCount={selectedCellIndices.length}
+              colorParams={colorParams}
+              adjustedPositions={adjustedPositions}
+              device={device}
+              onViewStateUpdate={viewStates.updateViewState}
+              onStViewStateUpdate={viewStates.updateStviewState}
+              onActiveZoomChange={viewStates.setActiveZoom}
+              onSectionClick={sectionStates.handleSectionClick}
+              onNumericThresholdChange={uiStates.setNumericThreshold}
+              onAfterRender={handleAfterRender}
+              onLassoSelect={handleLassoSelect}
+              annotationConfig={annotationConfig}
+            />
+          }
+        </div>
+
+        {/* Control Panel */}
+        <div className="hidden min-h-0 self-stretch space-y-3 overflow-y-auto p-2 md:flex md:w-[20%] md:flex-col">
+          {!!hasSections &&
+            uiStates.showPointCloud &&
+            viewStates.layoutMode === "3d" && (
+              <AlignmentPanel
+                sections={sectionOptions.map((item) => ({
+                  code: item.Code,
+                  name: item.Name,
+                }))}
+                annotationKeys={
+                  annotationConfig?.AvailableAnnoTypes.filter(
+                    (key) => key !== slicekey,
+                  ) ?? []
+                }
+                activeSection={activeAlignmentSection}
+                referenceSection={referenceAlignmentSection}
+                annotationKey={alignmentAnnotation}
+                transform={
+                  sectionTransforms[activeAlignmentSection] ??
+                  IDENTITY_SECTION_TRANSFORM
+                }
+                adjustmentRange={Math.max(
+                  loadedData?.header?.boundingBox
+                    ? Math.max(
+                        loadedData.header.boundingBox[1][0] -
+                          loadedData.header.boundingBox[0][0],
+                        loadedData.header.boundingBox[1][1] -
+                          loadedData.header.boundingBox[0][1],
+                      )
+                    : 100,
+                  1,
+                )}
+                allowAutoScale={allowAutoScale}
+                alignmentMode={alignmentMode}
+                annotationWeight={alignmentAnnotationWeight}
+                autoAlignStatus={autoAlignStatus}
+                workflowRunning={workflowRunning}
+                onActiveSectionChange={setActiveAlignmentSection}
+                onReferenceSectionChange={setReferenceAlignmentSection}
+                onAnnotationKeyChange={setAlignmentAnnotation}
+                onTransformChange={updateActiveTransform}
+                onAllowAutoScaleChange={setAllowAutoScale}
+                onAlignmentModeChange={setAlignmentMode}
+                onAnnotationWeightChange={setAlignmentAnnotationWeight}
+                onAutoAlign={handleAutoAlign}
+                onRunWorkflow={handleAlignmentWorkflow}
+                onReset={() =>
+                  updateActiveTransform(IDENTITY_SECTION_TRANSFORM)
+                }
+                onExport={exportAlignment}
+              />
+            )}
+          <ControlPanel
+            activeZoom={viewStates.activeZoom}
+            autoRotate={viewStates.autoRotate}
+            layoutMode={viewStates.layoutMode}
+            viewState={viewStates.viewState}
+            initialCamera={viewStates.initialCamera}
+            pointSize={uiStates.pointSize}
+            pointOpacity={uiStates.pointOpacity}
+            sectionSpacing={uiStates.sectionSpacing}
+            sectionSpacingMode={uiStates.sectionSpacingMode}
+            fixedSectionSpacing={uiStates.fixedSectionSpacing}
+            showSectionSpacing={
+              !!hasSections &&
+              uiStates.showPointCloud &&
+              viewStates.layoutMode === "3d"
+            }
+            isLoaded={isLoaded}
+            currentTrait={activeContinuous}
+            coloringAnnotation={annotationStates.coloringAnnotation}
+            selectedCategories={annotationStates.selectedCategories}
+            onZoomChange={viewStates.setActiveZoom}
+            onAutoRotateToggle={viewStates.toggleAutoRotate}
+            onLayoutModeToggle={layoutMode.toggleLayoutMode}
+            onResetCamera={() => {
+              viewStates.updateViewState({
+                ...viewStates.initialCamera,
+                transitionDuration: 600,
+              });
+              viewStates.setActiveZoom("standard");
+            }}
+            onPointSizeChange={uiStates.setPointSize}
+            onPointOpacityChange={uiStates.setPointOpacity}
+            onSectionSpacingChange={uiStates.setSectionSpacing}
+            onSectionSpacingModeChange={uiStates.setSectionSpacingMode}
+            onFixedSectionSpacingChange={uiStates.setFixedSectionSpacing}
+            onResetPointControls={() => {
+              uiStates.setPointSize(1);
+              uiStates.setPointOpacity(1);
+              uiStates.setSectionSpacing(1);
+              uiStates.setSectionSpacingMode("multiplier");
+              uiStates.setFixedSectionSpacing(100);
+              uiStates.setNumericThreshold(minMaxValue ? minMaxValue[0] : 0);
+            }}
+            onViewStateUpdate={viewStates.updateViewState}
+            annotationConfig={annotationConfig}
+          />
+        </div>
+      </div>
+
+      {/* Dialogs */}
+      <ContinuousSelectionDialog
+        open={uiStates.continuousOpen} // 可以之后改名
+        activeContinuous={activeContinuous}
+        continuousFields={continuousFields}
+        onOpenChange={uiStates.setContinuousOpen}
+        onSelectContinuous={handleSelectContinuous}
+      />
+
+      <ColorPickerDialog
+        open={uiStates.colorPickerOpen}
+        coloringAnnotation={annotationStates.coloringAnnotation}
+        annotationConfig={annotationConfig}
+        categoryColors={annotationStates.categoryColors}
+        customColors={annotationStates.customColors}
+        onOpenChange={uiStates.setColorPickerOpen}
+        onCustomColorsChange={annotationStates.setCustomColors}
+      />
+    </div>
+  );
+}
