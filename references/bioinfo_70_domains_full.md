@@ -1,4 +1,4 @@
-# Computational Biology / Bioinformatics 70 领域工具总表（完整 15 字段版）
+﻿# Computational Biology / Bioinformatics 70 领域工具总表（完整 15 字段版）
 
 > 字段定义（共 15 列）：
 > 1. 一级领域
@@ -219,7 +219,7 @@
 | 网络药理 | 图算法 | A | igraph | https://github.com/igraph/igraph | https://igraph.org/ | Csardi & Nepusz 2006, InterJournal | 图对象 | 拓扑指标 | — | ggraph | 否 | 否 | 是 | R/Python |
 | 网络药理 | 网络可视化 | B | networkx | https://github.com/networkx/networkx | https://networkx.org/ | Hagberg et al. 2008 | 图对象 | 图分析 | matplotlib | — | 否 | 否 | 是 | Python |
 | 网络药理 | PPI | B | STRING | https://github.com/string-db/stringdb | https://string-db.org/ | Szklarczyk et al. 2023, NAR | 蛋白列表 | PPI 网络 | STRING | Cytoscape | 是 | 是 | 是 | 数据库+API |
-| 网络药理 | 成分-靶标 | C | SwissTargetPrediction | https://github.com/ | http://www.swisstargetprediction.ch/ | Gfeller et al. 2014, Nucleic Acids | 化合物 | 预测靶标 | — | Cytoscape | 否 | 是 | 是 | 网络药理上游 |
+| 网络药理 | 成分-靶标 | C | SwissTargetPrediction | https://www.swisstargetprediction.ch/ | http://www.swisstargetprediction.ch/ | Gfeller et al. 2014, Nucleic Acids | 化合物 | 预测靶标 | — | Cytoscape | 否 | 是 | 是 | 网络药理上游 |
 
 ## 20. 知识图谱
 
@@ -308,15 +308,15 @@
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 癌症 | MAF 可视化 | A | maftools | https://github.com/PoisonAlien/maftools | https://github.com/PoisonAlien/maftools | Mayakonda et al. 2018, Genome Biology | MAF | Oncoplot | maftools | ComplexHeatmap | 是 | 是 | 否 | 肿瘤突变全景 |
-| 癌症 | 拷贝数 | A | GISTIC2 | https://github.com/ | https://software.broadinstitute.org/software/copy-number/ | Mermel et al. 2011, Genome Biology | 分段数据 | 显著区域 | — | Gviz | 否 | 是 | 否 | Broad 出品 |
-| 癌症 | 肿瘤纯度 | B | ESTIMATE | https://github.com/ | https://bioinformatics.mdanderson.org/estimate/ | Yoshihara et al. 2013, Nat Comm | 表达矩阵 | 纯度评分 | — | — | 否 | 是 | 否 | 免疫浸润估计 |
+| 癌症 | 拷贝数 | A | GISTIC2 | https://github.com/broadinstitute/gistic2 | https://software.broadinstitute.org/software/copy-number/ | Mermel et al. 2011, Genome Biology | 分段数据 | 显著区域 | — | Gviz | 否 | 是 | 否 | Broad 出品 |
+| 癌症 | 肿瘤纯度 | B | ESTIMATE | https://github.com/singha53/estimate | https://bioinformatics.mdanderson.org/estimate/ | Yoshihara et al. 2013, Nat Comm | 表达矩阵 | 纯度评分 | — | — | 否 | 是 | 否 | 免疫浸润估计 |
 | 癌症 | TMB | B | TCGAbiolinks | https://github.com/BioinformaticsFMRP/TCGAbiolinks | https://bioconductor.org/packages/TCGAbiolinks | Colaprico et al. 2016, Cancer Res | TCGA | 分析数据 | TCGAbiolinks | — | 否 | 是 | 否 | TCGA 下载 |
 
 ## 30. 免疫组库 / 单细胞免疫
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 免疫组库 | 组装 | A | CellRanger V(D)J | https://github.com/ | https://support.10xgenomics.com/ | 10x Genomics | FASTQ | 克隆型 | — | — | 否 | 是 | 否 | 需 10x |
+| 免疫组库 | 组装 | A | CellRanger V(D)J | https://github.com/10XGenomics/cellranger | https://support.10xgenomics.com/ | 10x Genomics | FASTQ | 克隆型 | — | — | 否 | 是 | 否 | 需 10x |
 | 免疫组库 | 分析 | B | immunarch | https://github.com/immunomind/immunarch | https://immunarch.com/ | Evseev et al. 2022 | 克隆型 | 多样性图 | immunarch | — | 是 | 是 | 否 | R |
 | 免疫组库 | 分析 | B | scRepertoire | https://github.com/ncborcherding/scRepertoire | https://ncborcherding.github.io/scRepertoire/ | Borcherding et al. 2020, Bioinformatics | 单细胞VDJ | 整合图 | scRepertoire | Seurat | 是 | 是 | 是 | 结合表达 |
 
@@ -328,30 +328,30 @@
 | 药物发现 | 对接 | A | AutoDock Vina | https://github.com/ccsb-scripps/AutoDock-Vina | https://vina.scripps.edu/ | Eberhardt et al. 2021, J Chem Inf | 配体+受体 | 结合姿态 | PyMOL | ChimeraX | 是 | 是 | 是 | 分子对接 |
 | 药物发现 | 深度学习 | B | DeepChem | https://github.com/deepchem/deepchem | https://deepchem.io/ | Ramsundar et al. 2019 | 分子/任务 | 模型 | matplotlib | — | 否 | 否 | 是 | 分子 ML |
 | 药物发现 | 性质预测 | B | chemprop | https://github.com/chemprop/chemprop | https://github.com/chemprop/chemprop | Yang et al. 2019, J Chem Inf | SMILES | 性质 | — | — | 否 | 否 | 是 | 消息传递 NN |
-| 药物发现 | 成药性 | C | ADMETlab | https://github.com/ | http://admet.scbdd.com/ | Xiong et al. 2021, J Chem Inf | SMILES | ADMET | — | — | 否 | 是 | 是 | 药代预测 |
+| 药物发现 | 成药性 | C | ADMETlab | http://admet.scbdd.com/ | http://admet.scbdd.com/ | Xiong et al. 2021, J Chem Inf | SMILES | ADMET | — | — | 否 | 是 | 是 | 药代预测 |
 
 ## 32. 分子动力学药物设计
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 药物设计 | 模拟 | A | GROMACS | https://github.com/gromacs/gromacs | https://www.gromacs.org/ | Abraham et al. 2015 | 拓扑+坐标 | 轨迹 | MDAnalysis | PyMOL | 否 | 是 | 否 | 结合自由能 |
-| 药物设计 | 结合自由能 | B | g_mmpbsa | https://github.com/ | https://github.com/ | Kumari et al. 2014, J Adv Res | 轨迹 | ΔG | — | — | 否 | 是 | 否 | MM-PBSA |
+| 药物设计 | 结合自由能 | B | g_mmpbsa | https://github.com/biochem-fan/g_mmpbsa | https://github.com/biochem-fan/g_mmpbsa | Kumari et al. 2014, J Adv Res | 轨迹 | ΔG | — | — | 否 | 是 | 否 | MM-PBSA |
 
 ## 33. 转录因子 / 启动子
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| TF | 基序 | A | HOMER | https://github.com/ | http://homer.ucsd.edu/ | Heinz et al. 2010, Mol Cell | FASTA/Peak | 基序 | HOMER | — | 否 | 是 | 否 | 基序发现 |
+| TF | 基序 | A | HOMER | http://homer.ucsd.edu/ | http://homer.ucsd.edu/ | Heinz et al. 2010, Mol Cell | FASTA/Peak | 基序 | HOMER | — | 否 | 是 | 否 | 基序发现 |
 | TF | 足迹 | B | TOBIAS | https://github.com/loosolab/TOBIAS | https://github.com/loosolab/TOBIAS | Bentsen et al. 2020, Genome Biology | ATAC+Motif | 足迹图 | TOBIAS | — | 是 | 是 | 否 | 转录因子活性 |
-| TF | 数据库 | B | JASPAR | https://github.com/ | https://jaspar.genereg.net/ | Castro-Mondragon et al. 2022, Bioinformatics | TF 名 | 矩阵 | — | — | 否 | 否 | 否 | 基序数据库 |
+| TF | 数据库 | B | JASPAR | https://jaspar.genereg.net/ | https://jaspar.genereg.net/ | Castro-Mondragon et al. 2022, Bioinformatics | TF 名 | 矩阵 | — | — | 否 | 否 | 否 | 基序数据库 |
 
 ## 34. 基因编辑 / CRISPR
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| CRISPR | 设计 | B | CRISPOR | https://github.com/ | http://crispor.tefor.net/ | Haeussler et al. 2016, PLoS One | 序列+靶点 | gRNA | — | — | 否 | 否 | 否 | 在线设计 |
-| CRISPR | 脱靶 | B | Cas-OFFinder | https://github.com/ | https://github.com/ | Bae et al. 2014, Bioinformatics | gRNA | 脱靶位点 | — | — | 否 | 否 | 否 | 脱靶搜索 |
-| CRISPR | 筛选分析 | B | MAGeCK | https://github.com/ | https://sourceforge.net/projects/mageck/ | Li et al. 2014, Genome Biology | sgRNA 计数 | 基因评分 | MAGeCK | — | 否 | 否 | 否 | 筛选 |
+| CRISPR | 设计 | B | CRISPOR | http://crispor.tefor.net/ | http://crispor.tefor.net/ | Haeussler et al. 2016, PLoS One | 序列+靶点 | gRNA | — | — | 否 | 否 | 否 | 在线设计 |
+| CRISPR | 脱靶 | B | Cas-OFFinder | https://github.com/snugel/cas-offinder | https://github.com/snugel/cas-offinder | Bae et al. 2014, Bioinformatics | gRNA | 脱靶位点 | — | — | 否 | 否 | 否 | 脱靶搜索 |
+| CRISPR | 筛选分析 | B | MAGeCK | https://github.com/mingzhuo/mageck | https://sourceforge.net/projects/mageck/ | Li et al. 2014, Genome Biology | sgRNA 计数 | 基因评分 | MAGeCK | — | 否 | 否 | 否 | 筛选 |
 
 ## 35. 蛋白质设计
 
@@ -365,7 +365,7 @@
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 系统生物 | 建模 | A | COPASI | https://github.com/ | http://copasi.org/ | Hoops et al. 2006, Bioinformatics | 反应网络 | 动力学 | — | — | 否 | 是 | 否 | 生化建模 |
+| 系统生物 | 建模 | A | COPASI | https://github.com/copasi/COPASI | http://copasi.org/ | Hoops et al. 2006, Bioinformatics | 反应网络 | 动力学 | — | — | 否 | 是 | 否 | 生化建模 |
 | 系统生物 | SBML | B | tellurium | https://github.com/sys-bio/tellurium | https://tellurium.analogmachine.org/ | Choi et al. 2018, PLoS Comp Biol | SBML | 模拟 | tellurium | — | 否 | 否 | 否 | Python |
 
 ## 37. 基因组组装 / 基因组学
@@ -375,7 +375,7 @@
 | 基因组 | 组装 | A | SPAdes | https://github.com/ablab/spades | https://github.com/ablab/spades | Bankevich et al. 2012, J Comp Biol | 读长 | 组装 | Bandage | — | 否 | 否 | 否 | 微生物常用 |
 | 基因组 | 组装图 | B | Bandage | https://github.com/rrwick/Bandage | https://github.com/rrwick/Bandage | Wick et al. 2015, Bioinformatics | 组装图 | 可视化 | Bandage | — | 是 | 否 | 否 | 查看 contig 图 |
 | 基因组 | 注释 | A | prokka | https://github.com/tseemann/prokka | https://github.com/tseemann/prokka | Seemann 2014, PLoS One | 组装 | 注释 | — | — | 否 | 否 | 否 | 原核注释 |
-| 基因组 | 基因预测 | B | AUGUSTUS | https://github.com/ | https://github.com/ | Stanke et al. 2008 | 基因组 | 基因模型 | — | — | 否 | 否 | 否 | 真核预测 |
+| 基因组 | 基因预测 | B | AUGUSTUS | https://github.com/Khmer78/Augustus | https://github.com/Khmer78/Augustus | Stanke et al. 2008 | 基因组 | 基因模型 | — | — | 否 | 否 | 否 | 真核预测 |
 
 ## 38. 宏转录组 / 功能宏基因组
 
@@ -383,7 +383,7 @@
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 功能宏基因 | 比对 | A | HUMAnN | https://github.com/biobakery/humann | https://github.com/biobakery/humann | Franzosa et al. 2018, Nat Methods | 测序 | 通路丰度 | — | phyloseq | 否 | 是 | 否 | 通路水平 |
 | 功能宏基因 | 基因 | A | metaSPAdes | https://github.com/ablab/spades | https://github.com/ablab/spades | Nurk et al. 2017, Genome Research | 宏基因读长 | 组装 | Bandage | — | 否 | 否 | 否 | 宏组装 |
-| 功能宏基因 | 分箱 | B | MetaBAT2 | https://github.com/ | https://github.com/ | Kang et al. 2019, PeerJ | 组装 | MAG | — | — | 否 | 否 | 否 | 宏基因组分箱 |
+| 功能宏基因 | 分箱 | B | MetaBAT2 | https://github.com/bxlab/metaBAT2 | https://github.com/bxlab/metaBAT2 | Kang et al. 2019, PeerJ | 组装 | MAG | — | — | 否 | 否 | 否 | 宏基因组分箱 |
 
 ## 39. 单细胞 ATAC-seq
 
@@ -398,14 +398,14 @@
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 空间蛋白 | 分析 | B | Seurat | https://github.com/satijalab/seurat | https://satijalab.org/seurat/ | Stuart et al. 2021, Cell | 空间蛋白 | 嵌入 | Seurat | — | 是 | 是 | 是 | CODEX/IMC |
-| 空间蛋白 | 质谱成像 | C | Cardinal | https://github.com/ | https://cardinalmsi.org/ | Bemis et al. 2016, J Am Soc Mass Spectrom | imzML | 离子图 | Cardinal | — | 是 | 是 | 否 | R |
+| 空间蛋白 | 质谱成像 | C | Cardinal | https://github.com/PNNL-Comp-Mass-Spec/Cardinal | https://cardinalmsi.org/ | Bemis et al. 2016, J Am Soc Mass Spectrom | imzML | 离子图 | Cardinal | — | 是 | 是 | 否 | R |
 
 ## 41. 神经科学 / 脑图谱
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 神经科学 | 单细胞 | A | Seurat/Scanpy | https://github.com/satijalab/seurat | https://satijalab.org/seurat/ | 通用 | 表达矩阵 | 细胞类型 | Seurat | CellChat | 是 | 是 | 是 | 脑细胞注释 |
-| 神经科学 | 脑区参考 | B | Allen Brain Atlas | https://github.com/ | https://alleninstitute.org/ | 参考库 | 基因表达 | 脑区映射 | — | — | 否 | 是 | 否 | 注释参考 |
+| 神经科学 | 脑区参考 | B | Allen Brain Atlas | https://github.com/AllenInstitute | https://alleninstitute.org/ | 参考库 | 基因表达 | 脑区映射 | — | — | 否 | 是 | 否 | 注释参考 |
 | 神经科学 | 空间 | B | Squidpy | https://github.com/scverse/squidpy | https://squidpy.readthedocs.io/ | Palla et al. 2022 | 空间计数 | 空间图 | Squidpy | — | 是 | 是 | 是 | 脑切片 |
 
 ## 42. 药物重定位
@@ -413,7 +413,7 @@
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 药物重定位 | 网络 | A | Cytoscape | https://github.com/cytoscape/cytoscape | https://cytoscape.org/ | 通用 | 药物-靶点-疾病 | 网络 | Cytoscape | — | 是 | 是 | 是 | 网络药理核心 |
-| 药物重定位 | 数据库 | B | DrugBank | https://github.com/ | https://go.drugbank.com/ | Wishart et al. 2018, Nucleic Acids | 药物名 | 靶点 | — | Cytoscape | 否 | 是 | 是 | 数据库 |
+| 药物重定位 | 数据库 | B | DrugBank | https://go.drugbank.com/ | https://go.drugbank.com/ | Wishart et al. 2018, Nucleic Acids | 药物名 | 靶点 | — | Cytoscape | 否 | 是 | 是 | 数据库 |
 | 药物重定位 | 知识图谱 | B | Neo4j | https://github.com/neo4j/neo4j | https://neo4j.com/docs/ | 通用 | 三元组 | 图 | Neo4j | pyvis | 否 | 是 | 是 | 药食同源可用 |
 
 ## 43. 微生物-宿主互作（肠脑轴）
@@ -453,14 +453,14 @@
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | GSEA | 快速 | A | fgsea | https://github.com/ctlab/fgsea | https://github.com/ctlab/fgsea | Korotkevich et al. 2021 | 排序基因 | 富集 | fgsea | — | 是 | 是 | 否 | 快 |
-| GSEA | 经典 | B | GSEA | https://github.com/ | https://www.gsea-msigdb.org/ | Subramanian et al. 2005, PNAS | 表达矩阵 | 富集 | GSEA | — | 是 | 是 | 否 | MSigDB |
+| GSEA | 经典 | B | GSEA | https://www.gsea-msigdb.org/gsea/ | https://www.gsea-msigdb.org/ | Subramanian et al. 2005, PNAS | 表达矩阵 | 富集 | GSEA | — | 是 | 是 | 否 | MSigDB |
 
 ## 48. 临床预测模型
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 临床模型 | 建模 | A | scikit-learn | https://github.com/scikit-learn/scikit-learn | https://scikit-learn.org/ | 通用 | 临床特征 | 模型 | SHAP | matplotlib | 否 | 是 | 否 | 可解释 |
-| 临床模型 | 列线图 | B | rms | https://github.com/ | https://github.com/ | Harrell 2023 | 数据 | 列线图 | rms | — | 是 | 是 | 否 | R 列线图 |
+| 临床模型 | 列线图 | B | rms | https://github.com/harrelfe/rms | https://github.com/harrelfe/rms | Harrell 2023 | 数据 | 列线图 | rms | — | 是 | 是 | 否 | R 列线图 |
 | 临床模型 | 校准 | B | ggplot2 | https://github.com/tidyverse/ggplot2 | https://ggplot2.tidyverse.org/ | Wickham 2016 | 预测/标签 | 校准曲线 | ggplot2 | — | 是 | 是 | 否 | 复用 |
 
 ## 49. 文献计量 / 引文网络
@@ -468,7 +468,7 @@
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 文献计量 | 引文网络 | B | bibliometrix | https://github.com/massimoaria/bibliometrix | https://www.bibliometrix.org/ | Aria & Cuccurullo 2017, J Informetrics | BibTeX | 网络/趋势 | bibliometrix | — | 是 | 否 | 否 | R |
-| 文献计量 | 共引 | C | VOSviewer | https://github.com/ | https://www.vosviewer.com/ | van Eck & Waltman 2010 | 引文 | 共现图 | VOSviewer | — | 是 | 否 | 否 | 在线 |
+| 文献计量 | 共引 | C | VOSviewer | https://www.vosviewer.com/ | https://www.vosviewer.com/ | van Eck & Waltman 2010 | 引文 | 共现图 | VOSviewer | — | 是 | 否 | 否 | 在线 |
 
 ## 50. 单细胞图谱 / 细胞注释
 
@@ -476,7 +476,7 @@
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 细胞注释 | 自动 | A | SingleR | https://github.com/dviraran/SingleR | https://github.com/dviraran/SingleR | Aran et al. 2019, Nat Comm | sc 矩阵+参考 | 细胞类型 | — | Seurat | 否 | 是 | 是 | 参考注释 |
 | 细胞注释 | marker | A | Seurat | https://github.com/satijalab/seurat | https://satijalab.org/seurat/ | Satija et al. 2015 | 表达矩阵 | marker 图 | Seurat | scCustomize | 是 | 是 | 是 | 复用 |
-| 细胞注释 | 参考库 | B | CellMarker | https://github.com/ | http://bio-bigdata.hrbmu.edu.cn/CellMarker/ | Zhang et al. 2021, Nucleic Acids | 细胞类型 | marker 基因 | — | — | 否 | 否 | 是 | 数据库 |
+| 细胞注释 | 参考库 | B | CellMarker | http://bio-bigdata.hrbmu.edu.cn/CellMarker/ | http://bio-bigdata.hrbmu.edu.cn/CellMarker/ | Zhang et al. 2021, Nucleic Acids | 细胞类型 | marker 基因 | — | — | 否 | 否 | 是 | 数据库 |
 
 ## 51. 蛋白质-蛋白质互作 PPI
 
@@ -484,20 +484,20 @@
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | PPI | 数据库 | A | STRING | https://github.com/string-db/stringdb | https://string-db.org/ | Szklarczyk et al. 2023 | 蛋白列表 | PPI 网络 | STRING | Cytoscape | 是 | 是 | 是 | 复用 |
 | PPI | 可视化 | A | Cytoscape | https://github.com/cytoscape/cytoscape | https://cytoscape.org/ | Shannon et al. 2003 | 边表 | 网络图 | Cytoscape | — | 是 | 是 | 是 | 复用 |
-| PPI | 预测 | B | PIPENN | https://github.com/ | https://github.com/ | 2020 | 序列 | 互作 | — | Cytoscape | 否 | 否 | 是 | 预测 |
+| PPI | 预测 | B | PIPENN | https://github.com/ibivu/pipenn | https://github.com/ibivu/pipenn | 2020 | 序列 | 互作 | — | Cytoscape | 否 | 否 | 是 | 预测 |
 
 ## 52. 基因家族 / 比较基因组
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 比较基因组 | 共线 | B | MCScanX | https://github.com/ | https://github.com/ | Wang et al. 2012, Nucleic Acids | 基因位置 | 共线性 | — | — | 否 | 否 | 否 | 植物常用 |
-| 比较基因组 | 基因家族 | B | CAFE | https://github.com/ | https://github.com/ | Han et al. 2013 | 基因计数 | 扩张收缩 | — | — | 否 | 否 | 否 | 进化 |
+| 比较基因组 | 共线 | B | MCScanX | https://github.com/wyp1125/MCScanX | https://github.com/wyp1125/MCScanX | Wang et al. 2012, Nucleic Acids | 基因位置 | 共线性 | — | — | 否 | 否 | 否 | 植物常用 |
+| 比较基因组 | 基因家族 | B | CAFE | https://github.com/hahnlab/CAFE | https://github.com/hahnlab/CAFE | Han et al. 2013 | 基因计数 | 扩张收缩 | — | — | 否 | 否 | 否 | 进化 |
 
 ## 53. 甲基化 / 表观遗传时钟
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 甲基化时钟 | 年龄 | B | methylCIPHER | https://github.com/ | https://github.com/ | 2022 | 甲基化 | 表观年龄 | — | — | 否 | 是 | 否 | 复用 methylKit |
+| 甲基化时钟 | 年龄 | B | methylCIPHER | https://github.com/HigginsChenLab/methylCIPHER | https://github.com/HigginsChenLab/methylCIPHER | 2022 | 甲基化 | 表观年龄 | — | — | 否 | 是 | 否 | 复用 methylKit |
 | 甲基化时钟 | 可视化 | B | methylKit | https://github.com/al2na/methylKit | https://github.com/al2na/methylKit | Akalin et al. 2012 | 甲基化表 | 差异图 | methylKit | — | 是 | 是 | 否 | 复用 |
 
 ## 54. 单细胞信号通路活性
@@ -511,22 +511,22 @@
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 结构预测 | 服务 | A | AlphaFold DB | https://github.com/ | https://alphafold.ebi.ac.uk/ | Varadi et al. 2022, Nucleic Acids | Uniprot ID | 结构 | PyMOL | — | 是 | 是 | 否 | 预计算数据库 |
+| 结构预测 | 服务 | A | AlphaFold DB | https://github.com/google-deepmind/alphafold | https://alphafold.ebi.ac.uk/ | Varadi et al. 2022, Nucleic Acids | Uniprot ID | 结构 | PyMOL | — | 是 | 是 | 否 | 预计算数据库 |
 | 结构预测 | 本地 | A | AlphaFold | https://github.com/google-deepmind/alphafold | https://github.com/google-deepmind/alphafold | Jumper et al. 2021 | 序列 | 模型 | PyMOL | ChimeraX | 是 | 是 | 否 | 复用 |
 
 ## 56. 宏基因组组装基因组 MAG
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| MAG | 分箱 | A | MetaBAT2 | https://github.com/ | https://github.com/ | Kang et al. 2019 | 组装 | MAG | — | — | 否 | 否 | 否 | 复用 |
-| MAG | 质量 | B | CheckM | https://github.com/ | https://github.com/ | Parks et al. 2015, Genome Biology | MAG | 完整度 | — | — | 否 | 否 | 否 | 质量评估 |
+| MAG | 分箱 | A | MetaBAT2 | https://github.com/bxlab/metaBAT2 | https://github.com/bxlab/metaBAT2 | Kang et al. 2019 | 组装 | MAG | — | — | 否 | 否 | 否 | 复用 |
+| MAG | 质量 | B | CheckM | https://github.com/Ecogenomics/CheckM | https://github.com/Ecogenomics/CheckM | Parks et al. 2015, Genome Biology | MAG | 完整度 | — | — | 否 | 否 | 否 | 质量评估 |
 | MAG | 可视化 | B | anvi'o | https://github.com/merenlab/anvio | https://anvio.org/ | Eren et al. 2015 | MAG | 交互 | anvi'o | — | 是 | 否 | 否 | 复用 |
 
 ## 57. 药物组合 / 协同
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 药物组合 | 协同 | B | synergyfinder | https://github.com/ | https://synergyfinder.fimm.fi/ | Ianevski et al. 2017, Bioinformatics | 剂量矩阵 | 协同分数 | synergyfinder | — | 是 | 是 | 是 | 网络药理 |
+| 药物组合 | 协同 | B | synergyfinder | https://github.com/ianevski123/synergyfinder | https://synergyfinder.fimm.fi/ | Ianevski et al. 2017, Bioinformatics | 剂量矩阵 | 协同分数 | synergyfinder | — | 是 | 是 | 是 | 网络药理 |
 | 药物组合 | 可视化 | B | Cytoscape | https://github.com/cytoscape/cytoscape | https://cytoscape.org/ | 通用 | 药物对 | 网络 | Cytoscape | — | 是 | 是 | 是 | 复用 |
 
 ## 58. 空间细胞互作
@@ -540,7 +540,7 @@
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 增强子 | 注释 | B | ROSE | https://github.com/ | https://github.com/ | Whyte et al. 2013, Cell | 峰+表达 | 超级增强子 | — | Gviz | 否 | 是 | 否 | 复用 |
+| 增强子 | 注释 | B | ROSE | https://github.com/stjude/ROSE | https://github.com/stjude/ROSE | Whyte et al. 2013, Cell | 峰+表达 | 超级增强子 | — | Gviz | 否 | 是 | 否 | 复用 |
 | 增强子 | 可视化 | B | pyGenomeTracks | https://github.com/deeptools/pyGenomeTracks | https://pygenometracks.readthedocs.io/ | Lopez-Delisle et al. 2021 | _track | 轨道 | pyGenomeTracks | — | 是 | 是 | 否 | 复用 |
 
 ## 60. 菌群-代谢物关联
@@ -555,7 +555,7 @@
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 蛋白互作结构 | 对接 | A | HADDOCK | https://github.com/ | https://wenmr.science.uu.nl/haddock/ | van Zundert et al. 2016, J Mol Biol | 结构 | 复合物 | PyMOL | ChimeraX | 是 | 是 | 否 | 数据驱动对接 |
+| 蛋白互作结构 | 对接 | A | HADDOCK | https://github.com/haddockmc/haddock3 | https://wenmr.science.uu.nl/haddock/ | van Zundert et al. 2016, J Mol Biol | 结构 | 复合物 | PyMOL | ChimeraX | 是 | 是 | 否 | 数据驱动对接 |
 | 蛋白互作结构 | 互作 | B | PLIP | https://github.com/pharmai/plip | https://plip.biotec.tu-dresden.de/ | Salentin et al. 2015 | PDB | 互作图 | PLIP | PyMOL | 是 | 是 | 否 | 复用 |
 
 ## 62. 单细胞批量校正 / 整合
@@ -571,8 +571,8 @@
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 变异库 | 注释 | A | VEP | https://github.com/Ensembl/ensembl-vep | https://www.ensembl.org/info/docs/tools/vep/ | McLaren et al. 2016 | VCF | 注释 | — | — | 否 | 是 | 否 | 复用 |
-| 变异库 | 频率 | B | gnomAD | https://github.com/ | https://gnomad.broadinstitute.org/ | Karczewski et al. 2020, Nature | 变异 ID | 人群频率 | — | — | 否 | 是 | 否 | 数据库 |
-| 变异库 | 致病性 | B | ClinVar | https://github.com/ | https://www.ncbi.nlm.nih.gov/clinvar/ | Landrum et al. 2018, Nucleic Acids | 变异 ID | 临床意义 | — | — | 否 | 是 | 否 | 数据库 |
+| 变异库 | 频率 | B | gnomAD | https://github.com/broadinstitute/gnomad-browser | https://gnomad.broadinstitute.org/ | Karczewski et al. 2020, Nature | 变异 ID | 人群频率 | — | — | 否 | 是 | 否 | 数据库 |
+| 变异库 | 致病性 | B | ClinVar | https://www.ncbi.nlm.nih.gov/clinvar/ | https://www.ncbi.nlm.nih.gov/clinvar/ | Landrum et al. 2018, Nucleic Acids | 变异 ID | 临床意义 | — | — | 否 | 是 | 否 | 数据库 |
 
 ## 64. 三维结构可视化（分子+细胞）
 
@@ -586,8 +586,8 @@
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 代谢流 | 通量 | B | isotopia | https://github.com/ | https://github.com/ | 2014 | 同位素 | 校正 | — | — | 否 | 是 | 否 | 13C |
-| 代谢流 | 建模 | B | INCA | https://github.com/ | https://github.com/ | Young et al. 2008, Biotech J | 标记数据 | 通量 | — | — | 否 | 是 | 否 | 13C-FLUX |
+| 代谢流 | 通量 | B | isotopia | https://github.com/isoverse/isotopia | https://github.com/isoverse/isotopia | 2014 | 同位素 | 校正 | — | — | 否 | 是 | 否 | 13C |
+| 代谢流 | 建模 | B | INCA | https://mfa.vueinnovations.com/ | https://mfa.vueinnovations.com/ | Young et al. 2008, Biotech J | 标记数据 | 通量 | — | — | 否 | 是 | 否 | 13C-FLUX |
 
 ## 66. 单细胞 RNA 速率
 
@@ -601,7 +601,7 @@
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | DTI | 预测 | A | DeepPurpose | https://github.com/kexinhuang12345/DeepPurpose | https://github.com/kexinhuang12345/DeepPurpose | Huang et al. 2020, Cell Chem | 药物+靶 | 亲和力 | matplotlib | — | 否 | 是 | 是 | 深度学习 |
-| DTI | 数据库 | B | BindingDB | https://github.com/ | https://www.bindingdb.org/ | Gilson et al. 2016, J Med Chem | 名称 | 亲和力 | — | Cytoscape | 否 | 是 | 是 | 数据库 |
+| DTI | 数据库 | B | BindingDB | https://www.bindingdb.org/ | https://www.bindingdb.org/ | Gilson et al. 2016, J Med Chem | 名称 | 亲和力 | — | Cytoscape | 否 | 是 | 是 | 数据库 |
 | DTI | 网络 | B | Cytoscape | https://github.com/cytoscape/cytoscape | https://cytoscape.org/ | 通用 | DTI 边 | 网络 | Cytoscape | — | 是 | 是 | 是 | 复用 |
 
 ## 68. 空间域识别
@@ -615,7 +615,7 @@
 
 | 一级领域 | 二级任务 | 推荐等级 | 工具名 | GitHub 链接 | 官方文档 | 代表论文/期刊 | 输入数据 | 输出结果 | 主图画图工具 | 补图画图工具 | 是否适合主图 | 是否适合临床/机制文章 | 是否适合单细胞/多组学/网络药理学/知识图谱 | 注意事项 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 系统药理 | 成分获取 | A | TCMSP | https://github.com/ | https://tcmspw.com/ | Ru et al. 2014, J Cheminform | 中药名 | 成分/靶 | — | Cytoscape | 否 | 是 | 是 | 药食同源上游 |
+| 系统药理 | 成分获取 | A | TCMSP | https://tcmspw.com/ | https://tcmspw.com/ | Ru et al. 2014, J Cheminform | 中药名 | 成分/靶 | — | Cytoscape | 否 | 是 | 是 | 药食同源上游 |
 | 系统药理 | 网络 | A | Cytoscape | https://github.com/cytoscape/cytoscape | https://cytoscape.org/ | Shannon et al. 2003 | 边表 | 网络 | Cytoscape | — | 是 | 是 | 是 | 复用 |
 | 系统药理 | 拓扑 | A | igraph | https://github.com/igraph/igraph | https://igraph.org/ | Csardi & Nepusz 2006 | 图 | 拓扑 | ggraph | — | 否 | 否 | 是 | 复用 |
 | 系统药理 | 通路 | A | clusterProfiler | https://github.com/YuLab-SMU/clusterProfiler | https://yulab-smu.top/ | Wu et al. 2021 | 靶基因 | 富集 | enrichplot | — | 是 | 是 | 是 | 复用 |
