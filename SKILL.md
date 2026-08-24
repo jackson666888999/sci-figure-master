@@ -72,6 +72,23 @@ description: >-
 **零动手使用示例**: 见 `assets/BIOINFO_USAGE.md`
 **领域覆盖清单**: 见 `assets/bioinfo_domains_checklist.md`（15 领域 × 20 场景验证矩阵）
 
+### D. 100+ 图表类型注册表 + 无人值守出图 + ARIS 方法论（2026-08-24 新增）
+
+| 模块 | 文件 | 能力 |
+|------|------|------|
+| 图表注册表 | `assets/chart_catalog.py` | **141 种图表类型**统一注册（SciVizKit 79 + bioinfo 41 + R 工具链 21），领域推荐决策树 |
+| 可执行路由 | `assets/bioinfo_router.py` | 零动手路由：`generate_figure(domain, plot_type, data, path)`，新增 25 种 SciVizKit 风格图表（纯 matplotlib），修复大小写/groupby/索引 bug |
+| 无人值守出图 | `auto_figure.py` | 用户只给文件路径 → 自动识别数据类型 → 规划统计方法/分析工具/画图工具 → 批量出图 |
+| ARIS 方法论 | `assets/aris_pipeline.py` | Acquire(真实顶刊调研) → Review(提炼方法/范式/写作/创新/画图代码/数据来源) → Integrate(故事闭环) → Score(严格评审)，**绝不虚构文献与数据** |
+| 100+ 图表清单 | `assets/CHART_CATALOG_100.md` | 图表目录与领域推荐速查 |
+
+**无人值守出图（用户只给文件路径）**:
+```bash
+python auto_figure.py --input data.csv --output ./figures/          # 单文件
+python auto_figure.py --input data_dir/ --output ./figures/          # 批量目录
+python assets/aris_pipeline.py --data data.csv --topic "研究主题" --output report/
+```
+
 **快速使用示例**:
 ```python
 # 方式1: cnsplots（推荐）

@@ -1,0 +1,163 @@
+{
+  "status": "success",
+  "data_profile": {
+    "file_type": "generic",
+    "file": "E:\\git\\sci-figure-master\\test_output\\auto_figure\\test_data.csv",
+    "loader": "auto_figure",
+    "topic": "gut microbiome sleep deprivation"
+  },
+  "literature": {
+    "count": 0,
+    "papers": []
+  },
+  "methodology": {
+    "paradigm": "omics-bulk",
+    "research_methods": [
+      "DESeq2/edgeR 差异表达",
+      "WGCNA 共表达网络",
+      "clusterProfiler GO/KEGG 富集",
+      "GSEA 基因集富集"
+    ],
+    "figure_types": [
+      "MA plot",
+      "volcano",
+      "heatmap",
+      "forest",
+      "enrichment dot/bar"
+    ],
+    "statistical_methods": [
+      "Wald test / exact test",
+      "Benjamini-Hochberg FDR",
+      "hypergeometric test",
+      "permutation test"
+    ],
+    "writing_framework": [
+      "Abstract: 背景一句话→缺口→方法→关键发现→结论",
+      "Introduction: 漏斗式（领域→已知→缺口→本研究假设）",
+      "Results: 层层递进（数据质量→全局模式→组间差异→机制→验证）",
+      "Discussion: 发现→对照文献→机制解释→局限→展望"
+    ],
+    "innovation_patterns": [
+      "跨组学整合（多组学联动证据链）",
+      "从相关到因果（中介分析/干预验证）",
+      "新方法学应用（ANCOM-BC2/稀疏CCA等前沿方法）",
+      "临床转化（biomarker panel → 预测模型）"
+    ],
+    "data_sources": [
+      "用户提供实验数据（唯一画图数据源）"
+    ],
+    "plotting_code_notes": [
+      "Nature 标准: SVG/PDF 矢量输出 + TIFF 600dpi",
+      "配色: 高对比度专业配色，禁用默认 jet",
+      "文字重叠: adjustText/ggrepel 处理",
+      "坐标轴: 仅保留 bottom/left spines"
+    ],
+    "references": [],
+    "reference_count": 0
+  },
+  "story": {
+    "title": "gut microbiome sleep deprivation",
+    "stages": [
+      {
+        "stage": "Background",
+        "question": "领域共识与已知事实是什么？",
+        "checkpoint": "必须有真实文献/数据支撑，禁止空泛",
+        "suggested_figures": []
+      },
+      {
+        "stage": "Gap",
+        "question": "未被回答的问题是什么？",
+        "checkpoint": "缺口需明确可证伪",
+        "suggested_figures": []
+      },
+      {
+        "stage": "Hypothesis",
+        "question": "本研究假设是什么？",
+        "checkpoint": "假设与缺口严格对应",
+        "suggested_figures": []
+      },
+      {
+        "stage": "Methods",
+        "question": "用什么数据/统计/工具验证？",
+        "checkpoint": "每步方法可复现，统计检验成对声明",
+        "suggested_figures": []
+      },
+      {
+        "stage": "Results-Layer1",
+        "question": "数据质量与全局模式？",
+        "checkpoint": "QC图 + 全局降维/聚类",
+        "suggested_figures": []
+      },
+      {
+        "stage": "Results-Layer2",
+        "question": "组间差异与关键分子？",
+        "checkpoint": "差异分析 + 火山图/热图",
+        "suggested_figures": [
+          "MA plot",
+          "volcano",
+          "heatmap"
+        ]
+      },
+      {
+        "stage": "Results-Layer3",
+        "question": "机制与通路？",
+        "checkpoint": "富集/网络/多组学交叉验证",
+        "suggested_figures": [
+          "enrichment dot/bar"
+        ]
+      },
+      {
+        "stage": "Validation",
+        "question": "结论是否稳健？",
+        "checkpoint": "置换/交叉验证/独立数据集",
+        "suggested_figures": [
+          "forest"
+        ]
+      },
+      {
+        "stage": "Conclusion",
+        "question": "回答缺口，意义何在？",
+        "checkpoint": "结论不超出数据支持范围",
+        "suggested_figures": []
+      }
+    ],
+    "evidence_chain": [
+      "Background: 领域共识与已知事实是什么？",
+      "Gap: 未被回答的问题是什么？",
+      "Hypothesis: 本研究假设是什么？",
+      "Methods: 用什么数据/统计/工具验证？",
+      "Results-Layer1: 数据质量与全局模式？",
+      "Results-Layer2: 组间差异与关键分子？",
+      "Results-Layer3: 机制与通路？",
+      "Validation: 结论是否稳健？",
+      "Conclusion: 回答缺口，意义何在？"
+    ]
+  },
+  "review": {
+    "scores": {
+      "C1": 20,
+      "C2": 18,
+      "C3": 20,
+      "C4": 9,
+      "C5": 0,
+      "C6": 10
+    },
+    "total": 77,
+    "grade": "REVISE (需修改)",
+    "issues": [
+      "C5: 文献 API 不可用，无真实引用——请手动补充文献或检查网络"
+    ],
+    "generated_files": [
+      "E:\\git\\sci-figure-master\\test_output\\aris\\figures\\test_data.heatmap.svg",
+      "E:\\git\\sci-figure-master\\test_output\\aris\\figures\\test_data.box.svg",
+      "E:\\git\\sci-figure-master\\test_output\\aris\\figures\\test_data.bar.svg",
+      "E:\\git\\sci-figure-master\\test_output\\aris\\figures\\test_data.scatter.svg"
+    ]
+  },
+  "generated_files": [
+    "E:\\git\\sci-figure-master\\test_output\\aris\\figures\\test_data.heatmap.svg",
+    "E:\\git\\sci-figure-master\\test_output\\aris\\figures\\test_data.box.svg",
+    "E:\\git\\sci-figure-master\\test_output\\aris\\figures\\test_data.bar.svg",
+    "E:\\git\\sci-figure-master\\test_output\\aris\\figures\\test_data.scatter.svg"
+  ]
+}
