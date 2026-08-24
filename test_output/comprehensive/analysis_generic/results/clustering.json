@@ -3,23 +3,23 @@
   "rows": {
     "2": {
       "n_clusters": 2,
-      "silhouette": 0.2211
+      "silhouette": 0.3174
     },
     "3": {
       "n_clusters": 3,
-      "silhouette": 0.2717
+      "silhouette": 0.2697
     },
     "4": {
       "n_clusters": 4,
-      "silhouette": 0.2572
+      "silhouette": 0.2686
     },
     "5": {
       "n_clusters": 5,
-      "silhouette": 0.238
+      "silhouette": 0.2639
     },
     "6": {
       "n_clusters": 6,
-      "silhouette": 0.2375
+      "silhouette": 0.2556
     }
   }
 }

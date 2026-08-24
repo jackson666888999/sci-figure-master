@@ -159,10 +159,10 @@
       ],
       "figures_plan": [
         "corr_heatmap",
-        "bubble",
         "histogram",
-        "scatter",
-        "qqplot"
+        "bubble",
+        "qqplot",
+        "scatter"
       ]
     },
     {
@@ -210,10 +210,10 @@
         }
       ],
       "figures_plan": [
-        "dendrogram",
-        "pca",
         "umap",
-        "scatter"
+        "pca",
+        "scatter",
+        "dendrogram"
       ]
     },
     {
@@ -317,10 +317,10 @@
         }
       ],
       "figures_plan": [
-        "histogram",
-        "pca",
         "umap",
         "boxplot",
+        "histogram",
+        "pca",
         "scatter",
         "dendrogram"
       ]
@@ -451,12 +451,12 @@
       ],
       "figures_plan": [
         "volcano",
-        "lollipop",
-        "violin",
-        "heatmap",
-        "raincloud",
+        "ma_plot",
         "boxplot",
-        "ma_plot"
+        "heatmap",
+        "lollipop",
+        "raincloud",
+        "violin"
       ]
     },
     {
@@ -513,8 +513,8 @@
         }
       ],
       "figures_plan": [
-        "corr_heatmap",
         "bubble",
+        "corr_heatmap",
         "scatter"
       ]
     },
@@ -586,9 +586,9 @@
         }
       ],
       "figures_plan": [
+        "heatmap",
         "volcano",
         "ma_plot",
-        "heatmap",
         "lollipop"
       ]
     },
@@ -623,10 +623,10 @@
       ],
       "figures": [
         "corr_heatmap",
-        "bubble",
         "histogram",
-        "scatter",
-        "qqplot"
+        "bubble",
+        "qqplot",
+        "scatter"
       ]
     },
     {
@@ -637,10 +637,10 @@
         "clustering"
       ],
       "figures": [
-        "dendrogram",
-        "pca",
         "umap",
-        "scatter"
+        "pca",
+        "scatter",
+        "dendrogram"
       ]
     },
     {
@@ -652,10 +652,10 @@
         "clustering"
       ],
       "figures": [
-        "histogram",
-        "pca",
         "umap",
         "boxplot",
+        "histogram",
+        "pca",
         "scatter",
         "dendrogram"
       ]
@@ -669,12 +669,12 @@
       ],
       "figures": [
         "volcano",
-        "lollipop",
-        "violin",
-        "heatmap",
-        "raincloud",
+        "ma_plot",
         "boxplot",
-        "ma_plot"
+        "heatmap",
+        "lollipop",
+        "raincloud",
+        "violin"
       ]
     },
     {
@@ -684,8 +684,8 @@
         "correlation"
       ],
       "figures": [
-        "corr_heatmap",
         "bubble",
+        "corr_heatmap",
         "scatter"
       ]
     },
@@ -696,9 +696,9 @@
         "differential"
       ],
       "figures": [
+        "heatmap",
         "volcano",
         "ma_plot",
-        "heatmap",
         "lollipop"
       ]
     }

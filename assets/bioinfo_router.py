@@ -392,6 +392,21 @@ def _resolve_function_name(fig: str) -> str:
         "clonotype": "plot_clonotype", "oncoplot": "plot_oncoplot", "variant": "plot_variant",
         "ppi": "plot_ppi", "roc": "plot_roc", "calibration": "plot_calibration",
         "dose_response": "plot_dose_response", "ic50": "plot_ic50", "sashimi": "plot_sashimi",
+        # K-Dense 技能图型别名（163 技能映射）
+        "3d_scatter": "plot_bubble", "beeswarm": "plot_scatter", "stripplot": "plot_scatter",
+        "waterfall": "plot_diverging_bar", "surf": "plot_heatmap", "raster": "plot_heatmap",
+        "density": "plot_violin", "plot": "plot_line", "contour": "plot_hexbin",
+        "coverage": "plot_genome_track", "grn": "plot_enrichment_network",
+        "hic": "plot_heatmap", "annotation": "plot_heatmap", "chromatin": "plot_heatmap",
+        "infographics": "plot_bar", "scientific_schematic": "plot_enrichment_network",
+        "residual_plot": "plot_scatter", "dendrogram": "plot_dendrogram",
+        "parity_plot": "plot_scatter", "kegg_pathway": "plot_enrichment_dot",
+        "chord_diagram": "plot_circos", "arc_diagram": "plot_circos",
+        "corr_heatmap": "plot_heatmap", "complexheatmap": "plot_heatmap",
+        "enrichment_network": "plot_enrichment_network", "gsea": "plot_enrichment_bar",
+        "nomogram": "plot_forest_plot", "alpha_diversity": "plot_alpha_diversity",
+        "beta_diversity": "plot_beta_diversity", "cellchat": "plot_cellchat",
+        "trajectory": "plot_trajectory", "marker": "plot_marker",
     }
     return alias.get(fig, "plot_heatmap")
 
@@ -669,11 +684,16 @@ def plot_dotplot(data, output_path: str, **kwargs):
     """点图（简化版）"""
     fig, ax = plt.subplots(figsize=(10, 8))
     if isinstance(data, pd.DataFrame):
-        im = ax.imshow(data.values, cmap='viridis', aspect='auto')
-        ax.set_xticks(range(data.shape[1]))
-        ax.set_xticklabels(data.columns, rotation=45, ha='right')
-        ax.set_yticks(range(data.shape[0]))
-        ax.set_yticklabels(data.index)
+        dfn = data.select_dtypes(include=[np.number])
+        if dfn.shape[1] == 0:
+            ax.text(0.5, 0.5, 'No numeric columns', ha='center', va='center')
+            plt.tight_layout(); plt.savefig(output_path, bbox_inches='tight', dpi=300); plt.close()
+            return output_path
+        im = ax.imshow(dfn.values, cmap='viridis', aspect='auto')
+        ax.set_xticks(range(dfn.shape[1]))
+        ax.set_xticklabels(dfn.columns, rotation=45, ha='right')
+        ax.set_yticks(range(min(50, dfn.shape[0])))
+        ax.set_yticklabels(list(dfn.index)[:50], fontsize=6)
         plt.colorbar(im, ax=ax)
     ax.set_title('Dot Plot')
     plt.tight_layout()

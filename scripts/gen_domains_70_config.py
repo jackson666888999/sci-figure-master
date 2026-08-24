@@ -1,150 +1,250 @@
 #!/usr/bin/env python3
 """
-gen_domains_70_config.py - 从 bioinfo_70_domains_process.md 程序化生成 70 领域路由配置
+gen_domains_70_config.py - 程序化生成 70 领域 + K-Dense 官方 22 学科路由配置
 
-解析 70 领域文档的"画图工具"列 → 工具名 → 图型映射 → 每个领域路由条目
-输出: assets/domains_70_config.py (DOMAINS_70_ROUTING)
+数据来源（全部官方/权威）:
+  1. references/bioinfo_70_domains_process.md —— 70 生信领域 × 画图工具
+  2. scripts/kdense_discipline_skills.json —— K-Dense 官方 326 workflows 的 22 学科→技能映射
+     （快照自 K-Dense BYOK web/src/data/workflows.json，2026-08-24）
+  3. scripts/kdense_skills_list.txt —— K-Dense 官方技能清单（scientific-agent-skills 仓库，163 技能）
+
+输出: assets/domains_70_config.py
 """
+import json
 import re
 import sys
 from pathlib import Path
 
 SRC = Path(__file__).parent.parent / "references" / "bioinfo_70_domains_process.md"
+KDENSE_SKILLS = Path(__file__).parent / "kdense_discipline_skills.json"
+KDENSE_LIST = Path(__file__).parent / "kdense_skills_list.txt"
 OUT = Path(__file__).parent.parent / "assets" / "domains_70_config.py"
 
 # ── 工具名 → 图型列表（权威映射，覆盖顶刊常用绘图工具） ──
 TOOL_MAP = {
-    # 通用
     "ggplot2": ["box", "bar", "scatter", "line", "violin", "bar_sig"],
     "seaborn": ["box", "violin", "heatmap", "scatter", "pairplot"],
     "matplotlib": ["scatter", "line", "bar", "histogram", "ecdf"],
     "plotly": ["scatter", "line", "bar", "bubble", "3d_scatter"],
-    # 热图 / 注释
     "ComplexHeatmap": ["heatmap", "complexheatmap", "dendrogram"],
-    "pheatmap": ["heatmap"],
-    "ggheatmap": ["heatmap"],
-    # 圈图 / 基因组
-    "circlize": ["circos", "chord_diagram"],
-    "karyoploteR": ["circos", "genome_track"],
+    "pheatmap": ["heatmap"], "ggheatmap": ["heatmap"],
+    "circlize": ["circos", "chord_diagram"], "karyoploteR": ["circos", "genome_track"],
     "RCircos": ["circos"],
-    # 火山 / 差异
-    "EnhancedVolcano": ["volcano"],
-    "ggVolcano": ["volcano"],
-    # 富集
+    "EnhancedVolcano": ["volcano"], "ggVolcano": ["volcano"],
     "clusterProfiler": ["enrichment_dot", "enrichment_bar"],
     "enrichplot": ["enrichment_dot", "enrichment_bar", "enrichment_network"],
     "GSEA": ["gsea", "enrichment_bar"],
-    # GWAS / 群体
-    "qqman": ["manhattan", "qqplot"],
-    "CMplot": ["manhattan", "qqplot", "circos"],
-    "manhattanly": ["manhattan"],
-    "locuszoomr": ["manhattan", "line"],
+    "qqman": ["manhattan", "qqplot"], "CMplot": ["manhattan", "qqplot", "circos"],
+    "manhattanly": ["manhattan"], "locuszoomr": ["manhattan", "line"],
     "pophelper": ["stacked_bar", "bar"],
-    # 基因组浏览器 / 轨道
-    "IGV": ["genome_track", "genome_browser"],
-    "JBrowse": ["genome_browser"],
-    "pyGenomeTracks": ["genome_track"],
-    "Gviz": ["genome_track", "sashimi"],
+    "IGV": ["genome_track", "genome_browser"], "JBrowse": ["genome_browser"],
+    "pyGenomeTracks": ["genome_track"], "Gviz": ["genome_track", "sashimi"],
     "Qualimap": ["line", "box", "histogram"],
-    # 长读长 QC
-    "NanoPlot": ["box", "line", "histogram"],
-    "pycoQC": ["line", "histogram", "heatmap"],
-    # 剪接 / 融合
-    "ggsashimi": ["sashimi"],
-    "rmats2sashimiplot": ["sashimi"],
-    "svviz2": ["genome_track", "circos"],
-    # CNV
-    "CNVkit": ["cnv", "heatmap"],
-    # 单细胞
+    "NanoPlot": ["box", "line", "histogram"], "pycoQC": ["line", "histogram", "heatmap"],
+    "ggsashimi": ["sashimi"], "rmats2sashimiplot": ["sashimi"],
+    "svviz2": ["genome_track", "circos"], "CNVkit": ["cnv", "heatmap"],
     "Seurat": ["umap", "tsne", "dotplot", "violin", "heatmap", "marker"],
     "Scanpy": ["umap", "tsne", "dotplot", "violin", "heatmap", "marker"],
-    "scVI": ["umap", "heatmap"],
-    "monocle3": ["trajectory", "umap"],
-    "slingshot": ["trajectory"],
-    "CellChat": ["cellchat", "network_graph", "chord_diagram"],
-    "CellPhoneDB": ["cellchat", "bubble"],
-    "SCENIC": ["grn", "heatmap", "network_graph"],
-    "pySCENIC": ["grn", "heatmap"],
-    "Scrublet": ["scatter", "histogram"],
-    "SoupX": ["heatmap", "box"],
-    "Harmony": ["umap", "tsne"],
-    "scVI-tools": ["umap"],
+    "scVI": ["umap", "heatmap"], "monocle3": ["trajectory", "umap"],
+    "slingshot": ["trajectory"], "CellChat": ["cellchat", "network_graph", "chord_diagram"],
+    "CellPhoneDB": ["cellchat", "bubble"], "SCENIC": ["grn", "heatmap", "network_graph"],
+    "pySCENIC": ["grn", "heatmap"], "Scrublet": ["scatter", "histogram"],
+    "SoupX": ["heatmap", "box"], "Harmony": ["umap", "tsne"],
     "SCpubr": ["umap", "dotplot", "violin", "heatmap"],
-    "Azimuth": ["umap", "dotplot"],
-    # 空间
     "Squidpy": ["spatial", "heatmap", "network_graph"],
-    "SpatialVista": ["spatial", "heatmap"],
-    "Giotto": ["spatial", "heatmap"],
-    "Cell2location": ["spatial", "heatmap"],
-    "SPOTlight": ["spatial", "heatmap"],
+    "SpatialVista": ["spatial", "heatmap"], "Giotto": ["spatial", "heatmap"],
+    "Cell2location": ["spatial", "heatmap"], "SPOTlight": ["spatial", "heatmap"],
     "stLearn": ["spatial", "trajectory"],
-    # 表观
     "deeptools": ["genome_track", "heatmap", "line"],
     "ChIPseeker": ["peaks", "annotation", "heatmap"],
-    "chromVAR": ["heatmap", "box"],
-    "ArchR": ["umap", "heatmap", "peaks"],
-    "SnapATAC": ["umap", "heatmap"],
-    "methylKit": ["beta_dist", "heatmap", "volcano"],
-    "MethylKit": ["beta_dist", "heatmap", "volcano"],
-    "DSS": ["volcano", "beta_dist"],
-    "HiCExplorer": ["hic", "heatmap"],
+    "chromVAR": ["heatmap", "box"], "ArchR": ["umap", "heatmap", "peaks"],
+    "SnapATAC": ["umap", "heatmap"], "methylKit": ["beta_dist", "heatmap", "volcano"],
+    "DSS": ["volcano", "beta_dist"], "HiCExplorer": ["hic", "heatmap"],
     "hicPlotMatrix": ["hic", "heatmap"],
-    "Juicebox": ["hic"],
-    "washU": ["genome_track", "hic"],
-    # 微生物组
     "phyloseq": ["alpha_diversity", "beta_diversity", "composition", "heatmap"],
     "vegan": ["alpha_diversity", "beta_diversity"],
     "qiime2": ["alpha_diversity", "beta_diversity", "composition"],
-    "ANCOM-BC2": ["volcano", "lollipop", "heatmap"],
-    "LEfSe": ["lefse", "lollipop"],
+    "ANCOM-BC2": ["volcano", "lollipop", "heatmap"], "LEfSe": ["lefse", "lollipop"],
     "MetaboAnalystR": ["plsda", "volcano", "heatmap", "pathway"],
-    "mixOmics": ["plsda", "heatmap", "circos"],
-    "SparCC": ["network_graph", "corr_heatmap"],
-    "ggalluvial": ["sankey"],
-    "Cytoscape": ["network_graph", "ppi", "chord_diagram"],
-    "ggraph": ["network_graph"],
-    "iTOL": ["tree", "circle_tree"],
-    "ggtree": ["tree", "circle_tree", "heatmap"],
-    "ggtreeExtra": ["tree", "bar"],
-    "Evolview": ["tree"],
-    # 蛋白 / 结构 / 药物
-    "PyMOL": ["ppi", "structure"],
-    "VMD": ["ppi"],
-    "AlphaFold": ["ppi", "structure"],
-    "RDKit": ["radar", "scatter", "structure"],
-    "PLIP": ["ppi"],
-    "AutoDock": ["dose_response", "scatter"],
-    "GROMACS": ["line", "scatter"],
-    "LIGPLOT": ["ppi"],
-    "ChimeraX": ["ppi"],
-    # 生存 / 临床
-    "survminer": ["km", "forest"],
-    "survival": ["km", "forest"],
-    "forestplot": ["forest"],
-    "ggforest": ["forest"],
-    "rms": ["km", "forest", "calibration"],
-    "nomogram": ["nomogram", "forest"],
-    "pROC": ["roc"],
-    "timeROC": ["roc"],
-    # 集合 / 网络药理学
-    "UpSetR": ["upset"],
-    "VennDiagram": ["venn"],
-    "ggvenn": ["venn"],
-    "ggVennDiagram": ["venn"],
-    "clusterProfiler-circle": ["circos", "enrichment_dot"],
-    # 通用兜底
+    "mixOmics": ["plsda", "heatmap", "circos"], "SparCC": ["network_graph", "corr_heatmap"],
+    "ggalluvial": ["sankey"], "Cytoscape": ["network_graph", "ppi", "chord_diagram"],
+    "ggraph": ["network_graph"], "iTOL": ["tree", "circle_tree"],
+    "ggtree": ["tree", "circle_tree", "heatmap"], "ggtreeExtra": ["tree", "bar"],
+    "PyMOL": ["ppi", "structure"], "VMD": ["ppi"], "AlphaFold": ["ppi", "structure"],
+    "RDKit": ["radar", "scatter", "structure"], "PLIP": ["ppi"],
+    "AutoDock": ["dose_response", "scatter"], "GROMACS": ["line", "scatter"],
+    "survminer": ["km", "forest"], "survival": ["km", "forest"],
+    "forestplot": ["forest"], "ggforest": ["forest"],
+    "rms": ["km", "forest", "calibration"], "nomogram": ["nomogram", "forest"],
+    "pROC": ["roc"], "timeROC": ["roc"],
+    "UpSetR": ["upset"], "VennDiagram": ["venn"], "ggvenn": ["venn"],
     "MultiQC": ["bar", "box", "line", "heatmap"],
-    "seaborn-matplotlib": ["box", "heatmap", "scatter"],
-    "ggplot2-ComplexHeatmap": ["heatmap", "box", "bar"],
-    "shiny": ["scatter", "line", "bar"],
-    "R-shiny": ["scatter", "line"],
-    "plotly-ggplot2": ["scatter", "line", "bar"],
 }
 
-# 无明确工具时的兜底图型
 DEFAULT_FIGURES = ["heatmap", "box", "scatter", "bar"]
 
-# 领域标题 → 英文路由键
+# ── K-Dense 技能 → 图型（官方 163 技能中画图/分析相关技能的能力映射） ──
+SKILL_FIGURE_MAP = {
+    # 通用可视化
+    "matplotlib": ["bar", "box", "scatter", "line", "histogram", "ecdf", "qqplot",
+                   "heatmap", "violin", "donut", "treemap", "lollipop", "dumbbell",
+                   "bubble", "hexbin", "area", "stacked_area", "parallel_coords",
+                   "diverging_bar", "radial_bar", "marginal_plot", "bland_altman",
+                   "ma_plot", "forest_plot", "funnel_plot", "manhattan", "radar"],
+    "seaborn": ["box", "violin", "heatmap", "scatter", "pairplot", "line", "bar",
+                "histogram", "ecdf", "ridgeline", "raincloud", "stripplot", "bubble"],
+    "plotly": ["scatter", "line", "bar", "bubble", "3d_scatter", "donut", "area",
+               "heatmap", "network_graph", "sankey"],
+    "scientific-visualization": ["bar", "box", "scatter", "line", "violin", "heatmap",
+                                 "histogram", "ecdf", "qqplot", "pairplot", "bubble",
+                                 "hexbin", "raincloud", "ridgeline", "donut", "treemap",
+                                 "radar", "lollipop", "area", "stacked_area"],
+    "exploratory-data-analysis": ["histogram", "box", "violin", "scatter", "pairplot",
+                                  "corr_heatmap", "ecdf", "qqplot", "heatmap", "line",
+                                  "bar", "dendrogram", "pca", "bubble", "hexbin"],
+    "infographics": ["bar", "donut", "treemap", "pie", "waffle", "radar", "nightingale"],
+    "scientific-schematics": ["network_graph", "sankey", "chord_diagram", "circos",
+                              "arc_diagram", "tree", "dendrogram"],
+    "scientific-slides": ["bar", "box", "scatter", "line", "donut", "heatmap", "radar"],
+    "latex-posters": ["bar", "scatter", "line", "heatmap"],
+    "pptx": ["bar", "box", "scatter", "line", "donut", "heatmap"],
+    "pptx-posters": ["bar", "scatter", "line", "heatmap"],
+    "generate-image": ["infographics", "scientific_schematic"],
+    # 统计 / 建模
+    "statistical-analysis": ["box", "violin", "qqplot", "ecdf", "scatter", "heatmap",
+                             "forest", "roc", "calibration", "bland_altman", "km",
+                             "bar_sig", "bubble", "hexbin", "lollipop"],
+    "statistical-power": ["scatter", "line", "ecdf", "box"],
+    "statsmodels": ["line", "scatter", "qqplot", "residual_plot", "ecdf", "histogram",
+                    "heatmap", "forest"],
+    "pymc": ["line", "scatter", "histogram", "forest", "ecdf", "box", "density"],
+    "scikit-learn": ["pca", "umap", "tsne", "scatter", "heatmap", "roc", "calibration",
+                     "pairplot", "residual_plot", "dendrogram"],
+    "scikit-survival": ["km", "forest", "roc", "calibration"],
+    "shap": ["bar", "beeswarm", "scatter", "heatmap", "waterfall"],
+    "timesfm-forecasting": ["line", "area", "stacked_area", "scatter"],
+    "umap-learn": ["umap", "tsne", "pca", "scatter"],
+    # 基因组 / 单细胞
+    "scanpy": ["umap", "tsne", "pca", "dotplot", "violin", "heatmap", "marker",
+               "trajectory", "cellchat", "spatial", "scatter"],
+    "anndata": ["umap", "tsne", "heatmap", "violin"],
+    "scvelo": ["trajectory", "umap", "scatter", "heatmap"],
+    "scvi-tools": ["umap", "heatmap", "scatter"],
+    "polars-bio": ["heatmap", "bar", "scatter"],
+    "bulk-rnaseq": ["volcano", "ma_plot", "heatmap", "enrichment_dot", "gsea",
+                    "enrichment_bar", "dendrogram", "venn"],
+    "pydeseq2": ["volcano", "ma_plot", "heatmap", "box"],
+    "deeptools": ["genome_track", "genome_browser", "heatmap", "line", "peaks"],
+    "pysam": ["genome_track", "genome_browser", "coverage"],
+    "genomic-coordinates": ["genome_track", "genome_browser", "circos"],
+    "phylogenetics": ["tree", "circle_tree", "dendrogram", "heatmap"],
+    "etetoolkit": ["tree", "circle_tree", "dendrogram"],
+    "scikit-bio": ["alpha_diversity", "beta_diversity", "tree", "heatmap"],
+    "biopython": ["tree", "dendrogram", "line", "heatmap"],
+    "geniml": ["genome_track", "heatmap", "line"],
+    "gtars": ["genome_track", "heatmap"],
+    "gget": ["tree", "bar", "scatter"],
+    "flowio": ["flow_hist", "scatter", "density", "contour"],
+    "cellxgene-census": ["umap", "heatmap", "scatter", "dotplot"],
+    "depmap": ["scatter", "heatmap", "box", "lollipop"],
+    "deepspot-m": ["spatial", "heatmap", "umap"],
+    # 蛋白 / 化学 / 材料
+    "rdkit": ["radar", "scatter", "structure", "dose_response", "heatmap", "bar"],
+    "datamol": ["scatter", "radar", "structure"],
+    "deepchem": ["scatter", "roc", "calibration", "heatmap", "radar"],
+    "molfeat": ["umap", "tsne", "pca", "scatter", "heatmap"],
+    "medchem": ["radar", "scatter", "bar", "dose_response"],
+    "pymatgen": ["scatter", "line", "heatmap", "parity_plot", "radar"],
+    "pyopenms": ["line", "heatmap", "scatter", "bar"],
+    "matchms": ["scatter", "heatmap", "line"],
+    "esm": ["heatmap", "scatter", "ppi"],
+    "diffdock": ["ppi", "scatter", "heatmap"],
+    "molecular-dynamics": ["line", "scatter", "heatmap", "density"],
+    "adaptyv": ["scatter", "line", "bar"],
+    "glycoengineering": ["heatmap", "bar", "network_graph"],
+    # 神经 / 生理
+    "neurokit2": ["line", "scatter", "heatmap", "histogram"],
+    "neuropixels-analysis": ["scatter", "line", "heatmap", "raster"],
+    # 医学影像 / 临床
+    "pathml": ["spatial", "heatmap", "scatter", "histogram"],
+    "histolab": ["spatial", "heatmap", "scatter"],
+    "pydicom": ["spatial", "heatmap", "scatter", "histogram"],
+    "imaging-data-commons": ["scatter", "heatmap", "spatial"],
+    "clinical-decision-support": ["km", "forest", "roc", "calibration", "bland_altman", "box"],
+    "pyhealth": ["km", "roc", "forest", "heatmap"],
+    "pkpd-modeling": ["dose_response", "line", "scatter", "forest"],
+    # 网络 / 图
+    "networkx": ["network_graph", "ppi", "chord_diagram", "sankey", "arc_diagram",
+                 "dendrogram", "tree"],
+    "torch-geometric": ["network_graph", "scatter", "heatmap"],
+    "primekg": ["network_graph", "chord_diagram", "sankey"],
+    "cobrapy": ["bar", "heatmap", "network_graph"],
+    "arboreto": ["grn", "network_graph", "heatmap"],
+    "pathway-enrichment": ["enrichment_dot", "enrichment_bar", "gsea", "network_graph",
+                           "circos", "kegg_pathway"],
+    "gget-db": ["bar", "scatter"],
+    # 地理 / 时空
+    "geopandas": ["choropleth", "bubble_map", "scatter"],
+    "geomaster": ["choropleth", "bubble_map"],
+    # 天体 / 物理
+    "astropy": ["scatter", "line", "histogram", "heatmap"],
+    "matlab": ["scatter", "line", "bar", "heatmap", "surf"],
+    "fluidsim": ["scatter", "line", "heatmap", "contour"],
+    "sympy": ["scatter", "line", "plot"],
+    "qiskit": ["bar", "histogram", "scatter"],
+    "qutip": ["line", "scatter", "heatmap"],
+    "pennylane": ["line", "scatter", "heatmap"],
+    # 环境 / 生态
+    "bids": ["line", "scatter", "heatmap"],
+    "onekgpd": ["manhattan", "qqplot", "bar"],
+    "pathogen-variant-surveillance": ["tree", "manhattan", "bar", "line"],
+    # 其他
+    "research-lookup": ["bar", "network_graph"],
+    "scholar-evaluation": ["bar", "line"],
+    "literature-review": ["network_graph", "bar"],
+    "database-lookup": ["bar", "scatter"],
+    "paper-lookup": ["bar", "network_graph"],
+    "citation-management": ["bar"],
+    "peer-review": ["bar", "line"],
+    "scientific-writing": ["bar", "scatter", "line", "heatmap"],
+    "scientific-critical-thinking": ["bar", "scatter", "line"],
+    "experimental-design": ["bar", "box", "scatter", "line"],
+    "parallel-web": ["bar", "network_graph", "scatter", "line"],
+    "protocolsio-integration": ["line", "bar", "scatter"],
+    "hypothesis-generation": ["network_graph", "bar"],
+    "hypogenic": ["network_graph", "bar"],
+    "open-notebook": ["line", "scatter"],
+    "lab-notebook": ["line", "scatter"],
+    "clinical-reports": ["km", "forest", "bar"],
+    "treatment-plans": ["km", "forest", "bar"],
+    "pytorch-lightning": ["line", "scatter"],
+    "transformers": ["line", "heatmap"],
+    "stable-baselines3": ["line", "scatter"],
+    "polars": ["bar", "box", "scatter", "line", "heatmap"],
+    "vaex": ["scatter", "histogram", "line"],
+    "dask": ["scatter", "line", "heatmap"],
+    "zarr-python": ["scatter", "heatmap"],
+    "pymoo": ["scatter", "line", "heatmap", "radar"],
+    "simpy": ["line", "bar", "scatter"],
+    "matlab-plot": ["scatter", "line", "bar", "heatmap"],
+    "xlsx": ["bar", "box", "line", "scatter"],
+    "markitdown": ["bar"],
+    "liteparse": ["bar"],
+    "infographics-gen": ["bar", "donut", "treemap", "radar"],
+}
+
+# 学科兜底图型
+DISC_DEFAULT = ["bar", "box", "scatter", "line", "heatmap"]
+
+
+def extract_plot_tools(text: str) -> list:
+    m = re.search(r"\|\s*画图工具\s*\|(.*?)\|", text, re.S)
+    if not m:
+        return []
+    cell = m.group(1)
+    return [t.strip() for t in re.findall(r"\[([^\]|]+)\]\([^)]*\)", cell) if t.strip()]
+
+
 DOMAIN_KEYS = {
     "测序数据质控": "ngs_qc", "短读长基因组比对": "short_read_mapping",
     "长读长测序": "long_read", "变异检测": "wgs_wes", "结构变异": "sv",
@@ -181,33 +281,19 @@ DOMAIN_KEYS = {
 }
 
 
-def extract_plot_tools(text: str) -> list:
-    """从领域块提取画图工具名（markdown 链接文本）"""
-    m = re.search(r"\|\s*画图工具\s*\|(.*?)\|", text, re.S)
-    if not m:
-        return []
-    cell = m.group(1)
-    tools = re.findall(r"\[([^\]|]+)\]\([^)]*\)", cell)
-    return [t.strip() for t in tools if t.strip()]
-
-
 def title_to_key(title: str) -> str:
-    """标题 → 路由键（最长 key 优先匹配，避免子串冲突如 基因组组装/宏基因组组装）"""
     for zh, key in sorted(DOMAIN_KEYS.items(), key=lambda x: -len(x[0])):
         if zh in title:
             return key
-    # 取标题中的英文部分
     en = re.findall(r"[A-Za-z0-9\-/]+", title)
     if en:
         return en[0].lower().replace("/", "_")
     return f"domain_{len(DOMAIN_KEYS) + 1}"
 
 
-def main():
-    text = Path(SRC).read_text(encoding="utf-8")
-    blocks = re.split(r"(?=^## \d+\.)", text, flags=re.M)
+def build_70_domains(text: str) -> list:
     domains = []
-    for block in blocks:
+    for block in re.split(r"(?=^## \d+\.)", text, flags=re.M):
         m = re.match(r"^## \d+\.\s*(.+)", block, re.M)
         if not m:
             continue
@@ -216,7 +302,6 @@ def main():
         tools = extract_plot_tools(block)
         figures = set()
         for t in tools:
-            # 归一化工具名匹配
             matched = False
             for known, figs in TOOL_MAP.items():
                 if known.lower() in t.lower() or t.lower() in known.lower():
@@ -226,16 +311,40 @@ def main():
                 figures.update(DEFAULT_FIGURES)
         domains.append({"key": key, "title": title, "tools": tools,
                         "figures": sorted(figures) if figures else list(DEFAULT_FIGURES)})
+    return domains
 
-    # 生成 Python 配置
+
+def build_kdense_22(disciplines_file: Path, skills_list: Path) -> dict:
+    """官方 22 学科：合并其全部关联技能的图型（覆盖该学科所有画图工具图形）"""
+    disc_skills = json.loads(disciplines_file.read_text(encoding="utf-8"))
+    result = {}
+    for disc, skills in disc_skills.items():
+        figures = set()
+        for skill in skills:
+            figures.update(SKILL_FIGURE_MAP.get(skill, []))
+        # 学科兜底
+        if not figures:
+            figures.update(DISC_DEFAULT)
+        result[disc] = sorted(figures)
+    return result
+
+
+def main():
+    text = Path(SRC).read_text(encoding="utf-8")
+    domains = build_70_domains(text)
+    kdense = build_kdense_22(KDENSE_SKILLS, KDENSE_LIST)
+
     lines = [
         '#!/usr/bin/env python3',
         '"""',
-        'domains_70_config.py - 70 领域路由配置（程序化生成，勿手改）',
+        'domains_70_config.py - 70 领域 + K-Dense 官方 22 学科路由配置（程序化生成，勿手改）',
         '',
-        '来源: references/bioinfo_70_domains_process.md',
+        '来源:',
+        '  1. references/bioinfo_70_domains_process.md（70 生信领域权威完整版）',
+        '  2. scripts/kdense_discipline_skills.json（K-Dense 官方 326 workflows → 22 学科→技能）',
+        '  3. scripts/kdense_skills_list.txt（K-Dense 官方 scientific-agent-skills 163 技能清单）',
         '生成: scripts/gen_domains_70_config.py',
-        f'领域数: {len(domains)}',
+        f'领域数: {len(domains)} | K-Dense 学科: {len(kdense)}',
         '"""',
         '',
         '# 70 领域 → 图型路由（领域key: [图型列表]）',
@@ -243,8 +352,10 @@ def main():
     ]
     for d in domains:
         figs = ", ".join(f'"{f}"' for f in d["figures"])
-        lines.append(f'    "{d["key"]}": [{figs}],  # {d["title"]} ({d["tools"][:3]})')
+        lines.append(f'    "{d["key"]}": [{figs}],  # {d["title"]}')
     lines.append("}")
+    lines.append("")
+    lines.append("ALL_70_DOMAINS = list(DOMAINS_70_ROUTING.keys())")
     lines.append("")
     lines.append("# 领域中文名对照")
     lines.append("DOMAIN_70_NAMES = {")
@@ -252,47 +363,28 @@ def main():
         lines.append(f'    "{d["key"]}": "{d["title"]}",')
     lines.append("}")
     lines.append("")
-    lines.append("ALL_70_DOMAINS = list(DOMAINS_70_ROUTING.keys())")
     lines.append("")
-    lines.append("")
-    lines.append("# ═══ K-Dense 22 学科绘图能力映射（官方 149 skills 分类） ═══")
+    lines.append("# ═══ K-Dense 官方 22 学科路由（326 workflows 分类，合并学科全部技能图型） ═══")
     lines.append("KDENSE_DISCIPLINE_ROUTING = {")
-    kdense = {
-        "genomics": ["manhattan", "circos", "heatmap", "genome_track", "cnv"],
-        "transcriptomics": ["volcano", "heatmap", "ma_plot", "enrichment_dot", "gsea"],
-        "single-cell": ["umap", "tsne", "dotplot", "violin", "heatmap", "trajectory", "cellchat"],
-        "spatial": ["spatial", "heatmap", "umap", "deconvolution"],
-        "epigenomics": ["genome_track", "heatmap", "peaks", "motif", "beta_dist", "hic"],
-        "metagenomics": ["alpha_diversity", "beta_diversity", "composition", "sankey", "lefse"],
-        "proteomics": ["volcano", "heatmap", "venn", "ppi", "lollipop"],
-        "metabolomics": ["plsda", "volcano", "heatmap", "pathway", "bland_altman"],
-        "lipidomics": ["plsda", "volcano", "heatmap", "bar"],
-        "glycomics": ["heatmap", "bar", "volcano"],
-        "drug-discovery": ["dose_response", "ic50", "radar", "scatter", "heatmap"],
-        "medicinal-chemistry": ["radar", "scatter", "structure", "dose_response"],
-        "materials-science": ["scatter", "line", "heatmap", "parity_plot", "radar"],
-        "chemistry": ["scatter", "line", "radar", "parity_plot"],
-        "physics": ["scatter", "line", "contour_2d", "heatmap"],
-        "structural-biology": ["ppi", "structure", "heatmap"],
-        "clinical": ["km", "forest", "roc", "calibration", "nomogram"],
-        "epidemiology": ["manhattan", "forest", "km", "bar"],
-        "neuroscience": ["umap", "heatmap", "scatter", "line"],
-        "plant-science": ["manhattan", "qqplot", "heatmap", "circos"],
-        "immunology": ["clonotype", "umap", "heatmap", "diversity", "volcano"],
-        "microbiology": ["alpha_diversity", "beta_diversity", "composition", "tree"],
-    }
     for disc, figs in kdense.items():
         lines.append(f'    "{disc}": {figs},')
     lines.append("}")
     lines.append("")
+    lines.append("KDENSE_22_DISCIPLINES = list(KDENSE_DISCIPLINE_ROUTING.keys())")
+    lines.append("")
+    lines.append("# K-Dense 学科 → 关联技能（官方映射）")
+    disc_skills = json.loads(KDENSE_SKILLS.read_text(encoding="utf-8"))
+    lines.append("KDENSE_DISCIPLINE_SKILLS = " + json.dumps(disc_skills, ensure_ascii=False, indent=1))
+    lines.append("")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"Generated: {OUT}")
-    print(f"Domains: {len(domains)}")
-    total_figs = sum(len(d["figures"]) for d in domains)
-    print(f"Total figure entries: {total_figs}")
-    for d in domains[:10]:
-        print(f"  {d['key']:22s} <- {d['title']} -> {d['figures'][:5]}")
+    print(f"70 domains: {len(domains)} | K-Dense disciplines: {len(kdense)}")
+    total70 = sum(len(d["figures"]) for d in domains)
+    totalk = sum(len(v) for v in kdense.values())
+    print(f"70-domain figure entries: {total70} | K-Dense figure entries: {totalk}")
+    for disc, figs in kdense.items():
+        print(f"  [{disc:16s}] {len(figs):3d} figures: {figs[:8]}")
 
 
 if __name__ == "__main__":

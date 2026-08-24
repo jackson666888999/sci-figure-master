@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-08-24T13:31:29.201000</dc:date>
+    <dc:date>2026-08-24T13:44:20.947227</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -74,7 +74,7 @@ L 74.186651 152.137416
 L 220.213388 259.508749 
 L 221.46821 260.028256 
 z
-" clip-path="url(#p98fbb70f0b)" style="fill: #1f77b4; opacity: 0.15"/>
+" clip-path="url(#pf0afae130c)" style="fill: #1f77b4; opacity: 0.15"/>
    </g>
    <g id="patch_4">
     <path d="M 283.090393 258.8704 
@@ -83,7 +83,7 @@ L 56.277811 139.125883
 L 220.839296 259.054001 
 L 221.5457 260.266745 
 z
-" clip-path="url(#p98fbb70f0b)" style="fill: #ff7f0e; opacity: 0.15"/>
+" clip-path="url(#pf0afae130c)" style="fill: #ff7f0e; opacity: 0.15"/>
    </g>
    <g id="patch_5">
     <path d="M 286.357 258.8704 
@@ -92,14 +92,14 @@ L 72.318118 150.779847
 L 219.925945 259.717588 
 L 221.56585 260.328762 
 z
-" clip-path="url(#p98fbb70f0b)" style="fill: #2ca02c; opacity: 0.15"/>
+" clip-path="url(#pf0afae130c)" style="fill: #2ca02c; opacity: 0.15"/>
    </g>
    <g id="matplotlib.axis_1">
     <g id="xtick_1">
      <g id="line2d_1">
       <path d="M 221.092 258.8704 
 L 434.984 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_1">
       <!-- value -->
@@ -215,7 +215,7 @@ z
      <g id="line2d_2">
       <path d="M 221.092 258.8704 
 L 287.188263 55.44702 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_2">
       <!-- value2 -->
@@ -259,7 +259,7 @@ z
      <g id="line2d_3">
       <path d="M 221.092 258.8704 
 L 48.049737 133.147837 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_3">
       <!-- time -->
@@ -341,7 +341,7 @@ z
      <g id="line2d_4">
       <path d="M 221.092 258.8704 
 L 48.049737 384.592963 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_4">
       <!-- score -->
@@ -450,7 +450,7 @@ z
      <g id="line2d_5">
       <path d="M 221.092 258.8704 
 L 287.188263 462.29378 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_5">
       <!-- pos -->
@@ -510,7 +510,7 @@ C 225.275425 290.727417 229.418172 289.903374 233.283153 288.302446
 C 237.148134 286.701519 240.660185 284.354841 243.618313 281.396713 
 C 246.576441 278.438585 248.923119 274.926534 250.524046 271.061553 
 C 252.124974 267.196572 252.949017 263.053825 252.949017 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_6">
       <!-- 10 -->
@@ -576,7 +576,7 @@ C 229.45885 322.584434 237.744344 320.936347 245.474305 317.734492
 C 253.204267 314.532637 260.228369 309.839282 266.144626 303.923026 
 C 272.060882 298.006769 276.754237 290.982667 279.956092 283.252705 
 C 283.157947 275.522744 284.806034 267.23725 284.806034 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_7">
       <!-- 20 -->
@@ -605,7 +605,7 @@ C 233.642276 354.441452 246.070515 351.969321 257.665458 347.166539
 C 269.260401 342.363756 279.796554 335.323724 288.670939 326.449339 
 C 297.545324 317.574954 304.585356 307.038801 309.388139 295.443858 
 C 314.190921 283.848915 316.663052 271.420676 316.663052 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_8">
       <!-- 30 -->
@@ -668,7 +668,7 @@ C 237.825701 386.298469 254.396687 383.002295 269.856611 376.598585
 C 285.316534 370.194875 299.364738 360.808165 311.197252 348.975652 
 C 323.029765 337.143138 332.416475 323.094934 338.820185 307.635011 
 C 345.223895 292.175087 348.520069 275.604101 348.520069 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_9">
       <!-- 40 -->
@@ -718,7 +718,7 @@ C 242.009126 418.155486 262.722859 414.035268 282.047763 406.030631
 C 301.372668 398.025993 318.932923 386.292606 333.723565 371.501965 
 C 348.514206 356.711323 360.247593 339.151068 368.252231 319.826163 
 C 376.256868 300.501259 380.377086 279.787526 380.377086 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_10">
       <!-- 50 -->
@@ -774,7 +774,7 @@ C 246.192551 450.012503 271.049031 445.068242 294.238916 435.462677
 C 317.428802 425.857112 338.501108 411.777047 356.249877 394.028277 
 C 373.998647 376.279508 388.078712 355.207202 397.684277 332.017316 
 C 407.289842 308.827431 412.234103 283.970951 412.234103 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #b0b0b0; stroke-width: 0.8; stroke-linecap: square"/>
      </g>
      <g id="text_11">
       <!-- 60 -->
@@ -824,7 +824,7 @@ L 74.186651 152.137416
 L 220.213388 259.508749 
 L 221.46821 260.028256 
 L 289.763103 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #1f77b4; stroke-width: 2; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #1f77b4; stroke-width: 2; stroke-linecap: square"/>
    </g>
    <g id="line2d_13">
     <path d="M 283.090393 258.8704 
@@ -833,7 +833,7 @@ L 56.277811 139.125883
 L 220.839296 259.054001 
 L 221.5457 260.266745 
 L 283.090393 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #ff7f0e; stroke-width: 2; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #ff7f0e; stroke-width: 2; stroke-linecap: square"/>
    </g>
    <g id="line2d_14">
     <path d="M 286.357 258.8704 
@@ -842,7 +842,7 @@ L 72.318118 150.779847
 L 219.925945 259.717588 
 L 221.56585 260.328762 
 L 286.357 258.8704 
-" clip-path="url(#p98fbb70f0b)" style="fill: none; stroke: #2ca02c; stroke-width: 2; stroke-linecap: square"/>
+" clip-path="url(#pf0afae130c)" style="fill: none; stroke: #2ca02c; stroke-width: 2; stroke-linecap: square"/>
    </g>
    <g id="patch_6">
     <path d="M 434.984 258.8704 
@@ -1183,7 +1183,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="p98fbb70f0b">
+  <clipPath id="pf0afae130c">
    <path d="M 434.984 258.8704 
 C 434.984 230.78236 429.451269 202.967441 418.702441 177.017475 
 C 407.953613 151.06751 392.197727 127.48716 372.336484 107.625916 
