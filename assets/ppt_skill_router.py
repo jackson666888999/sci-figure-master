@@ -118,7 +118,11 @@ class PptSkillRouter:
                 result = bridge.generate_from_markdown(markdown_path, output_path, style)
             else:
                 result = bridge.generate(
-                    topic, outline, output_path, style, page_count,
+                    topic=topic,
+                    outline=outline,
+                    output_path=output_path,
+                    style=style,
+                    page_count=page_count,
                     markdown_content=markdown_content
                 )
             result["skill_used"] = primary_skill
