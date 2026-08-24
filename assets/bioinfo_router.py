@@ -2477,57 +2477,181 @@ def _save_multi(base: str, fig):
         print(f"[save-multi] partial: {e}")
 
 
-def _auto_select_plot(df: pd.DataFrame) -> str:
+# ============================================================
+# 图型-输入结构兼容矩阵（覆盖 chart_catalog 全部图型类别的输入需求）
+# 结构标签：diff(差异表) / surv(生存) / ts(时序) / grouped(分类×数值)
+#          / wide(多数值宽表) / two_num(双数值) / single(单数值)
+#          / count(计数占比) / network(dict) / mech(dict) / anndata
+PLOT_INPUT_MAP = {
+    "volcano": "diff", "ma_plot": "diff", "enhanced_volcano": "diff",
+    "box": "grouped", "violin": "grouped", "boxplot": "grouped",
+    "raincloud": "grouped", "ridgeline": "grouped", "beeswarm": "grouped",
+    "strip": "grouped", "interaction_plot": "grouped",
+    "km": "surv", "forest": "surv", "survival_forest": "surv",
+    "line": "ts", "area": "ts", "stacked_area": "ts", "step": "ts",
+    "waterfall": "ts", "seasonal": "ts",
+    "heatmap": "wide", "corr_heatmap": "wide", "clustermap": "wide",
+    "complex_heatmap": "wide", "dendrogram": "wide", "pca": "wide",
+    "plsda": "wide", "oplsda": "wide", "mofa": "wide",
+    "scree": "wide", "loading": "wide", "biplot": "wide",
+    "scatter": "two_num", "hexbin": "two_num", "bubble": "two_num",
+    "qqplot": "two_num",
+    "histogram": "single", "kde": "single", "density": "single", "ecdf": "single",
+    "bar": "count", "donut": "count", "treemap": "count", "pie": "count",
+    "stacked_bar": "count", "grouped_bar": "count", "composition": "count",
+    "sunburst": "count", "waffle": "count", "venn": "count", "upset": "count",
+    "network": "network", "ppi": "network", "cellchat": "network",
+    "sankey": "network", "alluvial": "network", "circos": "network", "chord": "network",
+    "mechanism_diagram": "mech", "pathway_diagram": "mech",
+    "graphical_abstract": "mech", "flowchart": "mech",
+    "umap": "anndata", "tsne": "anndata", "dotplot": "anndata",
+    "marker": "anndata", "trajectory": "anndata", "spatial": "anndata",
+    "rna_velocity": "anndata",
+    # 高频补充（R 工具链 & 特有图型）
+    "kaplan_meier": "surv", "roc_curve": "two_num", "clustree": "grouped",
+    "pca_plot": "wide", "network_graph": "network", "radar": "grouped",
+    "lollipop": "wide", "nightingale": "count", "population_pyramid": "count",
+    "diverging_bar": "count", "percent_stacked_bar": "count",
+    "parallel_coords": "wide", "pairplot": "wide", "parity_plot": "two_num",
+    "bland_altman": "two_num", "marginal_plot": "two_num",
+    "stripplot": "grouped", "beeswarm": "grouped", "dumbbell": "grouped",
+    "slope": "ts", "step_line": "ts", "errorbar": "grouped",
+    "sunburst": "count", "mosaic": "count", "waffle": "count",
+    "correlation_network": "network", "bubble_plot": "two_num",
+    "forest_plot": "surv", "volcano_plot": "diff", "enrichment_plot": "diff",
+}
+
+# category → 输入结构批量推断（补齐 chart_catalog 中未显式映射的图型）
+CATEGORY_STRUCT = {
+    "Distribution":   "single",
+    "Comparison":     "grouped",
+    "Correlation":    "wide",
+    "Time Series":    "ts",
+    "Proportional":   "count",
+    "Network":        "network",
+    "Set":            "count",
+    "Geographic":     "wide",
+    "3D":             "wide",
+    "Differential":   "diff",
+    "Enrichment":     "diff",
+    "Microbiome":     "count",
+    "Genomics":       "wide",
+    "Phylogeny":      "wide",
+    "Survival":       "surv",
+    "Epigenetics":    "diff",
+    "Metabolomics":   "wide",
+    "Multi-omics":    "wide",
+    "Spatial":        "anndata",
+    "Heatmap":        "wide",
+    "Flow":           "single",
+    "Text":           "count",
+    "Scientific":     "grouped",
+}
+
+
+def _extend_input_map():
+    """按 category 批量推断未映射图型的输入结构（覆盖 chart_catalog 全量）"""
+    try:
+        from chart_catalog import CHART_CATALOG
+        added = 0
+        for cid, meta in CHART_CATALOG.items():
+            if cid in PLOT_INPUT_MAP:
+                continue
+            cat = meta.get("category", "")
+            st = CATEGORY_STRUCT.get(cat)
+            if st:
+                PLOT_INPUT_MAP[cid] = st
+                added += 1
+        return added
+    except Exception:
+        return 0
+
+
+_extend_input_map()
+
+
+# 结构 → 通用候选图型（兜底优先级）
+STRUCT_CANDIDATES = {
+    "diff":    ["volcano", "ma_plot", "enhanced_volcano", "heatmap", "scatter"],
+    "surv":    ["km", "forest", "survival_forest", "line"],
+    "ts":      ["line", "area", "stacked_area", "waterfall", "scatter"],
+    "grouped": ["violin", "box", "raincloud", "ridgeline", "beeswarm", "strip"],
+    "wide":    ["heatmap", "corr_heatmap", "clustermap", "pca", "dendrogram"],
+    "two_num": ["scatter", "hexbin", "bubble", "qqplot"],
+    "single":  ["histogram", "kde", "density", "ecdf"],
+    "count":   ["bar", "donut", "composition", "stacked_bar", "grouped_bar", "treemap", "pie"],
+    "network": ["network", "sankey", "chord", "circos", "alluvial", "ppi"],
+    "mech":    ["mechanism_diagram", "pathway_diagram", "graphical_abstract", "flowchart"],
+}
+
+
+def _detect_structure(df: pd.DataFrame) -> str:
+    """识别 DataFrame 结构：diff/surv/ts/grouped/wide/two_num/single/count"""
     num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
     n_num, n_cat = len(num_cols), len(cat_cols)
     cl = {c.lower(): c for c in df.columns}
 
-    # 1) 差异分析表（log2FC + P 值）→ volcano
     has_fc = any(any(k in key for k in ("log2fc", "logfc", "foldchange", "lfc", "fc")) for key in cl)
     has_p = any(any(k in key for k in ("pvalue", "padj", "p_value", "qvalue", "fdr", "_p", "_q")) for key in cl)
     if has_fc and has_p and n_num >= 2:
-        return "volcano"
-
-    # 2) 生存数据（time + event/status）→ KM 曲线
-    has_time = any(k in cl for k in ("time", "survival", "os", "days", "months"))
-    has_event = any(k in cl for k in ("event", "status", "censor", "cns"))
+        return "diff"
+    has_time = any(k in cl for k in ("time", "survival", "os", "days", "months", "followup"))
+    has_event = any(k in cl for k in ("event", "status", "censor", "cns", "outcome"))
     if has_time and has_event:
-        return "km"
-
-    # 3) 时间序列（time 列 + 数值列）→ line
+        return "surv"
     if has_time and n_num >= 1:
-        return "line"
-
-    # 4) 分类列 + 数值列 → 分组分布（violin 信息密度高于 box/bar）
+        return "ts"
     if n_cat >= 1 and n_num >= 1:
-        # 计数/占比表（category + count/abundance/freq）→ bar/donut
         count_like = [c for c in num_cols if any(k in c.lower() for k in ("count", "freq", "abund", "percent", "proportion", "num", "n_"))]
         if count_like and len(count_like) == n_num:
-            if n_cat >= 2:
-                return "grouped_bar"
-            return "bar"
-        if n_num == 1:
-            return "violin"
-        return "box"  # 多数值 + 分类 → 分组箱线
-
-    # 5) 纯数值多列 → heatmap / 相关
-    if n_num >= 8:
-        return "heatmap"
+            return "count"
+        return "grouped"
     if n_num >= 3:
-        return "scatter_matrix" if hasattr(df, "corr") else "heatmap"
+        return "wide"
     if n_num == 2:
-        return "scatter"
+        return "two_num"
     if n_num == 1:
-        return "histogram"
-
-    # 6) 纯分类 → 计数占比
-    if n_cat >= 2:
-        return "grouped_bar"
-    return "bar"
+        return "single"
+    return "count"
 
 
-def quick_plot(data, output_path: str, plot_type: str = "auto", **kwargs) -> str:
+def _auto_select_plot(df: pd.DataFrame, domain: str = None, top_n: int = 3) -> list:
+    """
+    智能选型（覆盖所有领域 × 全部图型）：
+    领域候选（chart_catalog.suggest_for_domain + list_charts） ∩ 数据结构兼容（PLOT_INPUT_MAP）
+    → 按优先级返回 top_n 候选；无领域时纯结构推断。
+    """
+    struct = _detect_structure(df)
+    structure_cands = STRUCT_CANDIDATES.get(struct, ["bar", "heatmap"])
+
+    domain_cands = []
+    if domain:
+        try:
+            from chart_catalog import suggest_for_domain, list_charts
+            domain_cands = list(suggest_for_domain(domain, top_n=30)) or []
+            for cid in list_charts(domain=domain):
+                if cid not in domain_cands:
+                    domain_cands.append(cid)
+        except Exception:
+            domain_cands = []
+
+    if domain_cands:
+        compat = [c for c in domain_cands if PLOT_INPUT_MAP.get(c, "") == struct]
+        if not compat:
+            compat = [c for c in domain_cands if c in structure_cands]
+        if not compat:
+            compat = structure_cands
+        out = []
+        for c in compat + structure_cands:
+            if c not in out:
+                out.append(c)
+        return out[:top_n]
+
+    return structure_cands[:top_n]
+
+
+def quick_plot(data, output_path: str, plot_type: str = "auto", domain: str = None, **kwargs) -> str:
     """
     快速绘图：自动判断数据类型和最佳图型
 
@@ -2550,11 +2674,18 @@ def quick_plot(data, output_path: str, plot_type: str = "auto", **kwargs) -> str
         # 基因表达数据
         return generate_figure("scRNA", "heatmap", data, output_path, **kwargs)
     elif isinstance(data, pd.DataFrame):
-        # 通用数据：智能选型
+        # 通用数据：智能选型（覆盖领域×图型）
         if plot_type == "auto":
-            plot_type = _auto_select_plot(data)
-            print(f"[auto-select] DataFrame -> {plot_type}")
-        return generate_figure("general", plot_type, data, output_path, **kwargs)
+            cands = _auto_select_plot(data, domain=domain, top_n=5)
+            plot_type = cands[0] if cands else "bar"
+            print(f"[auto-select] domain={domain} struct={_detect_structure(data)} -> {plot_type} (cands={cands})")
+            # 若首选无 native 函数，尝试候选链
+            if not get_native_plot_function("general", plot_type):
+                for c in cands[1:]:
+                    if get_native_plot_function("general", c) or get_native_plot_function("scRNA", c):
+                        plot_type = c
+                        break
+        return generate_figure(domain or "general", plot_type, data, output_path, **kwargs)
     elif isinstance(data, dict) and ("entities" in data or "relations" in data or "nodes" in data):
         # 机制图结构化输入（entities+relations JSON）
         return plot_mechanism_diagram(data, output_path, **kwargs)
