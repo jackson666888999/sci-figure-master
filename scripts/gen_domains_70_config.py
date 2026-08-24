@@ -322,6 +322,10 @@ def build_kdense_22(disciplines_file: Path, skills_list: Path) -> dict:
         figures = set()
         for skill in skills:
             figures.update(SKILL_FIGURE_MAP.get(skill, []))
+        # 未命中的技能（工具/库型）统一给学科兜底图型，保证 163 技能全部可路由
+        miss = [s for s in skills if not SKILL_FIGURE_MAP.get(s)]
+        if miss:
+            figures.update(DISC_DEFAULT)
         # 学科兜底
         if not figures:
             figures.update(DISC_DEFAULT)

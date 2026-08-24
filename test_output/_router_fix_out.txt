@@ -1,0 +1,26 @@
+﻿python.exe : findfont: Failed to find font weight bold, now using 400.
+所在位置 行:439 字符: 140
++ ... ython.exe"; & $py "E:\git\sci-figure-master\test_output\test_router_f ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (findfont: Faile... now using 400. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+findfont: Failed to find font weight bold, now using 400.
+[1] DE table -> volcano
+[2] group+value -> violin
+[3] survival -> km
+[4] timeseries -> line
+[5] wide numeric -> heatmap
+[6] category count -> bar
+[mechanism-diagram] 8 nodes, 8 edges -> E:\git\sci-figure-master\test_output\router_fix\mech_test.svg/pdf/png/tiff
+[7] mechanism -> E:\git\sci-figure-master\test_output\router_fix\mech_test.svg True
+[mechanism-diagram] 8 nodes, 8 edges -> E:\git\sci-figure-master\test_output\router_fix\mech_quick.svg/pdf/png/tiff
+[8] quick_plot dict -> E:\git\sci-figure-master\test_output\router_fix\mech_quick.svg
+[9] presentation count: 12
+    mechanism_diagram -> 机制示意图(BioRender风格)
+    graphical_abstract -> 图形摘要
+    pathway_diagram -> 通路图
+    flowchart -> 流程图
+
+ALL DONE

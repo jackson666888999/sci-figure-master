@@ -70,6 +70,22 @@ ROUTING_TABLE = {
     ("general", "pie"): "plot_pie",
     ("general", "heatmap"): "plot_heatmap",
 
+    # 机制图 / 学术配图（PaperBanana / BioRender 风格）
+    ("general", "mechanism_diagram"): "plot_mechanism_diagram",
+    ("general", "mechanism"): "plot_mechanism_diagram",
+    ("general", "graphical_abstract"): "plot_mechanism_diagram",
+    ("general", "pathway_diagram"): "plot_mechanism_diagram",
+    ("general", "pathway"): "plot_mechanism_diagram",
+    ("general", "flowchart"): "plot_mechanism_diagram",
+    ("general", "flow_chart"): "plot_mechanism_diagram",
+    ("academic", "mechanism_diagram"): "plot_mechanism_diagram",
+    ("academic", "graphical_abstract"): "plot_mechanism_diagram",
+    ("academic", "pathway_diagram"): "plot_mechanism_diagram",
+    ("academic", "flowchart"): "plot_mechanism_diagram",
+    ("paper", "mechanism_diagram"): "plot_mechanism_diagram",
+    ("paper", "graphical_abstract"): "plot_mechanism_diagram",
+    ("paper", "figure"): "plot_mechanism_diagram",
+
     # 基因组
     ("genome", "browser"): "plot_genome_browser",
     ("genome", "track"): "plot_genome_track",

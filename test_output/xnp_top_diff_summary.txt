@@ -1,0 +1,220 @@
+
+==========================================================================================
+### 脑代谢组 High_dose_XNPVSModel
+### data\LC-P20260131046-脑非靶代谢组学\脑代谢Summary_Extracted\脑代谢Summary\05.DiffExp\COND1\High_dose_XNPVSModel\High_dose_XNPVSModel_diff_featurespeaks.xlsx
+  total features=696
+  significant (p<0.05, VIP>=1.0) = 16
+                                               Metabolites   p_value   q_value       VIP
+11                                           Myristic acid  0.003834  0.993057  1.321351
+8                                        Linalyl hexanoate  0.005216  0.993057  2.040190
+5                                    Decanoyl acetaldehyde  0.005848  0.993057  2.472595
+2                            Arachidonoylcarnitine (C20:4)  0.011710  0.993057  1.782997
+4                                                    CAI-1  0.016401  0.993057  1.547788
+13                         cis-4-Decenoylcarnitine (C10:1)  0.017492  0.993057  3.477960
+15                                  tetradeca-3,5-dienoate  0.020161  0.993057  1.775701
+6                                            ExMrn00043787  0.020988  0.993057  1.626986
+3                                                Aspartate  0.030736  0.993057  1.894220
+12                                        Myristoleic acid  0.034643  0.993057  2.111955
+9                                              Methandriol  0.038489  0.993057  1.496653
+1                                          9,12,13-TriHOME  0.038525  0.993057  2.165326
+14                                  cis-9-Palmitoleic acid  0.039434  0.993057  1.410535
+0                                   3-Hydroxydecanoic acid  0.040125  0.993057  2.002342
+7                                 Hydroxyphenyllactic acid  0.041596  0.993057  1.777175
+10  Methyl cis-p-coumarate 3-(3,7-dimethyl-2,6-octadienyl)  0.043655  0.993057  1.346188
+  class distribution:
+SuperClass
+Lipids and lipid-like molecules     8
+Organic acids and derivatives       2
+Phenylpropanoids and polyketides    2
+
+==========================================================================================
+### 脑代谢组 High_dose_XNPVSControl
+### data\LC-P20260131046-脑非靶代谢组学\脑代谢Summary_Extracted\脑代谢Summary\05.DiffExp\COND1\High_dose_XNPVSControl\High_dose_XNPVSControl_diff_featurespeaks.xlsx
+  total features=696
+  significant (p<0.05, VIP>=1.0) = 32
+                         Metabolites   p_value   q_value       VIP
+1                    3-Decenoic acid  0.003027  0.770280  1.937137
+288                      Capric acid  0.006745  0.770280  1.456606
+18            Thiamine monophosphate  0.007451  0.770280  2.095316
+4                 Adenine(M134T76_1)  0.008768  0.770280  1.878714
+22                     kauralexin B3  0.008939  0.770280  1.835366
+633                  Undecanoic acid  0.010733  0.770280  1.354285
+13               Monobutyl phthalate  0.010769  0.770280  2.034651
+21   cis-8,11,14-Eicosatrienoic acid  0.010867  0.770280  1.741860
+6      Arachidonoylcarnitine (C20:4)  0.011455  0.770280  2.025945
+99                          15HpETrE  0.013517  0.770280  1.023002
+7               C20 phytosphingosine  0.013886  0.770280  1.905333
+17                       Sphinganine  0.014529  0.770280  1.909938
+663           cis-9-Palmitoleic acid  0.014773  0.770280  1.231918
+15                     Phytanic acid  0.015982  0.770280  2.087212
+19                           Uridine  0.016601  0.770280  1.577173
+76                10-Undecenoic acid  0.018561  0.807383  1.108960
+514                     Nicotinamide  0.019902  0.814818  1.334048
+12                       Methandriol  0.023551  0.903853  1.836838
+408              Hexadecasphinganine  0.024674  0.903853  1.249565
+16                  Phytosphingosine  0.026301  0.915282  1.941674
+11                        Lumichrome  0.028995  0.960987  1.540878
+9              Decanoyl acetaldehyde  0.032330  0.979703  2.422037
+23              tetradecasphinganine  0.032828  0.979703  2.023810
+20   cis-4-Decenoylcarnitine (C10:1)  0.039075  0.979703  3.343366
+10       Flavin mononucleotide (FMN)  0.040349  0.979703  1.484507
+  class distribution:
+SuperClass
+Lipids and lipid-like molecules            12
+Organoheterocyclic compounds                5
+Organic nitrogen compounds                  3
+Nucleosides, nucleotides, and analogues     2
+Organic oxygen compounds                    2
+Benzenoids                                  1
+
+==========================================================================================
+### 脑代谢组 ModelVSControl
+### data\LC-P20260131046-脑非靶代谢组学\脑代谢Summary_Extracted\脑代谢Summary\05.DiffExp\COND1\ModelVSControl\ModelVSControl_diff_featurespeaks.xlsx
+  total features=696
+  significant (p<0.05, VIP>=1.0) = 14
+                                     Metabolites   p_value   q_value       VIP
+5                       Hydroxyphenyllactic acid  0.000896  0.623655  2.582462
+691                         sphinga-4,8-trienine  0.003531  0.759851  1.112963
+1    3-(3-Hydroxyphenyl)-3-hydroxypropanoic acid  0.005423  0.759851  2.370179
+11                          tetradecasphinganine  0.006709  0.759851  2.128679
+8                               Phytosphingosine  0.006959  0.759851  1.812714
+10                                 kauralexin B3  0.008071  0.759851  1.616642
+7                        Palmitoleoylethanolamde  0.008734  0.759851  1.277256
+3                              3-Ketosphingosine  0.008734  0.759851  1.277256
+2                                3-Decenoic acid  0.022431  0.997177  1.226736
+4                           C20 phytosphingosine  0.024648  0.997177  1.528547
+0                         2-Hydroxypalmitic acid  0.024679  0.997177  1.529830
+402                          Hexadecasphinganine  0.028783  0.997177  1.032253
+6                                        Lactate  0.039532  0.997177  1.278792
+9                                    Sphinganine  0.049231  0.997177  1.301813
+  class distribution:
+SuperClass
+Organic nitrogen compounds          3
+Phenylpropanoids and polyketides    2
+Lipids and lipid-like molecules     2
+Organic oxygen compounds            1
+Organic acids and derivatives       1
+
+==========================================================================================
+### 粪便代谢组 High_dose_XNPVSModel
+### data\LC-P20260131045-粪便非靶代谢组学\粪便代谢Summary_Extracted\粪便代谢Summary\05.DiffExp\COND1\High_dose_XNPVSModel\High_dose_XNPVSModel_diff_featurespeaks.xlsx
+  total features=1628
+  significant (p<0.05, VIP>=1.0) = 121
+                                                                        Metabolites   p_value   q_value       VIP
+12                                                                15-Epi-lipoxin B5  0.000052  0.042681  2.017926
+118                                                                      lipoxin A5  0.000052  0.042681  2.017926
+50                                                             Dimethylmalonic acid  0.000215  0.116764  2.339641
+105                                                       Propyleneglycol diacetate  0.001337  0.429837  2.398174
+20   2-{[Hexadec-9-enoyl]oxy}-3-hydroxypropyl 2-(trimethylazaniumyl)ethyl phosphate  0.001768  0.429837  2.229248
+103                                                                    Pimelic acid  0.002846  0.429837  1.535437
+38                                                                       Avicholate  0.003544  0.429837  2.182392
+21                                            2b,3a,7a-Trihydroxy-5b-cholanoic acid  0.003544  0.429837  2.182392
+28                                                 6a,12a-Dihydroxylithocholic acid  0.003544  0.429837  2.182392
+3                                            1-16:1-2-18:3-phosphatidylethanolamine  0.003989  0.429837  2.547537
+13                                                                         15d PGD2  0.004115  0.429837  2.645280
+84                                                                 LysoPE(20:0/0:0)  0.005926  0.429837  2.040431
+101                                                              Palmitoylcarnitine  0.006055  0.429837  1.831432
+8                                           1-myristoyl-sn-glycero-3-phosphocholine  0.006109  0.429837  2.045040
+42                                                  Cer(d18:2(4E,14Z)/18:1O(12,13))  0.006125  0.429837  1.339864
+41                                                  Cer(d18:1/18:3(10,12,15)-OH(9))  0.006125  0.429837  1.339864
+40                                                    Cer(d16:1/20:3(6,8,11)-OH(5))  0.006125  0.429837  1.339864
+43                                                 Cer(d18:2(4E,14Z)/18:1O(9S,10R))  0.006125  0.429837  1.339864
+5                                      1-O-octadecanoyl-sn-glycero-3-phosphocholine  0.006478  0.429837  1.629959
+59                                                                    ExMrn00046533  0.006849  0.429837  3.018608
+52                                                                    ExMrn00000900  0.006849  0.429837  3.018608
+90                                                                     Metabolite B  0.007093  0.429837  3.381871
+1                                     1-(9Z-Eicosenoyl)-sn-glycero-3-phosphocholine  0.007212  0.429837  1.843457
+120                                                      wogonin 7-O-beta-glucoside  0.007522  0.429837  3.010641
+64                                                                    ExMrn00069238  0.007657  0.429837  2.026797
+  class distribution:
+SuperClass
+Lipids and lipid-like molecules            58
+Organic acids and derivatives              10
+Nucleosides, nucleotides, and analogues     3
+Phenylpropanoids and polyketides            3
+Benzenoids                                  3
+Organic oxygen compounds                    2
+
+==========================================================================================
+### 粪便代谢组 High_dose_XNPVSControl
+### data\LC-P20260131045-粪便非靶代谢组学\粪便代谢Summary_Extracted\粪便代谢Summary\05.DiffExp\COND1\High_dose_XNPVSControl\High_dose_XNPVSControl_diff_featurespeaks.xlsx
+  total features=1628
+  significant (p<0.05, VIP>=1.0) = 211
+                                                                              Metabolites   p_value   q_value       VIP
+183                                                                 Tetradecanedioic acid  0.000054  0.039908  2.169425
+13                                                                      15-Epi-lipoxin B5  0.000074  0.039908  1.635863
+201                                                                            lipoxin A5  0.000074  0.039908  1.635863
+58                                                                    Cholylglutamic acid  0.000211  0.086001  2.490933
+192                            [4-(5-methylhexanoyl)-5-oxo-2H-furan-3-yl]methyl phosphate  0.000373  0.106009  2.559343
+40                                                                5S-Hydroperoxy-18R-HEPE  0.000400  0.106009  1.046622
+63                                                                   Cyclopassifloside II  0.000543  0.106009  1.961640
+60                                                                                Corosin  0.000587  0.106009  1.846636
+163                                                                       Phytolaccatoxin  0.000587  0.106009  1.846636
+48                                                                       Araliasaponin II  0.000718  0.106009  2.831272
+126                                                        Kudzusaponin SA2(M946T344_B_1)  0.000718  0.106009  2.831272
+80                                                                          ExMrn00022191  0.000781  0.106009  1.647961
+138                                                                          Metabolite B  0.001291  0.148393  2.469829
+112                                                                  Geranyl acetoacetate  0.001364  0.148393  1.548710
+178                                                                        Soyasaponin IV  0.001465  0.148393  1.772777
+165                                                                       Pitheduloside A  0.001465  0.148393  1.772777
+121                                                                           Ilexgenin A  0.001641  0.148393  1.697189
+74                                                           Esculentic acid (Phytolacca)  0.001641  0.148393  1.697189
+95                                                                          ExMrn00086959  0.001784  0.150993  1.962256
+14                                                                               15d PGD2  0.001961  0.150993  2.779090
+26                                                              3'-Deoxyderhamnosylmaysin  0.002031  0.150993  2.110650
+166  Proline, 1-(N-((3-((propylamino)carbonyl)oxiranyl)carbonyl)-isoleucyl)-, (2S-trans)-  0.002040  0.150993  1.288423
+198                                                       hederagenin-28-O-beta-glucoside  0.002815  0.160963  1.628977
+199                                                        hederagenin-3-O-beta-glucoside  0.002815  0.160963  1.628977
+134                                                         Maslinic acid 3-O-b-glucoside  0.002815  0.160963  1.628977
+  class distribution:
+SuperClass
+Lipids and lipid-like molecules              82
+Organic acids and derivatives                21
+Phenylpropanoids and polyketides              9
+Organic oxygen compounds                      9
+Benzenoids                                    8
+Organoheterocyclic compounds                  7
+Organic nitrogen compounds                    2
+Lignans, neolignans and related compounds     1
+
+==========================================================================================
+### 粪便代谢组 ModelVSControl
+### data\LC-P20260131045-粪便非靶代谢组学\粪便代谢Summary_Extracted\粪便代谢Summary\05.DiffExp\COND1\ModelVSControl\ModelVSControl_diff_featurespeaks.xlsx
+  total features=1628
+  significant (p<0.05, VIP>=1.0) = 135
+                                            Metabolites   p_value   q_value       VIP
+119                                          Tryptophan  0.000159  0.189416  1.901350
+110                                        Pimelic acid  0.000505  0.189416  1.594838
+9    19alpha-19-Hydroxy-3,11-dioxo-12-ursen-28-oic acid  0.001204  0.189416  2.046643
+50                         Esculentic acid (Phytolacca)  0.001241  0.189416  2.299216
+75                                          Ilexgenin A  0.001241  0.189416  2.299216
+53                                        ExMrn00011240  0.001323  0.189416  3.407983
+52                                        ExMrn00011239  0.001323  0.189416  3.407983
+54                                        ExMrn00011242  0.001323  0.189416  3.407983
+65                                        ExMrn00085292  0.001441  0.189416  2.667790
+51                                        ExMrn00008779  0.001441  0.189416  2.667790
+57                                        ExMrn00031325  0.001441  0.189416  2.667790
+55                                        ExMrn00020145  0.001441  0.189416  2.667790
+6                    1-nonadecanoyl-glycero-3-phosphate  0.001513  0.189416  1.626050
+67                                        ExMrn00092292  0.001931  0.218615  2.172269
+47                                          Desmosterol  0.002014  0.218615  1.668293
+17          3,9-dihydroxy-4,8-dimethyldeca-4,6-dienoate  0.002865  0.255406  1.793012
+34                      Cer(d18:1/18:3(10,12,15)-OH(9))  0.003220  0.255406  1.360780
+35                      Cer(d18:2(4E,14Z)/18:1O(12,13))  0.003220  0.255406  1.360780
+33                        Cer(d16:1/20:3(6,8,11)-OH(5))  0.003220  0.255406  1.360780
+36                     Cer(d18:2(4E,14Z)/18:1O(9S,10R))  0.003220  0.255406  1.360780
+108                                       Phenylalanine  0.003295  0.255406  1.792078
+12                 2-Methyl-1-phenyl-2-propanyl acetate  0.003672  0.271743  1.163211
+37                                  Cholylglutamic acid  0.003852  0.272673  2.969894
+128                             cis-3-hexenol glucoside  0.005175  0.351070  1.113923
+83                                         Maltohexaose  0.006615  0.359954  1.845100
+  class distribution:
+SuperClass
+Lipids and lipid-like molecules            33
+Organic acids and derivatives              26
+Organoheterocyclic compounds                9
+Organic oxygen compounds                    9
+Benzenoids                                  7
+Phenylpropanoids and polyketides            4
+Nucleosides, nucleotides, and analogues     2
+Organic nitrogen compounds                  1

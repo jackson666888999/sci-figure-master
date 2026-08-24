@@ -1,0 +1,289 @@
+Serum metabolome candidates: D:\乌灵菌\data\LC-P20260131050-血清非靶代谢组学\血清代谢Summary; D:\乌灵菌\data\LC-P20260131050-血清非靶代谢组学\血清代谢Summary.tar.gz; D:\乌灵菌\data\LC-P20260131050-血清非靶代谢组学\血清代谢Summary.zip
+
+==========================================================================================
+### 血清代谢组 ControlVSModelVSHigh_dose_XNPVSHigh_dose_XNEVSHigh_dose_XNF
+### data\LC-P20260131050-血清非靶代谢组学\血清代谢Summary\05.DiffExp\COND1\ControlVSModelVSHigh_dose_XNPVSHigh_dose_XNEVSHigh_dose_XNF\ControlVSModelVSHigh_dose_XNPVSHigh_dose_XNEVSHigh_dose_XNF_diff_featurespeaks.xlsx
+  total features=967
+  significant p<0.05 = 318
+                                   Metabolites       p_value   q_value
+638                        Hexadecasphinganine  4.391601e-09  0.000004
+712               Mono(1-ethylhexyl) phthalate  2.087643e-08  0.000010
+463                       C20 phytosphingosine  6.452065e-08  0.000021
+110                    Phenethyl phenylacetate  2.965915e-07  0.000072
+72                               ExMrn00102470  2.946246e-06  0.000475
+73                               ExMrn00102471  2.946246e-06  0.000475
+22                     2-oxo-2'-deoxyadenosine  2.783860e-05  0.003505
+141                     gamma-Glutamyltyrosine  2.900029e-05  0.003505
+64                           Ethyl glucuronide  3.404791e-05  0.003658
+79                            Glutamyltyrosine  5.668236e-05  0.004660
+129                          Tyrosyl-Glutamate  5.668236e-05  0.004660
+100                        Monobutyl phthalate  5.842459e-05  0.004660
+91                        Indole-3-carboxylate  6.264641e-05  0.004660
+60                              Deoxyguanosine  6.835381e-05  0.004721
+104              N5-(4-Methoxybenzyl)glutamine  7.545322e-05  0.004735
+53                       Adenosine(M268T200_1)  7.854905e-05  0.004735
+294  3-Amino-3-(4-hydroxyphenyl)propanoic acid  8.323906e-05  0.004735
+272                   2-oxo-5-phenylpentanoate  9.436343e-05  0.005069
+238    2,6-Di-tert-butyl-4-hydroxymethylphenol  1.048467e-04  0.005316
+109                                    Phe-Asp  1.101897e-04  0.005316
+
+==========================================================================================
+### 血清代谢组 High_dose_XNPVSControl
+### data\LC-P20260131050-血清非靶代谢组学\血清代谢Summary\05.DiffExp\COND1\High_dose_XNPVSControl\High_dose_XNPVSControl_diff_featurespeaks.xlsx
+  total features=967
+  significant p<0.05 = 163
+                                            Metabolites   p_value   q_value
+67                                    Ethyl glucuronide  0.000101  0.037393
+73                                        ExMrn00102470  0.000116  0.037393
+74                                        ExMrn00102471  0.000116  0.037393
+21                              2-oxo-2'-deoxyadenosine  0.000215  0.042694
+90                                 Indole-3-carboxylate  0.000267  0.042694
+97                                  Monobutyl phthalate  0.000384  0.042694
+61                                       Deoxyguanosine  0.000415  0.042694
+109                             Phenethyl phenylacetate  0.000418  0.042694
+49                                Adenosine(M268T200_1)  0.000454  0.042694
+86                                  Hexadecasphinganine  0.000493  0.042694
+88                                       Hydroxyacetone  0.000498  0.042694
+180              1-arachidinoyl-sn-glycerol 3-phosphate  0.000556  0.042694
+7                 10-Hydroxy-3-oxooctadecatrienoic acid  0.000574  0.042694
+81          Guanosine 5'-monophosphate (GMP)(M364T77_1)  0.000951  0.061436
+78                                          Gingerdione  0.000953  0.061436
+33   5-Hydroxy-1-(3-hydroxy-4-methoxyphenyl)decan-3-one  0.001082  0.061523
+131                                        [6]-Gingerol  0.001082  0.061523
+48                        Adenosine monophosphate (AMP)  0.001146  0.061584
+16                      2-16:0-lysophosphatidylglycerol  0.001357  0.062879
+5         1-acyl-sn-glycero-3-phosphoglycerol (n-C16:0)  0.001357  0.062879
+
+==========================================================================================
+### 血清代谢组 High_dose_XNPVSModel
+### data\LC-P20260131050-血清非靶代谢组学\血清代谢Summary\05.DiffExp\COND1\High_dose_XNPVSModel\High_dose_XNPVSModel_diff_featurespeaks.xlsx
+  total features=967
+  significant p<0.05 = 231
+                              Metabolites   p_value   q_value
+99                               Fructose  0.000012  0.002802
+100              Galactose(M203T43_4_A_1)  0.000012  0.002802
+64                                 Allose  0.000012  0.002802
+159                              Tagatose  0.000012  0.002802
+175            octadeca-8,10,12-trienoate  0.000050  0.005370
+137            Octadec-11-en-9-ynoic acid  0.000050  0.005370
+138                 Octadecatrienoic acid  0.000050  0.005370
+74                            Crepenynate  0.000050  0.005370
+176                            pinolenate  0.000050  0.005370
+167             Vanillic acid 4-O-sulfate  0.000084  0.008146
+88                          ExMrn00041998  0.000142  0.012526
+172                gamma-Glutamyltyrosine  0.000231  0.018633
+249                              15HpETrE  0.000273  0.020330
+162                    Tryptophyl-Proline  0.000351  0.024230
+85                      Ethyl glucuronide  0.000510  0.032907
+17   2-n-nonyl-4-hydroxyquinoline-N-oxide  0.000554  0.033503
+33                   4-Tert-Butylcatechol  0.000771  0.043834
+163                              Tyrosine  0.000857  0.044417
+66                  Arachidonic acid (AA)  0.000895  0.044417
+833                      Royal jelly acid  0.000919  0.044417
+
+==========================================================================================
+### 血清代谢组 ModelVSControl
+### data\LC-P20260131050-血清非靶代谢组学\血清代谢Summary\05.DiffExp\COND1\ModelVSControl\ModelVSControl_diff_featurespeaks.xlsx
+  total features=967
+  significant p<0.05 = 180
+                                                                                        Metabolites       p_value   q_value
+133                                                                         Phenethyl phenylacetate  1.181625e-08  0.000011
+98                                                                              Hexadecasphinganine  5.587760e-06  0.002702
+62                                                                             C20 phytosphingosine  4.999295e-05  0.016114
+97                                                                           Halobetasol Propionate  1.033056e-04  0.024974
+145                                                                                  Traumatic acid  3.301612e-04  0.063853
+17                                                          2,6-Di-tert-butyl-4-hydroxymethylphenol  4.299613e-04  0.066321
+92                                                                                    ExMrn00123600  4.800865e-04  0.066321
+104                                                                        Hydroxyphenyllactic acid  5.558096e-04  0.067183
+42                                                                          6-Oxotetradecanoic acid  7.586026e-04  0.081508
+44                                                                             7-methyloct-6-enoate  1.145540e-03  0.100922
+61                                                                                  Atractyloside G  1.294895e-03  0.100922
+32                                                        3-Amino-3-(4-hydroxyphenyl)propanoic acid  1.317811e-03  0.100922
+147                                                                                        Tyrosine  1.459930e-03  0.100922
+7    1-Octadecanoyl-2-(15S-hydroxy-5Z,8Z,11Z,13E-eicosatetraenoyl)-sn-glycero-3-phosphoethanolamine  1.461130e-03  0.100922
+20                                                                           2-Hydroxycinnamic acid  1.572954e-03  0.101403
+111                                                                    Mono(1-ethylhexyl) phthalate  1.780038e-03  0.107581
+71                                                                    Dihydrocaffeic acid 3-sulfate  2.243153e-03  0.113758
+144                                                                            Terpinyl isobutyrate  2.302398e-03  0.113758
+27                                                      3,4-Dimethyl-5-pentyl-2-furanpropanoic acid  2.380610e-03  0.113758
+33                                                                           3-Hydroxydecanoic acid  2.617318e-03  0.113758
+
+####################################################################################################
+# 血清蛋白组 XNP 比较
+####################################################################################################
+
+####################################################################################################
+# 脑蛋白组 XNP 比较
+####################################################################################################
+
+==========================================================================================
+### 脑蛋白组 ControlVSModelVSHigh_dose_XNPVSHigh_dose_XNEVSHigh_dose_XNF_diff_annotation.xlsx
+### data\LC-P20260131046-脑质谱蛋白组学(Fast-Astral-DIA)\脑蛋白Summary\04.DiffExp\COND1\ControlVSModelVSHigh_dose_XNPVSHigh_dose_XNEVSHigh_dose_XNF\ControlVSModelVSHigh_dose_XNPVSHigh_dose_XNEVSHigh_dose_XNF_diff_annotation.xlsx
+  total features=8426
+  significant p<0.05 = 1475
+                                                                                                                                                                                                                                                                             description       p_value   q_value Significant
+0                                                                                                                                                                                                 Leucine repeat adapter protein 25 (C184L ORF2 protein) (C184M protein) (MMTV receptor)  9.528856e-08  0.000405         yes
+1                                                                                                                                                                    Complement component 1 Q subcomponent-binding protein, mitochondrial (GC1q-R protein) (Glycoprotein gC1qBP) (C1qBP)  9.601959e-08  0.000405         yes
+2                                                                                    Ubiquitin-conjugating enzyme E2 N (EC 2.3.2.23) (Bendless-like ubiquitin-conjugating enzyme) (E2 ubiquitin-conjugating enzyme N) (Ubc13) (Ubiquitin carrier protein N) (Ubiquitin-protein ligase N)  2.788048e-07  0.000783         yes
+3                                                                                                               ADP-ribosylation factor-like protein 8B (EC 3.6.5.2) (ADP-ribosylation factor-like protein 10C) (Novel small G protein indispensable for equal chromosome segregation 1)  8.321221e-07  0.001414         yes
+4                                                                                                                                                                                        Probable cytosolic iron-sulfur protein assembly protein CIAO1 (WD repeat-containing protein 39)  8.709295e-07  0.001414         yes
+5                                                                                                                       COP9 signalosome complex subunit 5 (SGN5) (Signalosome subunit 5) (EC 3.4.-.-) (Jun activation domain-binding protein 1) (Kip1 C-terminus-interacting protein 2)  1.006535e-06  0.001414         yes
+6                                                                                               Eukaryotic peptide chain release factor GTP-binding subunit ERF3A (Eukaryotic peptide chain release factor subunit 3a) (eRF3a) (EC 3.6.5.-) (G1 to S phase transition protein 1 homolog)  1.410251e-06  0.001698         yes
+7                                                                                                                                                                                                                   Citrate synthase, mitochondrial (EC 2.3.3.1) (Citrate (Si)-synthase)  2.857914e-06  0.003010         yes
+8                                                                                                                                                                                                                               BCL2/adenovirus E1B 19 kDa protein-interacting protein 2  4.769285e-06  0.004465         yes
+9                                                                                                                                                                              COP9 signalosome complex subunit 4 (SGN4) (Signalosome subunit 4) (JAB1-containing signalosome subunit 4)  6.557643e-06  0.005490         yes
+10                                                                                             Peroxiredoxin-2 (EC 1.11.1.24) (Thiol-specific antioxidant protein) (TSA) (Thioredoxin peroxidase 1) (Thioredoxin-dependent peroxide reductase 1) (Thioredoxin-dependent peroxiredoxin 2)  7.166536e-06  0.005490         yes
+11                                                                                                                                Eukaryotic translation initiation factor 1A, X-chromosomal (eIF-1A X isoform) (eIF1A X isoform) (Eukaryotic translation initiation factor 4C) (eIF-4C)  1.101569e-05  0.006969         yes
+12  Microtubule-associated protein 1 light chain 3 beta (Autophagy-related protein LC3 B) (Autophagy-related ubiquitin-like modifier LC3 B) (MAP1 light chain 3-like protein 2) (Microtubule-associated proteins 1A/1B light chain 3B) (MAP1A/MAP1B LC3 B) (MAP1A/MAP1B light chain 3 B)  1.135668e-05  0.006969         yes
+13                                                                                                                                                                                                                                                                        Beta-synuclein  1.214206e-05  0.006969         yes
+14                                                                                                                                                                                                                                                       BSD domain-containing protein 1  1.351536e-05  0.006969         yes
+15                                                                                                                                                                                                                                    COX assembly mitochondrial protein homolog (Cmc1p)  1.467750e-05  0.006969         yes
+16                                                                                                                                                                                                      Translationally-controlled tumor protein (TCTP) (21 kDa polypeptide) (p21) (p23)  1.471730e-05  0.006969         yes
+17                                                                                                                                           Eukaryotic translation initiation factor 3 subunit B (eIF3b) (Eukaryotic translation initiation factor 3 subunit 9) (eIF-3-eta) (eIF3 p116)  1.488767e-05  0.006969         yes
+18                                                                                                                                                                                                                                              Uncharacterized protein C1orf198 homolog  1.741612e-05  0.007724         yes
+19                                                                                                                                                      Eukaryotic translation initiation factor 5A-1 (eIF-5A-1) (eIF-5A1) (Eukaryotic initiation factor 5A isoform 1) (eIF-5A) (eIF-4D)  2.176154e-05  0.009168         yes
+
+==========================================================================================
+### 脑蛋白组 High_dose_XNPVSControl_diff_annotation.xlsx
+### data\LC-P20260131046-脑质谱蛋白组学(Fast-Astral-DIA)\脑蛋白Summary\04.DiffExp\COND1\High_dose_XNPVSControl\High_dose_XNPVSControl_diff_annotation.xlsx
+  total features=8426
+  significant p<0.05 = 283
+                                                                                                                                                                                                      description   p_value   q_value      FC Significant
+0                                                                                                                                                                    Dyslexia-associated protein KIAA0319 homolog  0.000546  0.900885  1.6784         yes
+1                                                                                                                                                                                            Proto-oncogene c-Rel  0.000986  0.900885  1.6124         yes
+2                                                                                                                                                     Calcineurin B homologous protein 3 (Tescalcin) (TE-1) (TSC)  0.001006  0.900885  1.6960         yes
+3                                                                                                                            Calcium uptake protein 2, mitochondrial (EF-hand domain-containing family member A1)  0.001091  0.900885  2.1474         yes
+4                                                                                                                                                                                                 Protein FAM168A  0.001265  0.900885  0.5377         yes
+5   Protein mono-ADP-ribosyltransferase PARP12 (EC 2.4.2.-) (ADP-ribosyltransferase diphtheria toxin-like 12) (ARTD12) (Poly [ADP-ribose] polymerase 12) (PARP-12) (Zinc finger CCCH domain-containing protein 1)  0.001426  0.900885  1.6537         yes
+6                                                                                                                                      Tyrosine-protein kinase Fer (EC 2.7.10.2) (Proto-oncogene c-Fer) (p94-Fer)  0.001496  0.900885  1.3678         yes
+7                                                                                                                                                                                            Protein KRI1 homolog  0.001971  0.900885  0.4244         yes
+8                                                                                                                                                                     Ras association domain-containing protein 2  0.002671  0.900885  1.4215         yes
+9                                                                                             Atypical kinase COQ8B, mitochondrial (EC 2.7.-.-) (AarF domain-containing protein kinase 4) (Coenzyme Q protein 8B)  0.003535  0.900885  1.3918         yes
+10                                                                                                                                          DDB1- and CUL4-associated factor 11 (WD repeat-containing protein 23)  0.003602  0.900885  1.4629         yes
+11                                                                                                                  Guanine nucleotide-binding protein subunit alpha-14 (G alpha-14) (G-protein subunit alpha-14)  0.004002  0.900885  1.9520         yes
+12                                                                                                                 Amyloid protein-binding protein 2 (Amyloid beta precursor protein-binding protein 2) (APP-BP2)  0.004086  0.900885  1.4043         yes
+13                                                                                                                                                                                                         Necdin  0.004126  0.900885  1.2685         yes
+14                                                                                                                                                         FAST kinase domain-containing protein 2, mitochondrial  0.004256  0.900885  1.5027         yes
+15   Eukaryotic translation initiation factor 2 subunit 3, Y-linked (EC 3.6.5.3) (Eukaryotic translation initiation factor 2 subunit gamma, Y-linked) (eIF-2-gamma Y) (Spermatogonial proliferation factor) (Spy)  0.004368  0.900885  1.7701         yes
+16                                                                                                         Signal peptidase complex subunit 1 (Microsomal signal peptidase 12 kDa subunit) (SPase 12 kDa subunit)  0.004370  0.900885  1.6869         yes
+17                                                                                                                                             Mapk-regulated corepressor-interacting protein 1 (Protein FAM195B)  0.005272  0.900885  2.0274         yes
+18                                   Ferroptosis suppressor protein 1 (FSP1) (EC 1.6.5.-) (Apoptosis-inducing factor homologous mitochondrion-associated inducer of death) (AMID) (p53-responsive gene 3 protein)  0.005891  0.900885  1.4175         yes
+19                                                                                                Intraflagellar transport protein 25 homolog (Heat shock protein beta-11) (Hspb11) (Placental protein 25) (PP25)  0.006209  0.900885  1.6494         yes
+
+==========================================================================================
+### 脑蛋白组 High_dose_XNPVSModel_diff_annotation.xlsx
+### data\LC-P20260131046-脑质谱蛋白组学(Fast-Astral-DIA)\脑蛋白Summary\04.DiffExp\COND1\High_dose_XNPVSModel\High_dose_XNPVSModel_diff_annotation.xlsx
+  total features=8426
+  significant p<0.05 = 147
+                                                                                                                                                                                                                                                                                                             description   p_value   q_value      FC Significant
+0                                                                                                                                                                                                                                                                 CDK2-associated and cullin domain-containing protein 1  0.000338  0.995298  1.8521         yes
+1                                                                                                                                                                                                                   tRNA (cytosine(72)-C(5))-methyltransferase NSUN6 (EC 2.1.1.-) (NOL1/NOP2/Sun domain family member 6)  0.000553  0.995298  0.6314         yes
+2                                                                                                                                                                                                      Queuine tRNA-ribosyltransferase accessory subunit 2 (Queuine tRNA-ribosyltransferase domain-containing protein 1)  0.001231  0.995298  2.0278         yes
+3                                                                                                                                                                                                                                                      CDK5 and ABL1 enzyme substrate 2 (Interactor with CDK3 2) (Ik3-2)  0.002216  0.995298  0.4666         yes
+4                                                                                                                                                                                                                                             Single-strand selective monofunctional uracil DNA glycosylase (EC 3.2.2.-)  0.004195  0.995298  1.4542         yes
+5                                                                                                                                                                                                                                                                       Putative hydroxypyruvate isomerase (EC 5.3.1.22)  0.005319  0.995298  0.6120         yes
+6                                                                                                                                                                                                                                                          Nuclear protein localization protein 4 homolog (Protein NPL4)  0.005797  0.995298  1.1740          no
+7   SWI/SNF-related matrix-associated actin-dependent regulator of chromatin subfamily A member 1 (SMARCA1) (SWI/SNF-related matrix-associated actin-dependent regulator of chromatin A1) (EC 3.6.4.-) (DNA-dependent ATPase SNF2L) (Global transcription activator SNF2L1) (Nucleosome-remodeling factor subunit SNF2L)  0.006548  0.995298  0.3562         yes
+8                                                                                                                                                                                                                                                            Methenyltetrahydrofolate synthase domain-containing protein  0.007031  0.995298  0.6287         yes
+9                                                                                                                                                                                                                                        Solute carrier family 7 member 14 (Gamma-aminobutyric acid transporter SLC7A14)  0.007117  0.995298  0.7729         yes
+10                                                                                                                                                                                                                                                                                     Beta-arrestin-2 (Arrestin beta-2)  0.007426  0.995298  1.7215         yes
+11                                                                     Phosphatidate cytidylyltransferase 2 (EC 2.7.7.41) (CDP-DAG synthase 2) (CDP-DG synthase 2) (CDP-diacylglycerol synthase 2) (CDS 2) (CDP-diglyceride pyrophosphorylase 2) (CDP-diglyceride synthase 2) (CTP:phosphatidate cytidylyltransferase 2)  0.008293  0.995298  0.7574         yes
+12                                                                                                                                                                                                                                                    Vacuolar ATPase assembly protein VMA12 (Transmembrane protein 199)  0.008333  0.995298  0.7505         yes
+13                                                                                                                                                                                                                                                                                             Transmembrane protein 230  0.008488  0.995298  0.6889         yes
+14                                                                                                                                                    Molybdopterin synthase catalytic subunit (EC 2.8.1.12) (Molybdenum cofactor synthesis protein 2 large subunit) (Molybdenum cofactor synthesis protein 2B) (MOCS2B)  0.010056  0.995298  0.7489         yes
+15                                                                                                                                                                                                               ATP synthase F(0) complex subunit e, mitochondrial (ATPase subunit e) (ATP synthase membrane subunit e)  0.010123  0.995298  0.8274         yes
+16                                                                                                                                     A-kinase anchor protein 4 (AKAP-4) (A-kinase anchor protein 82 kDa) (AKAP 82) (mAKAP82) (p82) (Major sperm fibrous sheath protein) (Protein kinase A-anchoring protein 4) (PRKA4)  0.010201  0.995298  2.3382         yes
+17                                                                                                                                                                                                                                                                          Synaptotagmin-3 (Synaptotagmin III) (SytIII)  0.010950  0.995298  0.7760         yes
+18                                                                                                                                                                                                                                              Glucose-fructose oxidoreductase domain-containing protein 2 (EC 1.-.-.-)  0.012548  0.995298  1.5561         yes
+19                                                                                                                                                                                                                                                                                                               Whirlin  0.012918  0.995298  3.0257         yes
+
+==========================================================================================
+### 脑蛋白组 ModelVSControl_diff_annotation.xlsx
+### data\LC-P20260131046-脑质谱蛋白组学(Fast-Astral-DIA)\脑蛋白Summary\04.DiffExp\COND1\ModelVSControl\ModelVSControl_diff_annotation.xlsx
+  total features=8426
+  significant p<0.05 = 192
+                                                                                                                                                                                                                                                                                                    description   p_value   q_value      FC Significant
+0                                                                                                                                                                         Something about silencing protein 10 (Charged amino acid-rich leucine zipper 1) (Crl-1) (Disrupter of silencing SAS10) (UTP3 homolog)  0.000032  0.265628  0.1169         yes
+1                                                                                                                                                                                                                                                                                Protein cereblon (Protein PiL)  0.000921  0.866780  1.1666          no
+2                                                                                                                                                                                                                                             Anaphase-promoting complex subunit 5 (APC5) (Cyclosome subunit 5)  0.003390  0.866780  1.3796         yes
+3                                                                                                                                                                                                                                                                                          Proto-oncogene c-Rel  0.003722  0.866780  1.5280         yes
+4   Ubiquitin-conjugating enzyme E2 D1 (EC 2.3.2.23) ((E3-independent) E2 ubiquitin-conjugating enzyme D1) (EC 2.3.2.24) (E2 ubiquitin-conjugating enzyme D1) (Ubiquitin carrier protein D1) (Ubiquitin-conjugating enzyme E2(17)KB 1) (Ubiquitin-conjugating enzyme E2-17 kDa 1) (Ubiquitin-protein ligase D1)  0.004107  0.866780  1.4226         yes
+5                                                                                                                                                                                                                                                                             Proteasome inhibitor PI31 subunit  0.004529  0.866780  1.3509         yes
+6                                                                                                                                              COP9 signalosome complex subunit 5 (SGN5) (Signalosome subunit 5) (EC 3.4.-.-) (Jun activation domain-binding protein 1) (Kip1 C-terminus-interacting protein 2)  0.004806  0.866780  1.1693          no
+7                                                                                                                                                                                                                                                                            Adipose-secreted signaling protein  0.005095  0.866780  1.4653         yes
+8                                                                                                                                                             Zinc phosphodiesterase ELAC protein 1 (EC 3.1.26.11) (ElaC homolog protein 1) (Ribonuclease Z 1) (RNase Z 1) (tRNA 3 endonuclease 1) (tRNase Z 1)  0.005230  0.866780  1.4612         yes
+9                                                                                                                                                                                                                                                           Ig gamma-2A chain C region secreted form (B allele)  0.005773  0.866780  1.4542         yes
+10                                                                                                                                                                                                        RNA-binding motif, single-stranded-interacting protein 1 (Single-stranded DNA-binding protein MSSP-1)  0.006019  0.866780  2.3156         yes
+11                                                                                                                                                                                                            Large ribosomal subunit protein mL49 (39S ribosomal protein L49, mitochondrial) (L49mt) (MRP-L49)  0.007515  0.866780  2.0159         yes
+12                                                                                                                                                                                                                                                                                                   Syntaxin-7  0.007606  0.866780  1.1222          no
+13                                                                                                                                                                                                               Amyloid protein-binding protein 2 (Amyloid beta precursor protein-binding protein 2) (APP-BP2)  0.008199  0.866780  1.6161         yes
+14                                                                                                                                                                               E3 ubiquitin-protein ligase pellino homolog 1 (Pellino-1) (EC 2.3.2.27) (RING-type E3 ubiquitin transferase pellino homolog 1)  0.008366  0.866780  1.8539         yes
+15                                                                                                                                                                                                                    Methylmalonyl-CoA mutase, mitochondrial (MCM) (EC 5.4.99.2) (Methylmalonyl-CoA isomerase)  0.008743  0.866780  1.2969         yes
+16                                                                                                                                                                                                                                                                            Zinc finger matrin-type protein 4  0.009064  0.866780  0.5258         yes
+17                                                                                                                                                                                                                                                           Protein LBH (Limb bud and heart-expressed protein)  0.009321  0.866780  1.6531         yes
+18                                                                                                                                                                                                                                                                                  F-BAR domain only protein 2  0.009408  0.866780  1.4380         yes
+19                                                                                                                                                                                                                                                                                             Sorting nexin-24  0.009956  0.866780  1.9074         yes
+
+==========================================================================================
+### 脑蛋白组 ControlVSModelVSHigh_dose_XNPVSHigh_dose_XNEVSHigh_dose_XNF_diff_annotation.xlsx
+### data\LC-P20260131046-脑质谱蛋白组学(Fast-Astral-DIA)\脑蛋白质组Report\src\summary_part\04.DiffExp\COND1\ControlVSModelVSHigh_dose_XNPVSHigh_dose_XNEVSHigh_dose_XNF\ControlVSModelVSHigh_dose_XNPVSHigh_dose_XNEVSHigh_dose_XNF_diff_annotation.xlsx
+  total features=9
+  significant p<0.05 = 9
+                                                                                                                                                                                           description       p_value   q_value Significant
+0                                                                                                               Leucine repeat adapter protein 25 (C184L ORF2 protein) (C184M protein) (MMTV receptor)  9.528856e-08  0.000405         yes
+1                                                                                  Complement component 1 Q subcomponent-binding protein, mitochondrial (GC1q-R protein) (Glycoprotein gC1qBP) (C1qBP)  9.601959e-08  0.000405         yes
+2  Ubiquitin-conjugating enzyme E2 N (EC 2.3.2.23) (Bendless-like ubiquitin-conjugating enzyme) (E2 ubiquitin-conjugating enzyme N) (Ubc13) (Ubiquitin carrier protein N) (Ubiquitin-protein ligase N)  2.788048e-07  0.000783         yes
+3                             ADP-ribosylation factor-like protein 8B (EC 3.6.5.2) (ADP-ribosylation factor-like protein 10C) (Novel small G protein indispensable for equal chromosome segregation 1)  8.321221e-07  0.001414         yes
+4                                                                                                      Probable cytosolic iron-sulfur protein assembly protein CIAO1 (WD repeat-containing protein 39)  8.709295e-07  0.001414         yes
+5                                     COP9 signalosome complex subunit 5 (SGN5) (Signalosome subunit 5) (EC 3.4.-.-) (Jun activation domain-binding protein 1) (Kip1 C-terminus-interacting protein 2)  1.006535e-06  0.001414         yes
+6             Eukaryotic peptide chain release factor GTP-binding subunit ERF3A (Eukaryotic peptide chain release factor subunit 3a) (eRF3a) (EC 3.6.5.-) (G1 to S phase transition protein 1 homolog)  1.410251e-06  0.001698         yes
+7                                                                                                                                 Citrate synthase, mitochondrial (EC 2.3.3.1) (Citrate (Si)-synthase)  2.857914e-06  0.003010         yes
+8                                                                                                                                             BCL2/adenovirus E1B 19 kDa protein-interacting protein 2  4.769285e-06  0.004465         yes
+
+==========================================================================================
+### 脑蛋白组 High_dose_XNPVSControl_diff_annotation.xlsx
+### data\LC-P20260131046-脑质谱蛋白组学(Fast-Astral-DIA)\脑蛋白质组Report\src\summary_part\04.DiffExp\COND1\High_dose_XNPVSControl\High_dose_XNPVSControl_diff_annotation.xlsx
+  total features=9
+  significant p<0.05 = 9
+                                                                                                                                                                                                     description   p_value   q_value      FC Significant
+0                                                                                                                                                                   Dyslexia-associated protein KIAA0319 homolog  0.000546  0.900885  1.6784         yes
+1                                                                                                                                                                                           Proto-oncogene c-Rel  0.000986  0.900885  1.6124         yes
+2                                                                                                                                                    Calcineurin B homologous protein 3 (Tescalcin) (TE-1) (TSC)  0.001006  0.900885  1.6960         yes
+3                                                                                                                           Calcium uptake protein 2, mitochondrial (EF-hand domain-containing family member A1)  0.001091  0.900885  2.1474         yes
+4                                                                                                                                                                                                Protein FAM168A  0.001265  0.900885  0.5377         yes
+5  Protein mono-ADP-ribosyltransferase PARP12 (EC 2.4.2.-) (ADP-ribosyltransferase diphtheria toxin-like 12) (ARTD12) (Poly [ADP-ribose] polymerase 12) (PARP-12) (Zinc finger CCCH domain-containing protein 1)  0.001426  0.900885  1.6537         yes
+6                                                                                                                                     Tyrosine-protein kinase Fer (EC 2.7.10.2) (Proto-oncogene c-Fer) (p94-Fer)  0.001496  0.900885  1.3678         yes
+7                                                                                                                                                                                           Protein KRI1 homolog  0.001971  0.900885  0.4244         yes
+8                                                                                                                                                                    Ras association domain-containing protein 2  0.002671  0.900885  1.4215         yes
+
+==========================================================================================
+### 脑蛋白组 High_dose_XNPVSModel_diff_annotation.xlsx
+### data\LC-P20260131046-脑质谱蛋白组学(Fast-Astral-DIA)\脑蛋白质组Report\src\summary_part\04.DiffExp\COND1\High_dose_XNPVSModel\High_dose_XNPVSModel_diff_annotation.xlsx
+  total features=9
+  significant p<0.05 = 9
+                                                                                                                                                                                                                                                                                                            description   p_value   q_value      FC Significant
+0                                                                                                                                                                                                                                                                CDK2-associated and cullin domain-containing protein 1  0.000338  0.995298  1.8521         yes
+1                                                                                                                                                                                                                  tRNA (cytosine(72)-C(5))-methyltransferase NSUN6 (EC 2.1.1.-) (NOL1/NOP2/Sun domain family member 6)  0.000553  0.995298  0.6314         yes
+2                                                                                                                                                                                                     Queuine tRNA-ribosyltransferase accessory subunit 2 (Queuine tRNA-ribosyltransferase domain-containing protein 1)  0.001231  0.995298  2.0278         yes
+3                                                                                                                                                                                                                                                     CDK5 and ABL1 enzyme substrate 2 (Interactor with CDK3 2) (Ik3-2)  0.002216  0.995298  0.4666         yes
+4                                                                                                                                                                                                                                            Single-strand selective monofunctional uracil DNA glycosylase (EC 3.2.2.-)  0.004195  0.995298  1.4542         yes
+5                                                                                                                                                                                                                                                                      Putative hydroxypyruvate isomerase (EC 5.3.1.22)  0.005319  0.995298  0.6120         yes
+6                                                                                                                                                                                                                                                         Nuclear protein localization protein 4 homolog (Protein NPL4)  0.005797  0.995298  1.1740          no
+7  SWI/SNF-related matrix-associated actin-dependent regulator of chromatin subfamily A member 1 (SMARCA1) (SWI/SNF-related matrix-associated actin-dependent regulator of chromatin A1) (EC 3.6.4.-) (DNA-dependent ATPase SNF2L) (Global transcription activator SNF2L1) (Nucleosome-remodeling factor subunit SNF2L)  0.006548  0.995298  0.3562         yes
+8                                                                                                                                                                                                                                                           Methenyltetrahydrofolate synthase domain-containing protein  0.007031  0.995298  0.6287         yes
+
+==========================================================================================
+### 脑蛋白组 ModelVSControl_diff_annotation.xlsx
+### data\LC-P20260131046-脑质谱蛋白组学(Fast-Astral-DIA)\脑蛋白质组Report\src\summary_part\04.DiffExp\COND1\ModelVSControl\ModelVSControl_diff_annotation.xlsx
+  total features=9
+  significant p<0.05 = 9
+                                                                                                                                                                                                                                                                                                   description   p_value   q_value      FC Significant
+0                                                                                                                                                                        Something about silencing protein 10 (Charged amino acid-rich leucine zipper 1) (Crl-1) (Disrupter of silencing SAS10) (UTP3 homolog)  0.000032  0.265628  0.1169         yes
+1                                                                                                                                                                                                                                                                               Protein cereblon (Protein PiL)  0.000921  0.866780  1.1666          no
+2                                                                                                                                                                                                                                            Anaphase-promoting complex subunit 5 (APC5) (Cyclosome subunit 5)  0.003390  0.866780  1.3796         yes
+3                                                                                                                                                                                                                                                                                         Proto-oncogene c-Rel  0.003722  0.866780  1.5280         yes
+4  Ubiquitin-conjugating enzyme E2 D1 (EC 2.3.2.23) ((E3-independent) E2 ubiquitin-conjugating enzyme D1) (EC 2.3.2.24) (E2 ubiquitin-conjugating enzyme D1) (Ubiquitin carrier protein D1) (Ubiquitin-conjugating enzyme E2(17)KB 1) (Ubiquitin-conjugating enzyme E2-17 kDa 1) (Ubiquitin-protein ligase D1)  0.004107  0.866780  1.4226         yes
+5                                                                                                                                                                                                                                                                            Proteasome inhibitor PI31 subunit  0.004529  0.866780  1.3509         yes
+6                                                                                                                                             COP9 signalosome complex subunit 5 (SGN5) (Signalosome subunit 5) (EC 3.4.-.-) (Jun activation domain-binding protein 1) (Kip1 C-terminus-interacting protein 2)  0.004806  0.866780  1.1693          no
+7                                                                                                                                                                                                                                                                           Adipose-secreted signaling protein  0.005095  0.866780  1.4653         yes
+8                                                                                                                                                            Zinc phosphodiesterase ELAC protein 1 (EC 3.1.26.11) (ElaC homolog protein 1) (Ribonuclease Z 1) (RNase Z 1) (tRNA 3 endonuclease 1) (tRNase Z 1)  0.005230  0.866780  1.4612         yes

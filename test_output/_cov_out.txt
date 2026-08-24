@@ -1,0 +1,48 @@
+﻿=== 结构 → 自动选型（无领域） ===
+  diff      -> ['volcano', 'ma_plot', 'enhanced_volcano']
+  surv      -> ['km', 'forest', 'survival_forest']
+  ts        -> ['line', 'area', 'stacked_area']
+  grouped   -> ['violin', 'box', 'raincloud']
+  wide      -> ['heatmap', 'corr_heatmap', 'clustermap']
+  two_num   -> ['scatter', 'hexbin', 'bubble']
+  single    -> ['histogram', 'kde', 'density']
+  count     -> ['bar', 'donut', 'composition']
+
+=== 领域 × 结构 → 自动选型 ===
+  general      | diff:scatter | grouped:boxplot | wide:heatmap | count:bar
+  microbiome   | diff:volcano | grouped:violin | wide:heatmap | count:alpha_diversity
+  metabolomics | diff:volcano | grouped:violin | wide:plsda | count:venn
+  proteomics   | diff:volcano | grouped:violin | wide:heatmap | count:venn
+  bulkrna      | diff:volcano | grouped:violin | wide:heatmap | count:venn
+  survival     | diff:volcano | grouped:violin | wide:heatmap | count:bar
+  genome       | diff:volcano | grouped:violin | wide:genome_browser | count:bar
+  multiomics   | diff:volcano | grouped:violin | wide:mofa | count:bar
+  scrna        | diff:heatmap | grouped:violin | wide:heatmap | count:bar
+  phylogeny    | diff:heatmap | grouped:violin | wide:tree | count:bar
+  epigenetic   | diff:peaks | grouped:violin | wide:heatmap | count:bar
+  spatial      | diff:heatmap | grouped:violin | wide:heatmap | count:bar
+  flow         | diff:volcano | grouped:violin | wide:heatmap | count:bar
+  enrichment   | diff:enrichment_bar | grouped:violin | wide:heatmap | count:bar
+
+=== chart_catalog 图型 → PLOT_INPUT_MAP 覆盖率 ===
+  total charts: 153, mapped: 124 (81%)
+  unmapped (29): ['r_heatmap', 'r_circlize', 'r_ggtree', 'r_survminer', 'r_clusterprofiler', 'r_enhancedvolcano', 'r_cellchat', 'r_metaboanalyst', 'r_mofa', 'r_mixomics', 'r_chipseeker', 'r_phyloseq', 'r_flowcore', 'r_survival_forest', 'r_animalcules', 'r_ggalluvial', 'r_scpubr', 'r_wgcna', 'r_glmnet', 'r_deseq2']...
+
+=== 无 native 函数的图型（走 fallback 链） ===
+  99 个需 fallback: ['stripplot', 'beeswarm', 'grouped_bar', 'stacked_bar', 'slope', 'waterfall', 'errorbar', 'step_line', 'sunburst', 'network_graph', 'pca_plot', 'roc_curve', 'parity_plot', 'kaplan_meier', 'population_pyramid']...
+
+=== quick_plot 端到端 ===
+[auto-select] domain=None struct=diff -> volcano (cands=['volcano', 'ma_plot', 'enhanced_volcano', 'heatmap', 'scatter'])
+Using native function: plot_volcano
+  diff -> e2e_diff.svg
+[auto-select] domain=None struct=grouped -> violin (cands=['violin', 'box', 'raincloud', 'ridgeline', 'beeswarm'])
+Using native function: plot_violin
+  grouped -> e2e_grp.svg
+[auto-select] domain=None struct=wide -> heatmap (cands=['heatmap', 'corr_heatmap', 'clustermap', 'pca', 'dendrogram'])
+Using native function: plot_heatmap
+  wide -> e2e_wide.svg
+[auto-select] domain=None struct=surv -> km (cands=['km', 'forest', 'survival_forest', 'line'])
+Using native function: plot_line
+  surv -> e2e_surv.svg
+
+ALL DONE

@@ -1,0 +1,38 @@
+==========================================================================================
+### 1. 脑代谢组差异特征 (COND1_diff_featurespeak)
+==========================================================================================
+
+--- COND1_diff_featurespeak.xlsx ---
+shape=(10, 3) cols=['COND1', 'up', 'down']
+                          COND1  up  down
+0  High_dose_XNFVSHigh_dose_XNP   4    28
+1  High_dose_XNFVSHigh_dose_XNE  47    20
+2  High_dose_XNEVSHigh_dose_XNP   4    18
+3          High_dose_XNFVSModel   8    21
+4          High_dose_XNEVSModel  20    15
+5          High_dose_XNPVSModel   5    11
+6        High_dose_XNFVSControl  31    32
+7        High_dose_XNEVSControl  31    21
+8        High_dose_XNPVSControl  13    11
+9                ModelVSControl   3     9
+
+==========================================================================================
+### 2. 脑代谢组 KEGG 富集
+==========================================================================================
+
+==========================================================================================
+### 3. 粪便代谢组差异特征
+==========================================================================================
+
+--- COND1_diff_featurespeak.xlsx ---
+shape=(9, 3) cols=['COND1', 'up', 'down']
+                          COND1   up  down
+0  High_dose_XNFVSHigh_dose_XNE   52    70
+1  High_dose_XNEVSHigh_dose_XNP   78    72
+2          High_dose_XNFVSModel   72    80
+3          High_dose_XNEVSModel   54    41
+4          High_dose_XNPVSModel   71    50
+5        High_dose_XNFVSControl   56    72
+6        High_dose_XNEVSControl  148    70
+7        High_dose_XNPVSControl  138    73
+8                ModelVSControl   78    57
