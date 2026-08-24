@@ -284,6 +284,27 @@ _PRESENTATION_CHARTS = {
     "poster": {"id": "poster", "name": "Academic Poster", "name_zh": "学术海报",
                "category": "Presentation", "domains": ["academic", "conference"],
                "engine": "Quarto/LaTeX/HTML", "description": "会议海报（Quarto poster / beamerposter / reveal.js poster）"},
+    # ── PPT Skill 集成 ──
+    "ppt_master": {"id": "ppt_master", "name": "PPT Master (.pptx)", "name_zh": "PPT Master原生PPTX",
+                   "category": "Presentation", "domains": ["academic", "report", "meeting", "pitch", "General"],
+                   "engine": "ppt-master (Python)", "stars": 48945,
+                   "description": "AI 生成可编辑原生 PPTX，支持图表/动画/备注/模板（hugohe3/ppt-master 48.9k★）"},
+    "frontend_slides": {"id": "frontend_slides", "name": "Frontend Slides (HTML)", "name_zh": "Frontend Slides网页演示",
+                        "category": "Presentation", "domains": ["academic", "technical", "demo", "General"],
+                        "engine": "frontend-slides (HTML)", "stars": 28037,
+                        "description": "零依赖 HTML 演示，预览选风格，12+ 模板，键盘/触摸翻页（zarazhangrui/frontend-slides 28k★）"},
+    "guizang_ppt": {"id": "guizang_ppt", "name": "Guizang PPT (HTML)", "name_zh": "归藏PPT杂志风",
+                    "category": "Presentation", "domains": ["creative", "design", "product", "General"],
+                    "engine": "guizang-ppt-skill (HTML)", "stars": 24738,
+                    "description": "电子杂志×瑞士国际主义设计风，AI 配图，多平台封面（op7418/guizang-ppt-skill 24.7k★）"},
+    "html_ppt": {"id": "html_ppt", "name": "HTML PPT Studio", "name_zh": "HTML PPT工作室",
+                 "category": "Presentation", "domains": ["technical", "demo", "quick", "General"],
+                 "engine": "html-ppt-skill (HTML)", "stars": 8033,
+                 "description": "36主题+31布局+47动画+演讲者模式，S键开启逐字稿计时器（lewislulu/html-ppt-skill 8k★）"},
+    "tencent_pptx": {"id": "tencent_pptx", "name": "Tencent PPTX", "name_zh": "腾讯文档PPT",
+                     "category": "Presentation", "domains": ["academic", "business", "report", "General"],
+                     "engine": "tencent-pptx (native)", "stars": 0,
+                     "description": "腾讯文档企业版 PPT，支持在线协作、模板库、微信分享（WorkBuddy 内置）"},
 }
 
 # ─────────────────────────────────────────────────────────────

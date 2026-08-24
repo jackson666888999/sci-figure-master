@@ -2739,3 +2739,136 @@ if __name__ == "__main__":
     print(f"✓ Quick plot saved to {quick_path}")
 
     print("\nAll tests passed!")
+
+
+# ─────────────────────────────────────────────────────────────
+# PPT 生成路由（集成 4 大顶级 PPT Skill）
+# ─────────────────────────────────────────────────────────────
+
+def plot_presentation(
+    data: dict,
+    output_path: str,
+    topic: str = "学术汇报",
+    scene: str = "学术汇报",
+    skill: str = "auto",
+    **kwargs
+) -> str:
+    """
+    生成演示文稿（集成 ppt-master / frontend-slides / guizang-ppt-skill / html-ppt-skill）
+
+    Args:
+        data: 包含以下任一字段:
+              - "outline": List[str] 页面大纲
+              - "markdown": str Markdown 内容
+              - "markdown_path": str Markdown 文件路径
+              - "topic": str 主题
+        output_path: 输出路径 (.pptx 或 .html)
+        topic: 主题描述
+        scene: 场景 ("学术汇报"/"组会"/"答辩"/"技术分享"/"客户交付"/"快速演示")
+        skill: 指定 skill ("ppt-master"/"frontend-slides"/"guizang"/"html-ppt"/"auto")
+        **kwargs: 额外参数 (style, page_count, audience 等)
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    # 解析输入数据
+    if isinstance(data, str):
+        # 直接是主题
+        topic = data
+        outline = kwargs.get("outline", [])
+        markdown_path = kwargs.get("markdown_path")
+    elif isinstance(data, dict):
+        topic = data.get("topic", topic)
+        outline = data.get("outline", [])
+        markdown_path = data.get("markdown_path")
+        if "markdown" in data and not markdown_path:
+            # 临时写入 markdown 内容
+            import tempfile as _tmp
+            fd, tmp_path = _tmp.mkstemp(suffix=".md", prefix="slide_")
+            with _open(fd, "w", encoding="utf-8") as _f:
+                _f.write(data["markdown"])
+            markdown_path = tmp_path
+    else:
+        outline = []
+
+    # 确定 skill
+    if skill == "auto":
+        from ppt_skill_router import PptSkillRouter
+        recommended = PptSkillRouter.suggest_skill(scene)
+        skill = recommended[0]
+    else:
+        skill_map = {
+            "ppt-master": "ppt-master",
+            "ppt_master": "ppt-master",
+            "frontend-slides": "frontend-slides",
+            "frontend_slides": "frontend-slides",
+            "guizang": "guizang-ppt-skill",
+            "guizang-ppt": "guizang-ppt-skill",
+            "html-ppt": "html-ppt-skill",
+            "html_ppt": "html-ppt-skill",
+        }
+        skill = skill_map.get(skill, "ppt-master")
+
+    # 生成
+    from ppt_skill_router import PptSkillRouter as _Router
+    result = _Router.generate(
+        topic=topic,
+        scene=scene,
+        deliverable=kwargs.get("deliverable", "any"),
+        outline=outline,
+        markdown_path=markdown_path,
+        output_path=output_path,
+        style=kwargs.get("style", "academic"),
+        page_count=kwargs.get("page_count", 10)
+    )
+
+    if result.get("status") == "ready":
+        # 保存 prompt 到文件供用户参考
+        prompt_path = _Path(output_path).with_suffix(".prompt.txt")
+        with open(prompt_path, "w", encoding="utf-8") as f:
+            f.write(f"Topic: {topic}\nScene: {scene}\nSkill: {skill}\n\n")
+            f.write(result.get("prompt", ""))
+        print(f"[ppt] 生成 prompt 已保存: {prompt_path}")
+        print(f"[ppt] 请复制 prompt 到 Claude Code / Cursor 等 Agent 中执行")
+        return str(prompt_path)
+    elif result.get("status") == "error":
+        return f"ERROR: {result.get('message', 'Unknown error')}"
+    else:
+        return f"SKILL: {result.get('skill', 'unknown')} - {result.get('message', '待实现')}"
+
+
+def quick_pptx(topic: str, outline: list = None, output_path: str = None, **kwargs) -> str:
+    """
+    快捷 PPTX 生成（默认使用 ppt-master）
+
+    Args:
+        topic: 主题
+        outline: 页面大纲
+        output_path: 输出路径
+        **kwargs: 传递给 plot_presentation 的参数
+
+    Returns:
+        输出文件路径或 prompt 文件路径
+    """
+    data = {"topic": topic, "outline": outline or []}
+    return plot_presentation(data, output_path or f"{topic[:20]}.pptx", skill="ppt-master", **kwargs)
+
+
+# 添加到 ROUTING_TABLE
+def _add_ppt_routing():
+    """添加 PPT 相关路由条目"""
+    ppt_keys = [
+        ("general", "ppt"), ("general", "pptx"), ("general", "presentation"),
+        ("general", "slide"), ("general", "deck"),
+        ("academic", "ppt"), ("academic", "pptx"), ("academic", "presentation"),
+        ("academic", "slide"), ("academic", "deck"), ("academic", "meeting"),
+        ("report", "ppt"), ("report", "pptx"), ("report", "presentation"),
+        ("report", "slide"), ("report", "deck"),
+        ("paper", "ppt"), ("paper", "pptx"), ("paper", "presentation"),
+        ("paper", "slide"), ("paper", "deck"),
+    ]
+    for domain, plot_type in ppt_keys:
+        if (domain, plot_type) not in ROUTING_TABLE:
+            ROUTING_TABLE[(domain, plot_type)] = "plot_presentation"
+
+_add_ppt_routing()
