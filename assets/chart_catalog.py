@@ -245,7 +245,37 @@ _R_TOOL_CHARTS = {
 }
 
 # ─────────────────────────────────────────────────────────────
-# 4. 汇总注册表（SciVizKit + Bioinfo + R 工具链）
+# 4. 学术演示/汇报图表（Quarto/Reveal.js/Marp/Beamer/Slidev）
+# ─────────────────────────────────────────────────────────────
+_PRESENTATION_CHARTS = {
+    "academic_ppt": {"id": "academic_ppt", "name": "Academic PPT (Quarto/Beamer)", "name_zh": "学术汇报PPT",
+                     "category": "Presentation", "domains": ["academic", "report", "meeting", "General"],
+                     "engine": "Quarto/Beamer", "description": "学术汇报/组会演示文稿（Quarto revealjs/pptx 或 LaTeX Beamer）"},
+    "quarto_slides": {"id": "quarto_slides", "name": "Quarto Slides", "name_zh": "Quarto幻灯片",
+                      "category": "Presentation", "domains": ["academic", "report"],
+                      "engine": "Quarto", "description": "R/Python 数据驱动学术幻灯片（revealjs/pptx/pdf 多输出），组会/课程标配"},
+    "reveal_slides": {"id": "reveal_slides", "name": "Reveal.js Slides", "name_zh": "Reveal.js网页演示",
+                      "category": "Presentation", "domains": ["academic", "report", "web"],
+                      "engine": "Reveal.js", "description": "HTML5 演示框架（hakimel/reveal.js 72k★），交互图表、数学公式、代码高亮"},
+    "marp_slides": {"id": "marp_slides", "name": "Marp Slides", "name_zh": "Marp幻灯片",
+                    "category": "Presentation", "domains": ["academic", "report"],
+                    "engine": "Marp", "description": "Markdown 一键转 PPT/PDF（kaisugi/marp-theme-academic 学术主题 278★）"},
+    "beamer_slides": {"id": "beamer_slides", "name": "LaTeX Beamer", "name_zh": "LaTeX Beamer演示",
+                      "category": "Presentation", "domains": ["academic", "report"],
+                      "engine": "LaTeX", "description": "学术讲座/答辩标准模板（SunYanCN/Latex-Beamer-Template 中文模板 287★）"},
+    "slidev_slides": {"id": "slidev_slides", "name": "Slidev", "name_zh": "Slidev演示",
+                      "category": "Presentation", "domains": ["report", "web"],
+                      "engine": "Slidev", "description": "Markdown 驱动的开发者演示框架（slidevjs/slidev 48k★），代码/图表友好"},
+    "labmeeting_slides": {"id": "labmeeting_slides", "name": "Lab Meeting Slides", "name_zh": "组会汇报模板",
+                          "category": "Presentation", "domains": ["meeting", "academic"],
+                          "engine": "Marp/Quarto", "description": "组会/文献汇报模板（robonuggets/marp-slides 22 示例 deck，含数据面板）"},
+    "poster": {"id": "poster", "name": "Academic Poster", "name_zh": "学术海报",
+               "category": "Presentation", "domains": ["academic", "conference"],
+               "engine": "Quarto/LaTeX/HTML", "description": "会议海报（Quarto poster / beamerposter / reveal.js poster）"},
+}
+
+# ─────────────────────────────────────────────────────────────
+# 5. 汇总注册表（SciVizKit + Bioinfo + R 工具链 + Presentation）
 # ─────────────────────────────────────────────────────────────
 CHART_CATALOG = {}
 
@@ -269,6 +299,13 @@ for cid, meta in _R_TOOL_CHARTS.items():
     meta = dict(meta)
     meta["id"] = cid
     meta["source"] = "R-toolkit"
+    CHART_CATALOG[cid] = meta
+
+# 合并演示文稿
+for cid, meta in _PRESENTATION_CHARTS.items():
+    meta = dict(meta)
+    meta["id"] = cid
+    meta["source"] = "presentation"
     CHART_CATALOG[cid] = meta
 
 
