@@ -2294,6 +2294,239 @@ def generate_figure(
         return plot_scatter(data, str(output_path), **kwargs)
 
 
+def plot_mechanism_diagram(data: dict, output_path: str, **kwargs) -> str:
+    """
+    BioRender 风格机制示意图（可编辑矢量）。
+    输入 dict：
+      {
+        "entities": [{"name": "...", "type": "treatment|target|pathway|cell|phenotype",
+                       "evidence": "experiment|database|prediction|literature", "level": 0}],
+        "relations": [{"from": "...", "to": "...", "type": "activates|inhibits|produces|translocates", "label": "..."}],
+        "mechanism": "总体一句话（可选，画在顶部）"
+      }
+    或 DataFrame：列 = [entity, type, level, evidence] + 关系在 kwargs["relations"]
+    输出：SVG/PDF/PNG/TIFF（自动多格式）
+    """
+    import matplotlib.patches as mpatches
+    from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle, Polygon
+
+    entities = list(data.get("entities", []))
+    relations = list(data.get("relations", []))
+    mechanism = data.get("mechanism", "")
+
+    # 兼容 DataFrame 输入
+    if isinstance(entities, pd.DataFrame):
+        entities = entities.to_dict("records")
+    if isinstance(relations, pd.DataFrame):
+        relations = relations.to_dict("records")
+
+    if not entities:
+        # 空输入：画占位说明
+        fig, ax = plt.subplots(figsize=(8, 3))
+        ax.text(0.5, 0.5, "Mechanism diagram: provide entities + relations", ha="center", fontsize=12)
+        ax.axis("off")
+        _save_multi(base := str(Path(output_path).with_suffix("")), fig)
+        plt.close(fig)
+        return str(Path(output_path).with_suffix(".svg"))
+
+    # 类型配色（BioRender 风格：温和高对比）
+    TYPE_COLOR = {
+        "treatment":  "#2E75B6",   # 干预 蓝
+        "target":     "#C0392B",   # 靶点/分子 红
+        "pathway":    "#2CA02C",   # 通路 绿
+        "cell":       "#8E44AD",   # 细胞 紫
+        "phenotype":  "#D4AC0D",   # 表型 金
+        "metabolite": "#E67E22",   # 代谢物 橙
+        "bacteria":   "#1F4E79",   # 菌 深蓝
+        "protein":    "#B03A2E",   # 蛋白 深红
+    }
+    TYPE_LIGHT = {
+        "treatment":  "#D6EAF8", "target": "#FADBD8", "pathway": "#D5F5E3",
+        "cell":       "#E8DAEF", "phenotype": "#FCF3CF", "metabolite": "#FDEBD0",
+        "bacteria":   "#D4E6F1", "protein": "#F5B7B1",
+    }
+    EV_SUFFIX = {"experiment": "*", "database": "†", "prediction": "‡", "literature": "§"}
+
+    # 分层布局：按 level 从左到右（保证节点不重叠、箭头有空间）
+    n = len(entities)
+    levels = {}
+    for e in entities:
+        lv = e.get("level", 0)
+        levels.setdefault(lv, []).append(e)
+    max_lv = max(levels.keys()) if levels else 0
+    n_cols = max_lv + 1
+    max_rows = max(len(v) for v in levels.values()) if levels else 1
+    col_w, row_h = 2.6, 1.2
+    margin_top = 1.3 if mechanism else 0.6
+    fig_w = max(8.0, n_cols * col_w + 1.5)
+    fig_h = max(4.5, max_rows * row_h + margin_top + 0.5)
+
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ax.set_xlim(0, fig_w)
+    ax.set_ylim(0, fig_h)
+    ax.axis("off")
+    # 强制中文字体（覆盖 science 样式）
+    ax.set_title("") if False else None
+    for _txt in ax.texts:
+        _txt.set_fontfamily(["Microsoft YaHei", "SimHei", "DejaVu Sans"])
+
+    if mechanism:
+        ax.text(fig_w / 2, fig_h - 0.45, mechanism, ha="center", va="center",
+                fontsize=11, fontweight="bold", color="#222",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="#F7F9FC", edgecolor="#999", lw=0.6),
+                family=["Microsoft YaHei", "SimHei", "DejaVu Sans"])
+
+    # 节点坐标：每列等距、垂直居中
+    pos = {}
+    node_boxes = {}
+    for lv, items in sorted(levels.items()):
+        n_items = len(items)
+        # 该列 x 中心
+        col_x = 1.0 + lv * col_w
+        # 垂直均匀分布，留上下边距
+        for i, e in enumerate(items):
+            y = fig_h - margin_top - (i + 0.5) * (fig_h - margin_top - 0.5) / max(n_items, 1)
+            pos[e["name"]] = (col_x, y)
+            node_boxes[e["name"]] = (e, col_x, y)
+
+    bw, bh = 1.9, 0.65
+    # 节点左右/上下中点（用于箭头锚点）
+    def anchor(name, other_pos, this_pos):
+        dx, dy = other_pos[0] - this_pos[0], other_pos[1] - this_pos[1]
+        if abs(dx) > abs(dy):
+            return (this_pos[0] + (bw / 2 if dx > 0 else -bw / 2), this_pos[1])
+        return (this_pos[0], this_pos[1] + (bh / 2 if dy > 0 else -bh / 2))
+
+    for name, (e, x, y) in node_boxes.items():
+        t = e.get("type", "target")
+        color = TYPE_COLOR.get(t, "#555")
+        light = TYPE_LIGHT.get(t, "#EEE")
+        box = FancyBboxPatch((x - bw / 2, y - bh / 2), bw, bh,
+                             boxstyle="round,pad=0.04,rounding_size=0.12",
+                             linewidth=1.1, edgecolor=color, facecolor=light, zorder=2)
+        ax.add_patch(box)
+        label = e["name"]
+        ev = e.get("evidence")
+        if ev and ev in EV_SUFFIX:
+            label += EV_SUFFIX[ev]
+        ax.text(x, y, label, ha="center", va="center", fontsize=8.5,
+                color="#111", fontweight="bold", zorder=3,
+                family=["Microsoft YaHei", "SimHei", "DejaVu Sans"])
+
+    # 关系箭头（弧形避开节点）
+    for r in relations:
+        f, t = r.get("from"), r.get("to")
+        if f not in pos or t not in pos:
+            continue
+        p1, p2 = pos[f], pos[t]
+        rtype = r.get("type", "activates")
+        color = "#2CA02C" if rtype == "activates" else "#C0392B" if rtype == "inhibits" else "#555"
+        a1 = anchor(f, p2, p1)
+        a2 = anchor(t, p1, p2)
+        if rtype == "inhibits":
+            arr = FancyArrowPatch(a1, a2, arrowstyle="-",
+                                  connectionstyle="arc3,rad=0.18",
+                                  color=color, lw=1.4, zorder=1)
+            ax.add_patch(arr)
+            # T 形抑制端
+            dx, dy = a2[0] - a1[0], a2[1] - a1[1]
+            L = np.hypot(dx, dy)
+            if L > 0:
+                ux, uy = dx / L, dy / L
+                px, py = -uy, ux
+                tx, ty = a2[0] - ux * 0.05, a2[1] - uy * 0.05
+                s = 0.12
+                ax.plot([tx + px * s, tx - px * s], [ty + py * s, ty - py * s],
+                        color=color, lw=1.8, zorder=2)
+        else:
+            arr = FancyArrowPatch(a1, a2, arrowstyle="->,head_width=6,head_length=9",
+                                  connectionstyle="arc3,rad=0.18",
+                                  color=color, lw=1.4, zorder=1, mutation_scale=14)
+            ax.add_patch(arr)
+        if r.get("label"):
+            mx, my = (a1[0] + a2[0]) / 2, (a1[1] + a2[1]) / 2
+            ax.text(mx, my + 0.1, r["label"], ha="center",
+                    fontsize=6.8, color="#555", style="italic", zorder=4,
+                    bbox=dict(boxstyle="round,pad=0.15", facecolor="white", edgecolor="none", alpha=0.85),
+                    family=["Microsoft YaHei", "SimHei", "DejaVu Sans"])
+
+    # 图例
+    handles = [mpatches.Patch(facecolor=TYPE_LIGHT.get(t, "#EEE"), edgecolor=TYPE_COLOR.get(t, "#555"),
+                              label=f"{t}") for t in TYPE_COLOR if t in {e.get('type') for e in entities}]
+    ev_handles = [mpatches.Patch(facecolor="none", edgecolor="none",
+                                 label=f"{s}:{w}") for w, s in [("实验","*"),("数据库","†"),("预测","‡"),("文献","§")] if any(e.get("evidence") == w for e in entities)]
+    if handles or ev_handles:
+        ax.legend(handles=handles + ev_handles, loc="lower right", frameon=False,
+                  fontsize=7, ncol=2)
+
+    base = str(Path(output_path).with_suffix(""))
+    _save_multi(base, fig)
+    plt.close(fig)
+    print(f"[mechanism-diagram] {len(entities)} nodes, {len(relations)} edges -> {base}.svg/pdf/png/tiff")
+    return base + ".svg"
+
+
+def _save_multi(base: str, fig):
+    """按投稿标准输出多格式：SVG / PDF / PNG 300dpi / TIFF 600dpi"""
+    try:
+        fig.savefig(base + ".svg", dpi=300, bbox_inches="tight")
+        fig.savefig(base + ".pdf", dpi=300, bbox_inches="tight")
+        fig.savefig(base + ".png", dpi=300, bbox_inches="tight")
+        fig.savefig(base + ".tiff", dpi=600, bbox_inches="tight")
+    except Exception as e:
+        print(f"[save-multi] partial: {e}")
+
+
+def _auto_select_plot(df: pd.DataFrame) -> str:
+    num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+    n_num, n_cat = len(num_cols), len(cat_cols)
+    cl = {c.lower(): c for c in df.columns}
+
+    # 1) 差异分析表（log2FC + P 值）→ volcano
+    has_fc = any(any(k in key for k in ("log2fc", "logfc", "foldchange", "lfc", "fc")) for key in cl)
+    has_p = any(any(k in key for k in ("pvalue", "padj", "p_value", "qvalue", "fdr", "_p", "_q")) for key in cl)
+    if has_fc and has_p and n_num >= 2:
+        return "volcano"
+
+    # 2) 生存数据（time + event/status）→ KM 曲线
+    has_time = any(k in cl for k in ("time", "survival", "os", "days", "months"))
+    has_event = any(k in cl for k in ("event", "status", "censor", "cns"))
+    if has_time and has_event:
+        return "km"
+
+    # 3) 时间序列（time 列 + 数值列）→ line
+    if has_time and n_num >= 1:
+        return "line"
+
+    # 4) 分类列 + 数值列 → 分组分布（violin 信息密度高于 box/bar）
+    if n_cat >= 1 and n_num >= 1:
+        # 计数/占比表（category + count/abundance/freq）→ bar/donut
+        count_like = [c for c in num_cols if any(k in c.lower() for k in ("count", "freq", "abund", "percent", "proportion", "num", "n_"))]
+        if count_like and len(count_like) == n_num:
+            if n_cat >= 2:
+                return "grouped_bar"
+            return "bar"
+        if n_num == 1:
+            return "violin"
+        return "box"  # 多数值 + 分类 → 分组箱线
+
+    # 5) 纯数值多列 → heatmap / 相关
+    if n_num >= 8:
+        return "heatmap"
+    if n_num >= 3:
+        return "scatter_matrix" if hasattr(df, "corr") else "heatmap"
+    if n_num == 2:
+        return "scatter"
+    if n_num == 1:
+        return "histogram"
+
+    # 6) 纯分类 → 计数占比
+    if n_cat >= 2:
+        return "grouped_bar"
+    return "bar"
+
+
 def quick_plot(data, output_path: str, plot_type: str = "auto", **kwargs) -> str:
     """
     快速绘图：自动判断数据类型和最佳图型
@@ -2317,15 +2550,19 @@ def quick_plot(data, output_path: str, plot_type: str = "auto", **kwargs) -> str
         # 基因表达数据
         return generate_figure("scRNA", "heatmap", data, output_path, **kwargs)
     elif isinstance(data, pd.DataFrame):
-        # 通用数据
+        # 通用数据：智能选型
         if plot_type == "auto":
-            if len(data.columns) > 10:
-                plot_type = "heatmap"
-            elif 'group' in data.columns or 'class' in data.columns:
-                plot_type = "box"
-            else:
-                plot_type = "bar"
+            plot_type = _auto_select_plot(data)
+            print(f"[auto-select] DataFrame -> {plot_type}")
         return generate_figure("general", plot_type, data, output_path, **kwargs)
+    elif isinstance(data, dict) and ("entities" in data or "relations" in data or "nodes" in data):
+        # 机制图结构化输入（entities+relations JSON）
+        return plot_mechanism_diagram(data, output_path, **kwargs)
+    elif isinstance(data, dict) and "edges" in data:
+        # 图/网络结构化输入
+        if plot_type == "auto":
+            plot_type = "network"
+        return generate_figure("network", plot_type, data, output_path, **kwargs)
     else:
         # 其他数据
         return plot_scatter(data, output_path, **kwargs)
