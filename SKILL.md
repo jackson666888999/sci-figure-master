@@ -79,14 +79,22 @@ description: >-
 | 图表注册表 | `assets/chart_catalog.py` | **141 种图表类型**统一注册（SciVizKit 79 + bioinfo 41 + R 工具链 21），领域推荐决策树 |
 | 可执行路由 | `assets/bioinfo_router.py` | 零动手路由：`generate_figure(domain, plot_type, data, path)`，新增 25 种 SciVizKit 风格图表（纯 matplotlib），修复大小写/groupby/索引 bug |
 | 无人值守出图 | `auto_figure.py` | 用户只给文件路径 → 自动识别数据类型 → 规划统计方法/分析工具/画图工具 → 批量出图 |
-| ARIS 方法论 | `assets/aris_pipeline.py` | Acquire(真实顶刊调研) → Review(提炼方法/范式/写作/创新/画图代码/数据来源) → Integrate(故事闭环) → Score(严格评审)，**绝不虚构文献与数据** |
+| 全面数据分析 | `assets/comprehensive_analysis.py` | **StatAutopilot 统计方法自动选择器**（集成 compareGroups/scitex-stats 决策树：正态性→参数/非参数→分组数→配对性）+ 按领域跑完 ALL 标准分析模块（10 模块），产出完整分析结果库 |
+| ARIS 两阶段 | `assets/aris_pipeline.py` | **Phase1 先出顶刊故事**（文献调研→提炼→9阶段故事闭环，每阶段绑定证据链）→ **用户审查** → **Phase2 围绕故事主线筛选结果+证据链出图** |
 | 100+ 图表清单 | `assets/CHART_CATALOG_100.md` | 图表目录与领域推荐速查 |
 
-**无人值守出图（用户只给文件路径）**:
+**无人值守出图 + ARIS 两阶段（用户只给文件路径）**:
 ```bash
-python auto_figure.py --input data.csv --output ./figures/          # 单文件
-python auto_figure.py --input data_dir/ --output ./figures/          # 批量目录
-python assets/aris_pipeline.py --data data.csv --topic "研究主题" --output report/
+# 方式1: 快速出图
+python auto_figure.py --input data.csv --output ./figures/
+
+# 方式2: ARIS 两阶段（推荐）——先出故事，审查后再围绕主线出图
+python aris_pipeline.py --data data.csv --topic "研究主题" --phase story --output run1
+#  → 审查 run1/story.md（9 阶段故事 + 证据链设计）
+python aris_pipeline.py --data data.csv --phase figures --story run1/story.json --output run1
+
+# 方式3: 全面数据分析（StatAutopilot 自动选统计方法）
+python comprehensive_analysis.py --input data.csv --output ./analysis_out/
 ```
 
 **快速使用示例**:

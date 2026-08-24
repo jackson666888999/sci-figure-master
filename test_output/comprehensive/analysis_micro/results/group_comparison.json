@@ -1,0 +1,176 @@
+{
+  "module": "group_comparison",
+  "n_tests": 10,
+  "rows": [
+    {
+      "group_col": "group",
+      "variable": "g_A",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": -1.4982459386781328,
+      "p": 0.1452596417386027,
+      "effect": "cohens_d",
+      "effect_size": -0.5470820648696767,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "g_B",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "mann_whitney_u",
+      "reason": "2 groups non-normal",
+      "stat": 145.0,
+      "p": 0.1814195393644038,
+      "effect": "rank_biserial",
+      "effect_size": 0.288888888888889,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "g_C",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.045986994089390415,
+      "p": 0.9636470412571035,
+      "effect": "cohens_d",
+      "effect_size": 0.016792076009743917,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "g_D",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.25782402149862965,
+      "p": 0.7984282699763231,
+      "effect": "cohens_d",
+      "effect_size": 0.09414402162766423,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "g_E",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.49405689856551055,
+      "p": 0.6251197559116581,
+      "effect": "cohens_d",
+      "effect_size": 0.18040407202358125,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "g_F",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": -0.679862523844598,
+      "p": 0.5021741946761215,
+      "effect": "cohens_d",
+      "effect_size": -0.2482506935413867,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "g_G",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": -0.5334831436385222,
+      "p": 0.5979089715186291,
+      "effect": "cohens_d",
+      "effect_size": -0.1948005012130582,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "g_H",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": -1.1459399175234461,
+      "p": 0.2615197235353605,
+      "effect": "cohens_d",
+      "effect_size": -0.4184380949154674,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "g_I",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 1.239590805812006,
+      "p": 0.22541614077931246,
+      "effect": "cohens_d",
+      "effect_size": 0.45263456427949444,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "g_J",
+      "n_groups": 2,
+      "groups": [
+        "Ctrl",
+        "Treat"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 1.312844678962115,
+      "p": 0.19989425304465563,
+      "effect": "cohens_d",
+      "effect_size": 0.47938309677878566,
+      "significant": false,
+      "stars": "ns"
+    }
+  ]
+}

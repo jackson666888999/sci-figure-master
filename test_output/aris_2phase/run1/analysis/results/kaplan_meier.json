@@ -1,0 +1,5 @@
+{
+  "module": "kaplan_meier",
+  "rows": [],
+  "note": "lifelines not available: No module named 'lifelines'"
+}

@@ -1,0 +1,76 @@
+{
+  "module": "normality",
+  "n_tested": 7,
+  "rows": [
+    {
+      "n": 90,
+      "method": "shapiro-wilk",
+      "stat": 0.9886212398389748,
+      "p": 0.6296382906721574,
+      "normal": true,
+      "skew": 0.18287117125604554,
+      "kurtosis": -0.5528729675181117,
+      "variable": "gene_A"
+    },
+    {
+      "n": 90,
+      "method": "shapiro-wilk",
+      "stat": 0.9801172932088527,
+      "p": 0.18405547890080698,
+      "normal": true,
+      "skew": 0.5292999080986843,
+      "kurtosis": 0.21696193705767985,
+      "variable": "gene_B"
+    },
+    {
+      "n": 90,
+      "method": "shapiro-wilk",
+      "stat": 0.9785891691960099,
+      "p": 0.14381622958877616,
+      "normal": true,
+      "skew": 0.4705146349821016,
+      "kurtosis": -0.014520500248832224,
+      "variable": "gene_C"
+    },
+    {
+      "n": 90,
+      "method": "shapiro-wilk",
+      "stat": 0.9847481630933103,
+      "p": 0.3762976540409201,
+      "normal": true,
+      "skew": -0.3444534217130324,
+      "kurtosis": -0.22065660282571153,
+      "variable": "gene_D"
+    },
+    {
+      "n": 90,
+      "method": "shapiro-wilk",
+      "stat": 0.987523857891263,
+      "p": 0.5508592608878418,
+      "normal": true,
+      "skew": 0.1537665160383374,
+      "kurtosis": -0.5812716450445952,
+      "variable": "biomarker"
+    },
+    {
+      "n": 90,
+      "method": "shapiro-wilk",
+      "stat": 0.9698132403807028,
+      "p": 0.03430759718237622,
+      "normal": false,
+      "skew": 0.1694656962977686,
+      "kurtosis": -0.9253170849707795,
+      "variable": "time"
+    },
+    {
+      "n": 90,
+      "method": "shapiro-wilk",
+      "stat": 0.6299208181009112,
+      "p": 1.0006716034371673e-13,
+      "normal": false,
+      "skew": 0.2690691175985248,
+      "kurtosis": -1.9276018099547516,
+      "variable": "event"
+    }
+  ]
+}

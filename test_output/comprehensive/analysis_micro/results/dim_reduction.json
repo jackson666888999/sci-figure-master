@@ -1,0 +1,20 @@
+{
+  "module": "dim_reduction",
+  "rows": {
+    "n_components": 5,
+    "explained_variance_ratio": [
+      0.2042,
+      0.1531,
+      0.1281,
+      0.1275,
+      0.0992
+    ],
+    "cumulative": [
+      0.2042,
+      0.3574,
+      0.4854,
+      0.6129,
+      0.7122
+    ]
+  }
+}

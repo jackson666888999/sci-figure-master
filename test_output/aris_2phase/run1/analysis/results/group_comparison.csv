@@ -1,0 +1,15 @@
+group_col,variable,n_groups,groups,recommended_test,reason,stat,p,effect,effect_size,significant,stars,dof
+group,gene_A,3,"['Ctrl', 'Treat', 'Model']",anova,3 groups normal; equal_var=True,97.28773997435422,6.482048130169976e-23,eta_squared,0.6910242325935204,True,***,
+group,gene_B,3,"['Ctrl', 'Treat', 'Model']",anova,3 groups normal; equal_var=True,0.563977093288604,0.5710077994579619,eta_squared,0.012799051072820831,False,ns,
+group,gene_C,3,"['Ctrl', 'Treat', 'Model']",anova,3 groups normal; equal_var=True,0.1002188208802663,0.9047437253664332,eta_squared,0.0022985852729773175,False,ns,
+group,gene_D,3,"['Ctrl', 'Treat', 'Model']",anova,3 groups normal; equal_var=True,0.7905686873969355,0.4568177961036795,eta_squared,0.017849594413130606,False,ns,
+group,biomarker,3,"['Ctrl', 'Treat', 'Model']",anova,3 groups normal; equal_var=True,86.78681717657854,1.8884784317714098e-21,eta_squared,0.6661212473934017,True,***,
+group,time,3,"['Ctrl', 'Treat', 'Model']",kruskal_wallis,3 groups non-normal,0.9866666666666788,0.6105877059052702,epsilon_squared,0.01108614232209738,False,ns,
+group,event,3,"['Ctrl', 'Treat', 'Model']",chi2_fisher,categorical outcome,3.257918552036199,0.196133588876574,,,False,ns,2.0
+event,gene_A,2,"['0', '1']",student_t,2 groups normal; equal_var=True,0.5868312612499155,0.5588195333906749,cohens_d,0.12482946361147235,False,ns,
+event,gene_B,2,"['0', '1']",student_t,2 groups normal; equal_var=True,0.4391044547534002,0.6616621583589828,cohens_d,0.0934053401305278,False,ns,
+event,gene_C,2,"['0', '1']",student_t,2 groups normal; equal_var=True,0.5172786750229902,0.6062594429903162,cohens_d,0.11003438944823644,False,ns,
+event,gene_D,2,"['0', '1']",student_t,2 groups normal; equal_var=True,0.24741909068302154,0.8051602523112845,cohens_d,0.05263044833606206,False,ns,
+event,biomarker,2,"['0', '1']",student_t,2 groups normal; equal_var=True,0.5039395579762878,0.6155631776656596,cohens_d,0.10719692161728973,False,ns,
+event,time,2,"['0', '1']",student_t,2 groups normal; equal_var=True,1.5852873111565466,0.11648823300467934,cohens_d,0.3372188528270459,False,ns,
+event,event,2,"['0', '1']",chi2_fisher,categorical outcome,inf,2.129581843359025e-26,odds_ratio,,True,***,

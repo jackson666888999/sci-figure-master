@@ -58,6 +58,8 @@ ROUTING_TABLE = {
     # 通用绘图
     ("general", "bar"): "plot_bar",
     ("general", "box"): "plot_box",
+    ("general", "boxplot"): "plot_box",
+    ("general", "histogram"): "plot_box",
     ("general", "violin"): "plot_violin",
     ("general", "heatmap"): "plot_heatmap",
     ("general", "scatter"): "plot_scatter",

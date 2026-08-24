@@ -1,0 +1,195 @@
+{
+  "module": "correlation",
+  "n_pairs": 21,
+  "rows": [
+    {
+      "var1": "gene_A",
+      "var2": "gene_B",
+      "test": "pearson",
+      "r": 0.11476234983161061,
+      "p": 0.2814464326397915,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_A",
+      "var2": "gene_C",
+      "test": "pearson",
+      "r": 0.013396731120928868,
+      "p": 0.9002689555236184,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_A",
+      "var2": "gene_D",
+      "test": "pearson",
+      "r": 0.034947271381118784,
+      "p": 0.7436645323721915,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_A",
+      "var2": "biomarker",
+      "test": "pearson",
+      "r": 0.9425617745140759,
+      "p": 1.1140089171086532e-43,
+      "significant": true,
+      "stars": "***"
+    },
+    {
+      "var1": "gene_A",
+      "var2": "time",
+      "test": "spearman",
+      "rho": 0.032160349014281595,
+      "p": 0.7634809288516217,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_A",
+      "var2": "event",
+      "test": "spearman",
+      "rho": -0.059984954887008717,
+      "p": 0.574375857188035,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_B",
+      "var2": "gene_C",
+      "test": "pearson",
+      "r": 0.022160977438463812,
+      "p": 0.8357567250495929,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_B",
+      "var2": "gene_D",
+      "test": "pearson",
+      "r": -0.17416837574869481,
+      "p": 0.10063479049203862,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_B",
+      "var2": "biomarker",
+      "test": "pearson",
+      "r": 0.16471335182320077,
+      "p": 0.12081018449413246,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_B",
+      "var2": "time",
+      "test": "spearman",
+      "rho": 0.11276289253817344,
+      "p": 0.28996951298698864,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_B",
+      "var2": "event",
+      "test": "spearman",
+      "rho": -0.08069918391273834,
+      "p": 0.44958178095443097,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_C",
+      "var2": "gene_D",
+      "test": "pearson",
+      "r": 0.1569914608377889,
+      "p": 0.1394846844271946,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_C",
+      "var2": "biomarker",
+      "test": "pearson",
+      "r": 0.03814971402615445,
+      "p": 0.7210986322874433,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_C",
+      "var2": "time",
+      "test": "spearman",
+      "rho": -0.08489113882372308,
+      "p": 0.4263064246935929,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_C",
+      "var2": "event",
+      "test": "spearman",
+      "rho": -0.06516351214344111,
+      "p": 0.5417273346035714,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_D",
+      "var2": "biomarker",
+      "test": "pearson",
+      "r": 0.013660702461254766,
+      "p": 0.8983142288521424,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_D",
+      "var2": "time",
+      "test": "spearman",
+      "rho": 0.028192781001769765,
+      "p": 0.7919541110691728,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "gene_D",
+      "var2": "event",
+      "test": "spearman",
+      "rho": -0.035818354356990816,
+      "p": 0.7375040909485685,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "biomarker",
+      "var2": "time",
+      "test": "spearman",
+      "rho": 0.010445734041239657,
+      "p": 0.9221591120789425,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "biomarker",
+      "var2": "event",
+      "test": "spearman",
+      "rho": -0.0522171190023601,
+      "p": 0.6249945024135193,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "var1": "time",
+      "var2": "event",
+      "test": "spearman",
+      "rho": -0.1730501216524496,
+      "p": 0.10287339375117406,
+      "significant": false,
+      "stars": "ns"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "file": "E:\\git\\sci-figure-master\\test_output\\comprehensive\\test_microbiome.csv",
+  "domain": "microbiome",
+  "modules": {
+    "descriptive": {
+      "status": "ok",
+      "results_file": "results/descriptive.csv",
+      "n_rows": 10
+    },
+    "normality": {
+      "status": "ok",
+      "results_file": "results/normality.csv",
+      "n_rows": 10
+    },
+    "group_comparison": {
+      "status": "ok",
+      "results_file": "results/group_comparison.csv",
+      "n_rows": 10
+    },
+    "correlation": {
+      "status": "ok",
+      "results_file": "results/correlation.csv",
+      "n_rows": 45
+    },
+    "clustering": {
+      "status": "ok",
+      "results_file": "results/clustering.csv",
+      "n_rows": null
+    },
+    "dim_reduction": {
+      "status": "ok",
+      "results_file": "results/dim_reduction.csv",
+      "n_rows": null
+    },
+    "differential": {
+      "status": "ok",
+      "results_file": "results/differential.csv",
+      "n_rows": 10
+    },
+    "alpha_diversity": {
+      "status": "ok",
+      "results_file": null,
+      "n_rows": 0
+    },
+    "beta_diversity": {
+      "status": "ok",
+      "results_file": null,
+      "n_rows": 0
+    },
+    "composition": {
+      "status": "ok",
+      "results_file": "results/composition.csv",
+      "n_rows": 10
+    }
+  }
+}

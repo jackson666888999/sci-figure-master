@@ -1,0 +1,11 @@
+group_col,group1,group2,variable,mean1,mean2,log2fc,test,p,p_adjusted,effect_size,significant_raw,significant_fdr
+group,Ctrl,Treat,g_A,9.0667,10.7333,-0.2435,student_t,0.1452596417386027,1.452596,-0.5470820648696767,False,False
+group,Ctrl,Treat,g_B,11.8,10.2667,0.2008,mann_whitney_u,0.1814195393644038,0.907098,0.288888888888889,False,False
+group,Ctrl,Treat,g_C,15.4667,15.4,0.0062,student_t,0.9636470412571035,0.907098,0.016792076009743917,False,False
+group,Ctrl,Treat,g_D,16.8667,16.4667,0.0346,student_t,0.7984282699763231,0.887143,0.09414402162766423,False,False
+group,Ctrl,Treat,g_E,17.4667,16.7333,0.0619,student_t,0.6251197559116581,0.7814,0.18040407202358125,False,False
+group,Ctrl,Treat,g_F,18.9333,20.0,-0.0791,student_t,0.5021741946761215,0.7814,-0.2482506935413867,False,False
+group,Ctrl,Treat,g_G,20.7333,21.7333,-0.068,student_t,0.5979089715186291,0.7814,-0.1948005012130582,False,False
+group,Ctrl,Treat,g_H,24.2,26.4,-0.1255,student_t,0.2615197235353605,0.523039,-0.4184380949154674,False,False
+group,Ctrl,Treat,g_I,28.0,25.0,0.1635,student_t,0.22541614077931246,0.523039,0.45263456427949444,False,False
+group,Ctrl,Treat,g_J,29.6,27.1333,0.1255,student_t,0.19989425304465563,0.523039,0.47938309677878566,False,False

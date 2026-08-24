@@ -1,0 +1,106 @@
+{
+  "module": "normality",
+  "n_tested": 10,
+  "rows": [
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9492523580796522,
+      "p": 0.161435562121512,
+      "normal": true,
+      "skew": -0.28273146089752776,
+      "kurtosis": -0.8986381823953016,
+      "variable": "g_A"
+    },
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9228056663432578,
+      "p": 0.03173389630909082,
+      "normal": false,
+      "skew": 0.9433069790691262,
+      "kurtosis": 0.5162798989872774,
+      "variable": "g_B"
+    },
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9511972074689724,
+      "p": 0.18199890744872815,
+      "normal": true,
+      "skew": 0.3903189899379874,
+      "kurtosis": -0.8705865453816348,
+      "variable": "g_C"
+    },
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9794429678271918,
+      "p": 0.8105539951010956,
+      "normal": true,
+      "skew": 0.1583793348408226,
+      "kurtosis": -0.3538088642659285,
+      "variable": "g_D"
+    },
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9716187117143529,
+      "p": 0.5843545000135733,
+      "normal": true,
+      "skew": 0.10156700013968964,
+      "kurtosis": -0.6788535582730346,
+      "variable": "g_E"
+    },
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9304697144560291,
+      "p": 0.0505345637478709,
+      "normal": true,
+      "skew": 0.5817206967759151,
+      "kurtosis": -0.7131345684291146,
+      "variable": "g_F"
+    },
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9513411975243179,
+      "p": 0.1836176998901466,
+      "normal": true,
+      "skew": 0.6898123039288686,
+      "kurtosis": 1.0729640161646472,
+      "variable": "g_G"
+    },
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9356547416921266,
+      "p": 0.06951053185196235,
+      "normal": true,
+      "skew": 0.9087433642138122,
+      "kurtosis": 0.597101379348441,
+      "variable": "g_H"
+    },
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9736943257482488,
+      "p": 0.6443383580330735,
+      "normal": true,
+      "skew": 0.3273184706136859,
+      "kurtosis": -0.16044638978916748,
+      "variable": "g_I"
+    },
+    {
+      "n": 30,
+      "method": "shapiro-wilk",
+      "stat": 0.9808494573632967,
+      "p": 0.8476679475561674,
+      "normal": true,
+      "skew": -0.09034355155417552,
+      "kurtosis": -0.7774670622973008,
+      "variable": "g_J"
+    }
+  ]
+}

@@ -1,0 +1,249 @@
+{
+  "module": "group_comparison",
+  "n_tests": 14,
+  "rows": [
+    {
+      "group_col": "group",
+      "variable": "value",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 46.73865564163482,
+      "p": 1.2060452617747477e-15,
+      "effect": "eta_squared",
+      "effect_size": 0.4441206071730156,
+      "significant": true,
+      "stars": "***"
+    },
+    {
+      "group_col": "group",
+      "variable": "value2",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 18.46099612013547,
+      "p": 1.0759284044879139e-07,
+      "effect": "eta_squared",
+      "effect_size": 0.23987470343182718,
+      "significant": true,
+      "stars": "***"
+    },
+    {
+      "group_col": "group",
+      "variable": "score",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 1.3338419764921958,
+      "p": 0.26743921818859107,
+      "effect": "eta_squared",
+      "effect_size": 0.02229243405456466,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "gene1",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 143.00735676976043,
+      "p": 3.780943154208314e-32,
+      "effect": "eta_squared",
+      "effect_size": 0.7096880186521364,
+      "significant": true,
+      "stars": "***"
+    },
+    {
+      "group_col": "group",
+      "variable": "gene2",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 0.2421814356168919,
+      "p": 0.7853062443981773,
+      "effect": "eta_squared",
+      "effect_size": 0.004122785870360141,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "time",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "kruskal_wallis",
+      "reason": "3 groups non-normal",
+      "stat": 3.951570247933887,
+      "p": 0.13865241016743768,
+      "effect": "epsilon_squared",
+      "effect_size": 0.03320647267171334,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "event",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "chi2_fisher",
+      "reason": "categorical outcome",
+      "stat": 2.6819691935971,
+      "p": 0.26158798305231795,
+      "dof": 2,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "value",
+      "n_groups": 2,
+      "groups": [
+        "1",
+        "0"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.11022129069921903,
+      "p": 0.9124211185725402,
+      "effect": "cohens_d",
+      "effect_size": 0.0209834321522772,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "value2",
+      "n_groups": 2,
+      "groups": [
+        "1",
+        "0"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": -0.7940234025681846,
+      "p": 0.4287757279796045,
+      "effect": "cohens_d",
+      "effect_size": -0.15116259380936323,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "score",
+      "n_groups": 2,
+      "groups": [
+        "1",
+        "0"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 1.3873639411360035,
+      "p": 0.16794548896751452,
+      "effect": "cohens_d",
+      "effect_size": 0.26412008918300117,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "gene1",
+      "n_groups": 2,
+      "groups": [
+        "1",
+        "0"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.5049040296120693,
+      "p": 0.6145679004827596,
+      "effect": "cohens_d",
+      "effect_size": 0.09612135170588493,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "gene2",
+      "n_groups": 2,
+      "groups": [
+        "1",
+        "0"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.6766197252292699,
+      "p": 0.4999714426155971,
+      "effect": "cohens_d",
+      "effect_size": 0.12881181128594268,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "time",
+      "n_groups": 2,
+      "groups": [
+        "1",
+        "0"
+      ],
+      "recommended_test": "mann_whitney_u",
+      "reason": "2 groups non-normal",
+      "stat": 1569.0,
+      "p": 0.6378761935121449,
+      "effect": "rank_biserial",
+      "effect_size": -0.05225007550588945,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "event",
+      "n_groups": 2,
+      "groups": [
+        "1",
+        "0"
+      ],
+      "recommended_test": "chi2_fisher",
+      "reason": "categorical outcome",
+      "stat": 0.0,
+      "p": 1.3111997723490652e-33,
+      "effect": "odds_ratio",
+      "significant": true,
+      "stars": "***"
+    }
+  ]
+}

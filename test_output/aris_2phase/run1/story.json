@@ -1,0 +1,722 @@
+{
+  "title": "gut microbiome treatment study",
+  "domain": "survival",
+  "paradigm": "clinical-survival",
+  "reference_count": 5,
+  "stages": [
+    {
+      "id": "S1",
+      "stage": "Background",
+      "title": "领域背景与已知",
+      "question": "领域共识是什么？（需真实文献支撑）",
+      "modules": [
+        "descriptive"
+      ],
+      "evidence": [
+        {
+          "module": "descriptive",
+          "results_file": "results/descriptive.csv",
+          "findings": [
+            {
+              "variable": "gene_A",
+              "n": 90,
+              "mean": 5.1411,
+              "sd": 1.0783,
+              "median": 5.0435,
+              "q1": 4.3199,
+              "q3": 5.8621,
+              "min": 2.8537,
+              "max": 7.9133,
+              "missing": 0
+            },
+            {
+              "variable": "gene_B",
+              "n": 90,
+              "mean": 2.9261,
+              "sd": 0.5801,
+              "median": 2.9054,
+              "q1": 2.4571,
+              "q3": 3.2376,
+              "min": 1.7208,
+              "max": 4.7483,
+              "missing": 0
+            },
+            {
+              "variable": "gene_C",
+              "n": 90,
+              "mean": 6.9897,
+              "sd": 1.0318,
+              "median": 6.8558,
+              "q1": 6.2792,
+              "q3": 7.4623,
+              "min": 4.8527,
+              "max": 9.9051,
+              "missing": 0
+            }
+          ],
+          "suggested_figures": [
+            "histogram",
+            "boxplot"
+          ]
+        }
+      ],
+      "figures_plan": [
+        "boxplot",
+        "histogram"
+      ]
+    },
+    {
+      "id": "S2",
+      "stage": "Gap",
+      "title": "未解之谜",
+      "question": "数据中哪些模式尚未被解释？",
+      "modules": [
+        "normality",
+        "correlation"
+      ],
+      "evidence": [
+        {
+          "module": "normality",
+          "results_file": "results/normality.csv",
+          "findings": [
+            {
+              "n": 90,
+              "method": "shapiro-wilk",
+              "stat": 0.6299208181009112,
+              "p": 1.0006716034371673e-13,
+              "normal": false,
+              "skew": 0.2690691175985248,
+              "kurtosis": -1.927601809954752,
+              "variable": "event"
+            },
+            {
+              "n": 90,
+              "method": "shapiro-wilk",
+              "stat": 0.9698132403807028,
+              "p": 0.0343075971823762,
+              "normal": false,
+              "skew": 0.1694656962977686,
+              "kurtosis": -0.9253170849707796,
+              "variable": "time"
+            },
+            {
+              "n": 90,
+              "method": "shapiro-wilk",
+              "stat": 0.97858916919601,
+              "p": 0.1438162295887761,
+              "normal": true,
+              "skew": 0.4705146349821016,
+              "kurtosis": -0.0145205002488322,
+              "variable": "gene_C"
+            }
+          ],
+          "suggested_figures": [
+            "qqplot",
+            "histogram"
+          ]
+        },
+        {
+          "module": "correlation",
+          "results_file": "results/correlation.csv",
+          "findings": [
+            {
+              "var1": "gene_A",
+              "var2": "biomarker",
+              "test": "pearson",
+              "r": 0.942561774514076,
+              "p": 1.1140089171086532e-43,
+              "significant": true,
+              "stars": "***",
+              "rho": NaN
+            },
+            {
+              "var1": "gene_B",
+              "var2": "gene_D",
+              "test": "pearson",
+              "r": -0.1741683757486948,
+              "p": 0.1006347904920386,
+              "significant": false,
+              "stars": "ns",
+              "rho": NaN
+            },
+            {
+              "var1": "gene_B",
+              "var2": "biomarker",
+              "test": "pearson",
+              "r": 0.1647133518232007,
+              "p": 0.1208101844941324,
+              "significant": false,
+              "stars": "ns",
+              "rho": NaN
+            }
+          ],
+          "suggested_figures": [
+            "corr_heatmap",
+            "scatter",
+            "bubble"
+          ]
+        }
+      ],
+      "figures_plan": [
+        "corr_heatmap",
+        "scatter",
+        "qqplot",
+        "histogram",
+        "bubble"
+      ]
+    },
+    {
+      "id": "S3",
+      "stage": "Hypothesis",
+      "title": "研究假设",
+      "question": "基于数据全局模式的假设？",
+      "modules": [
+        "dim_reduction",
+        "clustering"
+      ],
+      "evidence": [
+        {
+          "module": "dim_reduction",
+          "results_file": "results/dim_reduction.csv",
+          "findings": [
+            {
+              "n_components": 5,
+              "explained_variance_ratio": "[0.285, 0.1771, 0.1666, 0.1461, 0.1189]",
+              "cumulative": "[0.285, 0.4621, 0.6287, 0.7748, 0.8936]"
+            }
+          ],
+          "suggested_figures": [
+            "pca",
+            "scatter",
+            "umap"
+          ]
+        },
+        {
+          "module": "clustering",
+          "results_file": "results/clustering.csv",
+          "findings": [
+            {
+              "2": "{'n_clusters': 2, 'silhouette': 0.4768}",
+              "3": "{'n_clusters': 3, 'silhouette': 0.4531}",
+              "4": "{'n_clusters': 4, 'silhouette': 0.4152}",
+              "5": "{'n_clusters': 5, 'silhouette': 0.3456}",
+              "6": "{'n_clusters': 6, 'silhouette': 0.3149}"
+            }
+          ],
+          "suggested_figures": [
+            "dendrogram",
+            "scatter"
+          ]
+        }
+      ],
+      "figures_plan": [
+        "dendrogram",
+        "umap",
+        "scatter",
+        "pca"
+      ]
+    },
+    {
+      "id": "S4",
+      "stage": "Methods",
+      "title": "方法学",
+      "question": "统计/工具/数据来源？（成对声明）",
+      "modules": [],
+      "evidence": [],
+      "figures_plan": []
+    },
+    {
+      "id": "S5",
+      "stage": "Results-Layer1",
+      "title": "数据质量与全局结构",
+      "question": "数据整体结构如何？",
+      "modules": [
+        "descriptive",
+        "dim_reduction",
+        "clustering"
+      ],
+      "evidence": [
+        {
+          "module": "descriptive",
+          "results_file": "results/descriptive.csv",
+          "findings": [
+            {
+              "variable": "gene_A",
+              "n": 90,
+              "mean": 5.1411,
+              "sd": 1.0783,
+              "median": 5.0435,
+              "q1": 4.3199,
+              "q3": 5.8621,
+              "min": 2.8537,
+              "max": 7.9133,
+              "missing": 0
+            },
+            {
+              "variable": "gene_B",
+              "n": 90,
+              "mean": 2.9261,
+              "sd": 0.5801,
+              "median": 2.9054,
+              "q1": 2.4571,
+              "q3": 3.2376,
+              "min": 1.7208,
+              "max": 4.7483,
+              "missing": 0
+            },
+            {
+              "variable": "gene_C",
+              "n": 90,
+              "mean": 6.9897,
+              "sd": 1.0318,
+              "median": 6.8558,
+              "q1": 6.2792,
+              "q3": 7.4623,
+              "min": 4.8527,
+              "max": 9.9051,
+              "missing": 0
+            }
+          ],
+          "suggested_figures": [
+            "histogram",
+            "boxplot"
+          ]
+        },
+        {
+          "module": "dim_reduction",
+          "results_file": "results/dim_reduction.csv",
+          "findings": [
+            {
+              "n_components": 5,
+              "explained_variance_ratio": "[0.285, 0.1771, 0.1666, 0.1461, 0.1189]",
+              "cumulative": "[0.285, 0.4621, 0.6287, 0.7748, 0.8936]"
+            }
+          ],
+          "suggested_figures": [
+            "pca",
+            "scatter",
+            "umap"
+          ]
+        },
+        {
+          "module": "clustering",
+          "results_file": "results/clustering.csv",
+          "findings": [
+            {
+              "2": "{'n_clusters': 2, 'silhouette': 0.4768}",
+              "3": "{'n_clusters': 3, 'silhouette': 0.4531}",
+              "4": "{'n_clusters': 4, 'silhouette': 0.4152}",
+              "5": "{'n_clusters': 5, 'silhouette': 0.3456}",
+              "6": "{'n_clusters': 6, 'silhouette': 0.3149}"
+            }
+          ],
+          "suggested_figures": [
+            "dendrogram",
+            "scatter"
+          ]
+        }
+      ],
+      "figures_plan": [
+        "pca",
+        "dendrogram",
+        "scatter",
+        "boxplot",
+        "umap",
+        "histogram"
+      ]
+    },
+    {
+      "id": "S6",
+      "stage": "Results-Layer2",
+      "title": "组间差异与关键分子",
+      "question": "哪些变量在组间显著差异？",
+      "modules": [
+        "group_comparison",
+        "differential"
+      ],
+      "evidence": [
+        {
+          "module": "group_comparison",
+          "results_file": "results/group_comparison.csv",
+          "findings": [
+            {
+              "group_col": "group",
+              "variable": "gene_A",
+              "n_groups": 3,
+              "groups": "['Ctrl', 'Treat', 'Model']",
+              "recommended_test": "anova",
+              "reason": "3 groups normal; equal_var=True",
+              "stat": 97.28773997435422,
+              "p": 6.482048130169976e-23,
+              "effect": "eta_squared",
+              "effect_size": 0.6910242325935204,
+              "significant": true,
+              "stars": "***",
+              "dof": NaN
+            },
+            {
+              "group_col": "group",
+              "variable": "biomarker",
+              "n_groups": 3,
+              "groups": "['Ctrl', 'Treat', 'Model']",
+              "recommended_test": "anova",
+              "reason": "3 groups normal; equal_var=True",
+              "stat": 86.78681717657854,
+              "p": 1.8884784317714098e-21,
+              "effect": "eta_squared",
+              "effect_size": 0.6661212473934017,
+              "significant": true,
+              "stars": "***",
+              "dof": NaN
+            },
+            {
+              "group_col": "event",
+              "variable": "time",
+              "n_groups": 2,
+              "groups": "['0', '1']",
+              "recommended_test": "student_t",
+              "reason": "2 groups normal; equal_var=True",
+              "stat": 1.5852873111565466,
+              "p": 0.1164882330046793,
+              "effect": "cohens_d",
+              "effect_size": 0.3372188528270459,
+              "significant": false,
+              "stars": "ns",
+              "dof": NaN
+            }
+          ],
+          "suggested_figures": [
+            "boxplot",
+            "violin",
+            "raincloud"
+          ]
+        },
+        {
+          "module": "differential",
+          "results_file": "results/differential.csv",
+          "findings": [
+            {
+              "group_col": "group",
+              "group1": "Treat",
+              "group2": "Model",
+              "variable": "biomarker",
+              "mean1": 5.0066,
+              "mean2": 3.2517,
+              "log2fc": 0.6226,
+              "test": "student_t",
+              "p": 2.223495838708047e-20,
+              "p_adjusted": 0.0,
+              "effect_size": 3.637907640223316,
+              "significant_raw": true,
+              "significant_fdr": true
+            },
+            {
+              "group_col": "group",
+              "group1": "Treat",
+              "group2": "Model",
+              "variable": "gene_A",
+              "mean1": 6.291,
+              "mean2": 4.1187,
+              "log2fc": 0.6111,
+              "test": "student_t",
+              "p": 2.4734667466602735e-20,
+              "p_adjusted": 0.0,
+              "effect_size": 3.629319888431607,
+              "significant_raw": true,
+              "significant_fdr": true
+            },
+            {
+              "group_col": "group",
+              "group1": "Ctrl",
+              "group2": "Treat",
+              "variable": "gene_A",
+              "mean1": 5.0135,
+              "mean2": 6.291,
+              "log2fc": -0.3275,
+              "test": "student_t",
+              "p": 1.224851575502949e-10,
+              "p_adjusted": 0.0,
+              "effect_size": -2.019257544915065,
+              "significant_raw": true,
+              "significant_fdr": true
+            }
+          ],
+          "suggested_figures": [
+            "volcano",
+            "ma_plot",
+            "heatmap",
+            "lollipop"
+          ]
+        }
+      ],
+      "figures_plan": [
+        "volcano",
+        "raincloud",
+        "ma_plot",
+        "violin",
+        "lollipop",
+        "boxplot",
+        "heatmap"
+      ]
+    },
+    {
+      "id": "S7",
+      "stage": "Results-Layer3",
+      "title": "关联与机制",
+      "question": "变量间如何关联，形成机制网络？",
+      "modules": [
+        "correlation",
+        "composition",
+        "alpha_diversity"
+      ],
+      "evidence": [
+        {
+          "module": "correlation",
+          "results_file": "results/correlation.csv",
+          "findings": [
+            {
+              "var1": "gene_A",
+              "var2": "biomarker",
+              "test": "pearson",
+              "r": 0.942561774514076,
+              "p": 1.1140089171086532e-43,
+              "significant": true,
+              "stars": "***",
+              "rho": NaN
+            },
+            {
+              "var1": "gene_B",
+              "var2": "gene_D",
+              "test": "pearson",
+              "r": -0.1741683757486948,
+              "p": 0.1006347904920386,
+              "significant": false,
+              "stars": "ns",
+              "rho": NaN
+            },
+            {
+              "var1": "gene_B",
+              "var2": "biomarker",
+              "test": "pearson",
+              "r": 0.1647133518232007,
+              "p": 0.1208101844941324,
+              "significant": false,
+              "stars": "ns",
+              "rho": NaN
+            }
+          ],
+          "suggested_figures": [
+            "corr_heatmap",
+            "scatter",
+            "bubble"
+          ]
+        }
+      ],
+      "figures_plan": [
+        "corr_heatmap",
+        "scatter",
+        "bubble"
+      ]
+    },
+    {
+      "id": "S8",
+      "stage": "Validation",
+      "title": "稳健性验证",
+      "question": "结论是否稳健（校正/验证）？",
+      "modules": [
+        "differential"
+      ],
+      "evidence": [
+        {
+          "module": "differential",
+          "results_file": "results/differential.csv",
+          "findings": [
+            {
+              "group_col": "group",
+              "group1": "Treat",
+              "group2": "Model",
+              "variable": "biomarker",
+              "mean1": 5.0066,
+              "mean2": 3.2517,
+              "log2fc": 0.6226,
+              "test": "student_t",
+              "p": 2.223495838708047e-20,
+              "p_adjusted": 0.0,
+              "effect_size": 3.637907640223316,
+              "significant_raw": true,
+              "significant_fdr": true
+            },
+            {
+              "group_col": "group",
+              "group1": "Treat",
+              "group2": "Model",
+              "variable": "gene_A",
+              "mean1": 6.291,
+              "mean2": 4.1187,
+              "log2fc": 0.6111,
+              "test": "student_t",
+              "p": 2.4734667466602735e-20,
+              "p_adjusted": 0.0,
+              "effect_size": 3.629319888431607,
+              "significant_raw": true,
+              "significant_fdr": true
+            },
+            {
+              "group_col": "group",
+              "group1": "Ctrl",
+              "group2": "Treat",
+              "variable": "gene_A",
+              "mean1": 5.0135,
+              "mean2": 6.291,
+              "log2fc": -0.3275,
+              "test": "student_t",
+              "p": 1.224851575502949e-10,
+              "p_adjusted": 0.0,
+              "effect_size": -2.019257544915065,
+              "significant_raw": true,
+              "significant_fdr": true
+            }
+          ],
+          "suggested_figures": [
+            "volcano",
+            "ma_plot",
+            "heatmap",
+            "lollipop"
+          ]
+        }
+      ],
+      "figures_plan": [
+        "volcano",
+        "lollipop",
+        "heatmap",
+        "ma_plot"
+      ]
+    },
+    {
+      "id": "S9",
+      "stage": "Conclusion",
+      "title": "结论与意义",
+      "question": "回答缺口，临床/理论意义？",
+      "modules": [],
+      "evidence": [],
+      "figures_plan": []
+    }
+  ],
+  "evidence_chain": [
+    {
+      "stage": "S1",
+      "title": "领域背景与已知",
+      "modules": [
+        "descriptive"
+      ],
+      "figures": [
+        "boxplot",
+        "histogram"
+      ]
+    },
+    {
+      "stage": "S2",
+      "title": "未解之谜",
+      "modules": [
+        "normality",
+        "correlation"
+      ],
+      "figures": [
+        "corr_heatmap",
+        "scatter",
+        "qqplot",
+        "histogram",
+        "bubble"
+      ]
+    },
+    {
+      "stage": "S3",
+      "title": "研究假设",
+      "modules": [
+        "dim_reduction",
+        "clustering"
+      ],
+      "figures": [
+        "dendrogram",
+        "umap",
+        "scatter",
+        "pca"
+      ]
+    },
+    {
+      "stage": "S5",
+      "title": "数据质量与全局结构",
+      "modules": [
+        "descriptive",
+        "dim_reduction",
+        "clustering"
+      ],
+      "figures": [
+        "pca",
+        "dendrogram",
+        "scatter",
+        "boxplot",
+        "umap",
+        "histogram"
+      ]
+    },
+    {
+      "stage": "S6",
+      "title": "组间差异与关键分子",
+      "modules": [
+        "group_comparison",
+        "differential"
+      ],
+      "figures": [
+        "volcano",
+        "raincloud",
+        "ma_plot",
+        "violin",
+        "lollipop",
+        "boxplot",
+        "heatmap"
+      ]
+    },
+    {
+      "stage": "S7",
+      "title": "关联与机制",
+      "modules": [
+        "correlation"
+      ],
+      "figures": [
+        "corr_heatmap",
+        "scatter",
+        "bubble"
+      ]
+    },
+    {
+      "stage": "S8",
+      "title": "稳健性验证",
+      "modules": [
+        "differential"
+      ],
+      "figures": [
+        "volcano",
+        "lollipop",
+        "heatmap",
+        "ma_plot"
+      ]
+    }
+  ],
+  "review": {
+    "scores": {
+      "C1": 0,
+      "C2": 18,
+      "C3": 5,
+      "C4": 9,
+      "C5": 15,
+      "C6": 10
+    },
+    "total": 57,
+    "grade": "FAIL (不达标)",
+    "issues": [
+      "C1: 未生成图表"
+    ],
+    "generated_files": []
+  }
+}

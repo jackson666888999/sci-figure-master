@@ -1,0 +1,11 @@
+group_col,variable,n_groups,groups,recommended_test,reason,stat,p,effect,effect_size,significant,stars
+group,g_A,2,"['Ctrl', 'Treat']",student_t,2 groups normal; equal_var=True,-1.4982459386781328,0.1452596417386027,cohens_d,-0.5470820648696767,False,ns
+group,g_B,2,"['Ctrl', 'Treat']",mann_whitney_u,2 groups non-normal,145.0,0.1814195393644038,rank_biserial,0.288888888888889,False,ns
+group,g_C,2,"['Ctrl', 'Treat']",student_t,2 groups normal; equal_var=True,0.045986994089390415,0.9636470412571035,cohens_d,0.016792076009743917,False,ns
+group,g_D,2,"['Ctrl', 'Treat']",student_t,2 groups normal; equal_var=True,0.25782402149862965,0.7984282699763231,cohens_d,0.09414402162766423,False,ns
+group,g_E,2,"['Ctrl', 'Treat']",student_t,2 groups normal; equal_var=True,0.49405689856551055,0.6251197559116581,cohens_d,0.18040407202358125,False,ns
+group,g_F,2,"['Ctrl', 'Treat']",student_t,2 groups normal; equal_var=True,-0.679862523844598,0.5021741946761215,cohens_d,-0.2482506935413867,False,ns
+group,g_G,2,"['Ctrl', 'Treat']",student_t,2 groups normal; equal_var=True,-0.5334831436385222,0.5979089715186291,cohens_d,-0.1948005012130582,False,ns
+group,g_H,2,"['Ctrl', 'Treat']",student_t,2 groups normal; equal_var=True,-1.1459399175234461,0.2615197235353605,cohens_d,-0.4184380949154674,False,ns
+group,g_I,2,"['Ctrl', 'Treat']",student_t,2 groups normal; equal_var=True,1.239590805812006,0.22541614077931246,cohens_d,0.45263456427949444,False,ns
+group,g_J,2,"['Ctrl', 'Treat']",student_t,2 groups normal; equal_var=True,1.312844678962115,0.19989425304465563,cohens_d,0.47938309677878566,False,ns

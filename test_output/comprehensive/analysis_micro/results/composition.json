@@ -1,0 +1,45 @@
+{
+  "module": "composition",
+  "rows": [
+    {
+      "taxa": "g_J",
+      "mean_relative_abundance": 0.149141
+    },
+    {
+      "taxa": "g_I",
+      "mean_relative_abundance": 0.138291
+    },
+    {
+      "taxa": "g_H",
+      "mean_relative_abundance": 0.132206
+    },
+    {
+      "taxa": "g_G",
+      "mean_relative_abundance": 0.111278
+    },
+    {
+      "taxa": "g_F",
+      "mean_relative_abundance": 0.10202
+    },
+    {
+      "taxa": "g_E",
+      "mean_relative_abundance": 0.089362
+    },
+    {
+      "taxa": "g_D",
+      "mean_relative_abundance": 0.087135
+    },
+    {
+      "taxa": "g_C",
+      "mean_relative_abundance": 0.080891
+    },
+    {
+      "taxa": "g_B",
+      "mean_relative_abundance": 0.057778
+    },
+    {
+      "taxa": "g_A",
+      "mean_relative_abundance": 0.051899
+    }
+  ]
+}

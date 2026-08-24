@@ -1,0 +1,46 @@
+{
+  "file": "E:\\git\\sci-figure-master\\test_output\\comprehensive\\test_three_group.csv",
+  "domain": "survival",
+  "modules": {
+    "descriptive": {
+      "status": "ok",
+      "results_file": "results/descriptive.csv",
+      "n_rows": 7
+    },
+    "normality": {
+      "status": "ok",
+      "results_file": "results/normality.csv",
+      "n_rows": 7
+    },
+    "group_comparison": {
+      "status": "ok",
+      "results_file": "results/group_comparison.csv",
+      "n_rows": 14
+    },
+    "correlation": {
+      "status": "ok",
+      "results_file": "results/correlation.csv",
+      "n_rows": 21
+    },
+    "clustering": {
+      "status": "ok",
+      "results_file": "results/clustering.csv",
+      "n_rows": null
+    },
+    "dim_reduction": {
+      "status": "ok",
+      "results_file": "results/dim_reduction.csv",
+      "n_rows": null
+    },
+    "kaplan_meier": {
+      "status": "ok",
+      "results_file": null,
+      "n_rows": 0
+    },
+    "differential": {
+      "status": "ok",
+      "results_file": "results/differential.csv",
+      "n_rows": 28
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "module": "normality",
+  "n_tested": 7,
+  "rows": [
+    {
+      "n": 120,
+      "method": "shapiro-wilk",
+      "stat": 0.9904576155606934,
+      "p": 0.575776748738107,
+      "normal": true,
+      "skew": 0.1861988147354552,
+      "kurtosis": -0.3946486956252637,
+      "variable": "value"
+    },
+    {
+      "n": 120,
+      "method": "shapiro-wilk",
+      "stat": 0.9913137232131799,
+      "p": 0.6560465233786674,
+      "normal": true,
+      "skew": 0.16662068361975,
+      "kurtosis": -0.24961258343138581,
+      "variable": "value2"
+    },
+    {
+      "n": 120,
+      "method": "shapiro-wilk",
+      "stat": 0.9944184030387145,
+      "p": 0.9181237721653955,
+      "normal": true,
+      "skew": -0.02367665886429608,
+      "kurtosis": -0.20767891131494043,
+      "variable": "score"
+    },
+    {
+      "n": 120,
+      "method": "shapiro-wilk",
+      "stat": 0.9760819886926089,
+      "p": 0.030910005641130712,
+      "normal": false,
+      "skew": 0.3448782798244178,
+      "kurtosis": -0.6585483917628192,
+      "variable": "gene1"
+    },
+    {
+      "n": 120,
+      "method": "shapiro-wilk",
+      "stat": 0.9941798916372503,
+      "p": 0.9029960940222392,
+      "normal": true,
+      "skew": 0.042779641964641624,
+      "kurtosis": -0.009056430219450462,
+      "variable": "gene2"
+    },
+    {
+      "n": 120,
+      "method": "shapiro-wilk",
+      "stat": 0.9317391536786022,
+      "p": 1.2372600407981055e-05,
+      "normal": false,
+      "skew": 0.040790302424479605,
+      "kurtosis": -1.347282811497444,
+      "variable": "time"
+    },
+    {
+      "n": 120,
+      "method": "shapiro-wilk",
+      "stat": 0.6065196675523898,
+      "p": 1.9500688211105093e-16,
+      "normal": false,
+      "skew": 0.5908800494687253,
+      "kurtosis": -1.6508607671398363,
+      "variable": "event"
+    }
+  ]
+}

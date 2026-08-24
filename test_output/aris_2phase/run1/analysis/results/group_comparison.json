@@ -1,0 +1,249 @@
+{
+  "module": "group_comparison",
+  "n_tests": 14,
+  "rows": [
+    {
+      "group_col": "group",
+      "variable": "gene_A",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 97.28773997435422,
+      "p": 6.482048130169976e-23,
+      "effect": "eta_squared",
+      "effect_size": 0.6910242325935204,
+      "significant": true,
+      "stars": "***"
+    },
+    {
+      "group_col": "group",
+      "variable": "gene_B",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 0.563977093288604,
+      "p": 0.5710077994579619,
+      "effect": "eta_squared",
+      "effect_size": 0.012799051072820831,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "gene_C",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 0.1002188208802663,
+      "p": 0.9047437253664332,
+      "effect": "eta_squared",
+      "effect_size": 0.0022985852729773175,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "gene_D",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 0.7905686873969355,
+      "p": 0.4568177961036795,
+      "effect": "eta_squared",
+      "effect_size": 0.017849594413130606,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "biomarker",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "anova",
+      "reason": "3 groups normal; equal_var=True",
+      "stat": 86.78681717657854,
+      "p": 1.8884784317714098e-21,
+      "effect": "eta_squared",
+      "effect_size": 0.6661212473934017,
+      "significant": true,
+      "stars": "***"
+    },
+    {
+      "group_col": "group",
+      "variable": "time",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "kruskal_wallis",
+      "reason": "3 groups non-normal",
+      "stat": 0.9866666666666788,
+      "p": 0.6105877059052702,
+      "effect": "epsilon_squared",
+      "effect_size": 0.01108614232209738,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "group",
+      "variable": "event",
+      "n_groups": 3,
+      "groups": [
+        "Ctrl",
+        "Treat",
+        "Model"
+      ],
+      "recommended_test": "chi2_fisher",
+      "reason": "categorical outcome",
+      "stat": 3.257918552036199,
+      "p": 0.196133588876574,
+      "dof": 2,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "gene_A",
+      "n_groups": 2,
+      "groups": [
+        "0",
+        "1"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.5868312612499155,
+      "p": 0.5588195333906749,
+      "effect": "cohens_d",
+      "effect_size": 0.12482946361147235,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "gene_B",
+      "n_groups": 2,
+      "groups": [
+        "0",
+        "1"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.4391044547534002,
+      "p": 0.6616621583589828,
+      "effect": "cohens_d",
+      "effect_size": 0.0934053401305278,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "gene_C",
+      "n_groups": 2,
+      "groups": [
+        "0",
+        "1"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.5172786750229902,
+      "p": 0.6062594429903162,
+      "effect": "cohens_d",
+      "effect_size": 0.11003438944823644,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "gene_D",
+      "n_groups": 2,
+      "groups": [
+        "0",
+        "1"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.24741909068302154,
+      "p": 0.8051602523112845,
+      "effect": "cohens_d",
+      "effect_size": 0.05263044833606206,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "biomarker",
+      "n_groups": 2,
+      "groups": [
+        "0",
+        "1"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 0.5039395579762878,
+      "p": 0.6155631776656596,
+      "effect": "cohens_d",
+      "effect_size": 0.10719692161728973,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "time",
+      "n_groups": 2,
+      "groups": [
+        "0",
+        "1"
+      ],
+      "recommended_test": "student_t",
+      "reason": "2 groups normal; equal_var=True",
+      "stat": 1.5852873111565466,
+      "p": 0.11648823300467934,
+      "effect": "cohens_d",
+      "effect_size": 0.3372188528270459,
+      "significant": false,
+      "stars": "ns"
+    },
+    {
+      "group_col": "event",
+      "variable": "event",
+      "n_groups": 2,
+      "groups": [
+        "0",
+        "1"
+      ],
+      "recommended_test": "chi2_fisher",
+      "reason": "categorical outcome",
+      "stat": Infinity,
+      "p": 2.129581843359025e-26,
+      "effect": "odds_ratio",
+      "significant": true,
+      "stars": "***"
+    }
+  ]
+}
