@@ -20,10 +20,14 @@ class PptSkillRouter:
 
     # Skill 评分（基于 GitHub stars + 实测）
     SKILL_SCORES = {
-        "ppt-master": {"stars": 48945, "type": "pptx", "rating": 5.0, "best_for": "client"},
-        "frontend-slides": {"stars": 28037, "type": "html", "rating": 4.8, "best_for": "technical"},
-        "guizang-ppt-skill": {"stars": 24738, "type": "html", "rating": 4.7, "best_for": "creative"},
-        "html-ppt-skill": {"stars": 8033, "type": "html", "rating": 4.5, "best_for": "quick"},
+        "ppt-master": {"stars": 48945, "type": "pptx", "rating": 5.0, "best_for": "client",
+                       "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\ppt-master\repo")},
+        "frontend-slides": {"stars": 28037, "type": "html", "rating": 4.8, "best_for": "technical",
+                            "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\frontend-slides\repo")},
+        "guizang-ppt-skill": {"stars": 24738, "type": "html", "rating": 4.7, "best_for": "creative",
+                              "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\guizang-ppt-skill\repo")},
+        "html-ppt-skill": {"stars": 8033, "type": "html", "rating": 4.5, "best_for": "quick",
+                           "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\html-ppt-skill\repo")},
         "tencent-pptx": {"stars": 0, "type": "pptx", "rating": 4.6, "best_for": "chinese"},
     }
 
@@ -106,7 +110,7 @@ class PptSkillRouter:
                 "type": info["type"],
                 "rating": info["rating"],
                 "best_for": info["best_for"],
-                "installed": Path(os.path.expanduser(f"~/.workbuddy/skills/{name}")).exists()
+                "installed": info.get("skill_dir", Path()).exists()
             }
             for name, info in cls.SKILL_SCORES.items()
         ]

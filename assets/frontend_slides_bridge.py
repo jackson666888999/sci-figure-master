@@ -22,6 +22,8 @@ class FrontendSlidesBridge:
     """frontend-slides 桥接模块"""
 
     SKILL_DIR = Path(os.path.expanduser("~/.workbuddy/skills/frontend-slides"))
+    if not SKILL_DIR.exists():
+        SKILL_DIR = Path(r"E:\workbuddy\.workbuddy\skills\frontend-slides\repo")
     AVAILABLE_STYLES = {
         "style-a": "简约学术（推荐）",
         "style-b": "科技深色",

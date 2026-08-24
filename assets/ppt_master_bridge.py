@@ -23,6 +23,9 @@ class PptMasterBridge:
     """ppt-master 桥接模块"""
 
     SKILL_DIR = Path(os.path.expanduser("~/.workbuddy/skills/ppt-master"))
+    # 兼容 E 盘路径
+    if not SKILL_DIR.exists():
+        SKILL_DIR = Path(r"E:\workbuddy\.workbuddy\skills\ppt-master\repo")
     NODE_BIN = os.path.join(
         os.environ.get("CODEBUDDY_NODE_BIN", ""),
         "node.exe"
