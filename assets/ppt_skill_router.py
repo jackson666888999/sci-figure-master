@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-PPT Skill 路由扩展 — 支持 4 大顶级 PPT Skill 路由
-集成: ppt-master, frontend-slides, guizang-ppt-skill, html-ppt-skill
+PPT Skill 路由器 — 智能选择最佳 PPT Skill
+集成: ppt-master, frontend-slides, guizang-ppt-skill, html-ppt-skill, huashu-design
 """
 from __future__ import annotations
 
@@ -10,9 +10,13 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
-# 桥接模块
-from ppt_master_bridge import PptMasterBridge, generate_pptx
-from frontend_slides_bridge import FrontendSlidesBridge, generate_slides
+# 导入各 Skill 桥接模块
+sys.path.insert(0, str(Path(__file__).parent))
+
+try:
+    from ppt_master_bridge import PptMasterBridge, generate_pptx
+except ImportError:
+    PptMasterBridge = None
 
 
 class PptSkillRouter:
@@ -20,29 +24,64 @@ class PptSkillRouter:
 
     # Skill 评分（基于 GitHub stars + 实测）
     SKILL_SCORES = {
-        "ppt-master": {"stars": 48945, "type": "pptx", "rating": 5.0, "best_for": "client",
-                       "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\ppt-master\repo")},
-        "frontend-slides": {"stars": 28037, "type": "html", "rating": 4.8, "best_for": "technical",
-                            "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\frontend-slides\repo")},
-        "guizang-ppt-skill": {"stars": 24738, "type": "html", "rating": 4.7, "best_for": "creative",
-                              "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\guizang-ppt-skill\repo")},
-        "html-ppt-skill": {"stars": 8033, "type": "html", "rating": 4.5, "best_for": "quick",
-                           "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\html-ppt-skill\repo")},
-        "tencent-pptx": {"stars": 0, "type": "pptx", "rating": 4.6, "best_for": "chinese"},
+        "ppt-master": {
+            "stars": 48945,
+            "type": "pptx",
+            "rating": 5.0,
+            "best_for": "client",
+            "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\ppt-master\repo")
+        },
+        "frontend-slides": {
+            "stars": 28037,
+            "type": "html",
+            "rating": 4.8,
+            "best_for": "technical",
+            "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\frontend-slides\repo")
+        },
+        "guizang-ppt-skill": {
+            "stars": 24738,
+            "type": "html",
+            "rating": 4.7,
+            "best_for": "creative",
+            "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\guizang-ppt-skill\repo")
+        },
+        "html-ppt-skill": {
+            "stars": 8033,
+            "type": "html",
+            "rating": 4.5,
+            "best_for": "quick",
+            "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\html-ppt-skill\repo")
+        },
+        "huashu-design": {
+            "stars": 23454,
+            "type": "html+mp4",
+            "rating": 4.9,
+            "best_for": "creative",
+            "skill_dir": Path(r"E:\workbuddy\.workbuddy\skills\huashu-design\repo")
+        },
+        "tencent-pptx": {
+            "stars": 0,
+            "type": "pptx",
+            "rating": 4.6,
+            "best_for": "chinese",
+            "skill_dir": None
+        },
     }
 
     # 场景 → Skill 推荐映射
     SCENE_ROUTING = {
-        "学术汇报": ["ppt-master", "tencent-pptx"],
+        "学术汇报": ["ppt-master", "tencent-pptx", "frontend-slides"],
         "组会": ["ppt-master", "tencent-pptx"],
         "答辩": ["ppt-master"],
-        "技术分享": ["frontend-slides", "html-ppt-skill"],
+        "技术分享": ["frontend-slides", "html-ppt-skill", "guizang-ppt-skill"],
         "Demo": ["frontend-slides"],
-        "创意提案": ["guizang-ppt-skill"],
+        "创意提案": ["guizang-ppt-skill", "huashu-design"],
         "客户交付": ["ppt-master", "tencent-pptx"],
-        "社交媒体": ["guizang-ppt-skill", "html-ppt-skill"],
+        "社交媒体": ["huashu-design", "html-ppt-skill"],
         "快速演示": ["html-ppt-skill"],
         "数据驱动": ["ppt-master"],
+        "产品发布": ["huashu-design"],
+        "动画演示": ["huashu-design"],
     }
 
     @classmethod
@@ -52,7 +91,8 @@ class PptSkillRouter:
         if deliverable == "pptx":
             skills = [s for s in skills if cls.SKILL_SCORES.get(s, {}).get("type") == "pptx"] or skills
         elif deliverable == "html":
-            skills = [s for s in skills if cls.SKILL_SCORES.get(s, {}).get("type") == "html"] or skills
+            skills = [s for s in skills if cls.SKILL_SCORES.get(s, {}).get("type") == "html"
+                      or cls.SKILL_SCORES.get(s, {}).get("type") == "html+mp4"] or skills
         return skills
 
     @classmethod
@@ -62,6 +102,7 @@ class PptSkillRouter:
         scene: str = "学术汇报",
         deliverable: str = "any",
         outline: Optional[List[str]] = None,
+        markdown_content: Optional[str] = None,
         markdown_path: Optional[str] = None,
         output_path: Optional[str] = None,
         style: str = "academic",
@@ -76,28 +117,51 @@ class PptSkillRouter:
             if markdown_path:
                 result = bridge.generate_from_markdown(markdown_path, output_path, style)
             else:
-                result = bridge.generate(topic, outline, output_path, style, page_count)
+                result = bridge.generate(
+                    topic, outline, output_path, style, page_count,
+                    markdown_content=markdown_content
+                )
             result["skill_used"] = primary_skill
             return result
 
         elif primary_skill == "frontend-slides":
-            bridge = FrontendSlidesBridge()
-            if markdown_path:
-                with open(markdown_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                result = bridge.generate(topic, outline=None, markdown_content=content,
-                                         output_path=output_path, style=style)
-            else:
-                result = bridge.generate(topic, outline, output_path, style, page_count)
-            result["skill_used"] = primary_skill
-            return result
-
-        else:
+            # frontend-slides 桥接（待实现）
             return {
                 "status": "skill_not_implemented",
                 "skill": primary_skill,
                 "message": f"Skill '{primary_skill}' 桥接模块待实现",
-                "recommendation": f"请先安装: git clone https://github.com/.../{primary_skill}.git ~/.workbuddy/skills/{primary_skill}"
+                "recommendation": "请先安装: git clone https://github.com/zarazhangrui/frontend-slides.git"
+            }
+
+        elif primary_skill == "guizang-ppt-skill":
+            return {
+                "status": "skill_not_implemented",
+                "skill": primary_skill,
+                "message": f"Skill '{primary_skill}' 桥接模块待实现",
+                "recommendation": "请先安装: git clone https://github.com/op7418/guizang-ppt-skill.git"
+            }
+
+        elif primary_skill == "html-ppt-skill":
+            return {
+                "status": "skill_not_implemented",
+                "skill": primary_skill,
+                "message": f"Skill '{primary_skill}' 桥接模块待实现",
+                "recommendation": "请先安装: git clone https://github.com/lewislulu/html-ppt-skill.git"
+            }
+
+        elif primary_skill == "huashu-design":
+            return {
+                "status": "skill_not_implemented",
+                "skill": primary_skill,
+                "message": f"Skill '{primary_skill}' 桥接模块待实现",
+                "recommendation": "请先安装: git clone https://github.com/alchaincyf/huashu-design.git"
+            }
+
+        else:
+            return {
+                "status": "unknown_skill",
+                "skill": primary_skill,
+                "message": "未知的 PPT Skill"
             }
 
     @classmethod
@@ -110,7 +174,7 @@ class PptSkillRouter:
                 "type": info["type"],
                 "rating": info["rating"],
                 "best_for": info["best_for"],
-                "installed": info.get("skill_dir", Path()).exists()
+                "installed": info.get("skill_dir") and info["skill_dir"].exists()
             }
             for name, info in cls.SKILL_SCORES.items()
         ]
@@ -147,6 +211,6 @@ if __name__ == "__main__":
         print(f"  {status} {s['name']}: {s['stars']}⭐ {s['type']} ({s['best_for']})")
     print()
     print("场景推荐:")
-    for scene in ["学术汇报", "技术分享", "客户交付", "快速演示"]:
+    for scene in ["学术汇报", "技术分享", "客户交付", "快速演示", "创意提案"]:
         skills = PptSkillRouter.suggest_skill(scene)
         print(f"  {scene}: {', '.join(skills)}")

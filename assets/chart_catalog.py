@@ -305,6 +305,10 @@ _PRESENTATION_CHARTS = {
                      "category": "Presentation", "domains": ["academic", "business", "report", "General"],
                      "engine": "tencent-pptx (native)", "stars": 0,
                      "description": "腾讯文档企业版 PPT，支持在线协作、模板库、微信分享（WorkBuddy 内置）"},
+    "huashu_design": {"id": "huashu_design", "name": "Huashu Design (HTML+MP4)", "name_zh": "花叔设计动画",
+                      "category": "Presentation", "domains": ["creative", "product", "launch", "General"],
+                      "engine": "huashu-design (HTML)", "stars": 23454,
+                      "description": "高保真 HTML+MP4 设计，20 设计哲学+5 维评审，适合产品发布/动画/信息图（alchaincyf/huashu-design 23.5k★）"},
 }
 
 # ─────────────────────────────────────────────────────────────

@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -22,14 +21,8 @@ from typing import List, Dict, Optional
 class PptMasterBridge:
     """ppt-master 桥接模块"""
 
-    SKILL_DIR = Path(os.path.expanduser("~/.workbuddy/skills/ppt-master"))
-    # 兼容 E 盘路径
-    if not SKILL_DIR.exists():
-        SKILL_DIR = Path(r"E:\workbuddy\.workbuddy\skills\ppt-master\repo")
-    NODE_BIN = os.path.join(
-        os.environ.get("CODEBUDDY_NODE_BIN", ""),
-        "node.exe"
-    ) or r"C:\Users\hyl\.workbuddy\binaries\node\versions\22.22.2\node.exe"
+    SKILL_DIR = Path(r"E:\workbuddy\.workbuddy\skills\ppt-master\repo")
+    NODE_BIN = r"C:\Users\hyl\.workbuddy\binaries\node\versions\22.22.2\node.exe"
 
     def __init__(self, skill_dir: Optional[str] = None):
         self.skill_dir = Path(skill_dir or self.SKILL_DIR)
@@ -39,7 +32,7 @@ class PptMasterBridge:
         """检查 ppt-master 是否已安装"""
         if not self.skill_dir.exists():
             print(f"[ppt-master] 技能目录不存在: {self.skill_dir}")
-            print(f"[ppt-master] 请先安装: npx skills add hugohe3/ppt-master")
+            print(f"[ppt-master] 请先安装: git clone https://github.com/hugohe3/ppt-master.git")
             return False
         return True
 
@@ -176,7 +169,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         topic = sys.argv[1]
     else:
-        topic = "XNP 乌灵菌粉改善睡眠剥夺的多组学机制"
+        topic = "XNP 乌灵菌粉多组学机制轴"
 
     result = generate_pptx(
         topic=topic,
