@@ -61,8 +61,8 @@
         }
       ],
       "figures_plan": [
-        "boxplot",
-        "histogram"
+        "histogram",
+        "boxplot"
       ]
     },
     {
@@ -158,10 +158,10 @@
         }
       ],
       "figures_plan": [
-        "corr_heatmap",
-        "scatter",
-        "qqplot",
         "histogram",
+        "corr_heatmap",
+        "qqplot",
+        "scatter",
         "bubble"
       ]
     },
@@ -210,10 +210,10 @@
         }
       ],
       "figures_plan": [
-        "dendrogram",
         "umap",
-        "scatter",
-        "pca"
+        "dendrogram",
+        "pca",
+        "scatter"
       ]
     },
     {
@@ -317,12 +317,12 @@
         }
       ],
       "figures_plan": [
-        "pca",
-        "dendrogram",
-        "scatter",
-        "boxplot",
         "umap",
-        "histogram"
+        "pca",
+        "boxplot",
+        "histogram",
+        "dendrogram",
+        "scatter"
       ]
     },
     {
@@ -450,12 +450,12 @@
         }
       ],
       "figures_plan": [
-        "volcano",
-        "raincloud",
-        "ma_plot",
-        "violin",
-        "lollipop",
         "boxplot",
+        "volcano",
+        "ma_plot",
+        "lollipop",
+        "violin",
+        "raincloud",
         "heatmap"
       ]
     },
@@ -513,8 +513,8 @@
         }
       ],
       "figures_plan": [
-        "corr_heatmap",
         "scatter",
+        "corr_heatmap",
         "bubble"
       ]
     },
@@ -587,9 +587,9 @@
       ],
       "figures_plan": [
         "volcano",
-        "lollipop",
+        "ma_plot",
         "heatmap",
-        "ma_plot"
+        "lollipop"
       ]
     },
     {
@@ -610,8 +610,8 @@
         "descriptive"
       ],
       "figures": [
-        "boxplot",
-        "histogram"
+        "histogram",
+        "boxplot"
       ]
     },
     {
@@ -622,10 +622,10 @@
         "correlation"
       ],
       "figures": [
-        "corr_heatmap",
-        "scatter",
-        "qqplot",
         "histogram",
+        "corr_heatmap",
+        "qqplot",
+        "scatter",
         "bubble"
       ]
     },
@@ -637,10 +637,10 @@
         "clustering"
       ],
       "figures": [
-        "dendrogram",
         "umap",
-        "scatter",
-        "pca"
+        "dendrogram",
+        "pca",
+        "scatter"
       ]
     },
     {
@@ -652,12 +652,12 @@
         "clustering"
       ],
       "figures": [
-        "pca",
-        "dendrogram",
-        "scatter",
-        "boxplot",
         "umap",
-        "histogram"
+        "pca",
+        "boxplot",
+        "histogram",
+        "dendrogram",
+        "scatter"
       ]
     },
     {
@@ -668,12 +668,12 @@
         "differential"
       ],
       "figures": [
-        "volcano",
-        "raincloud",
-        "ma_plot",
-        "violin",
-        "lollipop",
         "boxplot",
+        "volcano",
+        "ma_plot",
+        "lollipop",
+        "violin",
+        "raincloud",
         "heatmap"
       ]
     },
@@ -684,8 +684,8 @@
         "correlation"
       ],
       "figures": [
-        "corr_heatmap",
         "scatter",
+        "corr_heatmap",
         "bubble"
       ]
     },
@@ -697,9 +697,9 @@
       ],
       "figures": [
         "volcano",
-        "lollipop",
+        "ma_plot",
         "heatmap",
-        "ma_plot"
+        "lollipop"
       ]
     }
   ],

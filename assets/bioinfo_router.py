@@ -144,19 +144,259 @@ ROUTING_TABLE = {
     ("microbiome", "sankey"): "plot_sankey",
     ("microbiome", "donut"): "plot_donut",
     ("microbiome", "treemap"): "plot_treemap",
+
+    # ═══════════ 全领域扩展路由（70+ 领域） ═══════════
+    # 多组学 / 整合
+    ("multiomics", "heatmap"): "plot_heatmap",
+    ("multiomics", "circos"): "plot_circos",
+    ("multiomics", "correlation"): "plot_heatmap",
+    ("multiomics", "sankey"): "plot_sankey",
+    ("multiomics", "factor"): "plot_heatmap",
+    ("multiomics", "network"): "plot_enrichment_network",
+    ("multiomics", "complexheatmap"): "plot_heatmap",
+    # 空间转录组
+    ("spatial", "spot"): "plot_spatial",
+    ("spatial", "spatial"): "plot_spatial",
+    ("spatial", "umap"): "plot_umap",
+    ("spatial", "tsne"): "plot_tsne",
+    ("spatial", "heatmap"): "plot_heatmap",
+    ("spatial", "marker"): "plot_marker",
+    ("spatial", "cluster"): "plot_spatial",
+    # 流式细胞术
+    ("flow", "histogram"): "plot_flow_hist",
+    ("flow", "density"): "plot_flow_hist",
+    ("flow", "scatter"): "plot_scatter",
+    ("flow", "contour"): "plot_hexbin",
+    ("flow", "gating"): "plot_scatter",
+    # 甲基化 / 表观
+    ("methylation", "beta"): "plot_beta_dist",
+    ("methylation", "heatmap"): "plot_heatmap",
+    ("methylation", "dmp"): "plot_volcano",
+    ("methylation", "differentially"): "plot_volcano",
+    # 免疫组库
+    ("immunology", "diversity"): "plot_alpha_diversity",
+    ("immunology", "clonotype"): "plot_clonotype",
+    ("immunology", "vdj"): "plot_clonotype",
+    ("immunology", "repertoire"): "plot_clonotype",
+    ("immunology", "heatmap"): "plot_heatmap",
+    # 癌症基因组
+    ("cancer", "oncoplot"): "plot_oncoplot",
+    ("cancer", "oncoprint"): "plot_oncoplot",
+    ("cancer", "mutation"): "plot_oncoplot",
+    ("cancer", "survival"): "plot_km",
+    ("cancer", "forest"): "plot_forest_plot",
+    ("cancer", "tmb"): "plot_lollipop",
+    ("cancer", "heatmap"): "plot_heatmap",
+    # WGS / WES / 变异
+    ("wgs", "variant"): "plot_variant",
+    ("wgs", "cnv"): "plot_cnv",
+    ("wgs", "manhattan"): "plot_manhattan",
+    ("wgs", "coverage"): "plot_genome_track",
+    # 蛋白 / 互作
+    ("protein", "interaction"): "plot_ppi",
+    ("protein", "ppi"): "plot_ppi",
+    ("protein", "heatmap"): "plot_heatmap",
+    ("protein", "volcano"): "plot_volcano",
+    ("protein", "structure"): "plot_ppi",
+    # RNA / 转录
+    ("rna", "expression"): "plot_heatmap",
+    ("rna", "volcano"): "plot_volcano",
+    ("rna", "ma_plot"): "plot_ma_plot",
+    ("rna", "alternative_splicing"): "plot_sashimi",
+    ("rna", "sashimi"): "plot_sashimi",
+    ("rna", "polyA"): "plot_ecdf",
+    # 临床 / 队列
+    ("clinical", "roc"): "plot_roc",
+    ("clinical", "km"): "plot_km",
+    ("clinical", "forest"): "plot_forest_plot",
+    ("clinical", "nomogram"): "plot_forest_plot",
+    ("clinical", "calibration"): "plot_calibration",
+    ("clinical", "bland_altman"): "plot_bland_altman",
+    # 药物 / 药理
+    ("drug", "dose_response"): "plot_dose_response",
+    ("drug", "ic50"): "plot_ic50",
+    ("drug", "synergy"): "plot_dose_response",
+    ("drug", "adme"): "plot_radar",
+    # 细胞系 / 功能
+    ("cellline", "proliferation"): "plot_line",
+    ("cellline", "viability"): "plot_dose_response",
+    ("cellline", "migration"): "plot_line",
+    # 代谢通路
+    ("metabolomics", "pathway_map"): "plot_pathway",
+    ("metabolomics", "enrichment"): "plot_enrichment_dot",
+    ("metabolomics", "heatmap"): "plot_heatmap",
+    ("metabolomics", "oplsda"): "plot_plsda",
+    # 微生物组扩展
+    ("microbiome", "alpha"): "plot_alpha_diversity",
+    ("microbiome", "beta"): "plot_beta_diversity",
+    ("microbiome", "pcoa"): "plot_beta_diversity",
+    ("microbiome", "nmds"): "plot_beta_diversity",
+    ("microbiome", "lefse"): "plot_lollipop",
+    ("microbiome", "network"): "plot_enrichment_network",
+    ("microbiome", "picrust"): "plot_enrichment_bar",
+    # 单细胞扩展
+    ("scRNA", "spatial"): "plot_spatial",
+    ("scRNA", "rna_velocity"): "plot_trajectory",
+    ("scRNA", "pseudotime"): "plot_trajectory",
+    ("scRNA", "monocle"): "plot_trajectory",
+    ("scRNA", "aucell"): "plot_heatmap",
+    ("scRNA", "gsea"): "plot_enrichment_bar",
+    ("scRNA", "cell_cycle"): "plot_scatter",
+    ("scRNA", "proportion"): "plot_donut",
+    ("scRNA", "composition"): "plot_stacked_area",
+    ("scRNA", "doublet"): "plot_scatter",
+    ("scRNA", "integration"): "plot_umap",
+    # bulkRNA 扩展
+    ("bulkRNA", "volcano"): "plot_volcano",
+    ("bulkRNA", "heatmap"): "plot_heatmap",
+    ("bulkRNA", "gsea"): "plot_enrichment_bar",
+    ("bulkRNA", "kegg"): "plot_enrichment_dot",
+    ("bulkRNA", "go"): "plot_enrichment_dot",
+    ("bulkRNA", "wgcna"): "plot_heatmap",
+    ("bulkRNA", "timeseries"): "plot_line",
+    ("bulkRNA", "correlation"): "plot_heatmap",
+    ("bulkRNA", "venn"): "plot_venn_simple",
+    ("bulkRNA", "upset"): "plot_upset_simple",
+    # 系统发育扩展
+    ("phylogeny", "heatmap"): "plot_heatmap",
+    ("phylogeny", "timeline"): "plot_line",
+    ("phylogeny", "ancestral"): "plot_heatmap",
+    # 富集扩展
+    ("enrichment", "gsea"): "plot_enrichment_bar",
+    ("enrichment", "kegg"): "plot_enrichment_dot",
+    ("enrichment", "go"): "plot_enrichment_dot",
+    ("enrichment", "ridge"): "plot_ridgeline",
+    ("enrichment", "cnet"): "plot_enrichment_network",
+    # 表观扩展
+    ("epigenetic", "heatmap"): "plot_heatmap",
+    ("epigenetic", "motif"): "plot_motif",
+    ("epigenetic", "peaks"): "plot_genome_track",
+    ("epigenetic", "footprint"): "plot_line",
+    ("epigenetic", "nucleosome"): "plot_line",
+    # 基因组扩展
+    ("genome", "ideogram"): "plot_circos",
+    ("genome", "heatmap"): "plot_heatmap",
+    ("genome", "variant"): "plot_variant",
+    ("genome", "loh"): "plot_cnv",
+    # 生存扩展
+    ("survival", "km"): "plot_km",
+    ("survival", "cox"): "plot_forest_plot",
+    ("survival", "roc"): "plot_roc",
+    ("survival", "calibration"): "plot_calibration",
+    ("survival", "nomogram"): "plot_forest_plot",
+    # 代谢组扩展
+    ("metabolomics", "volcano"): "plot_volcano",
+    ("metabolomics", "plsda"): "plot_plsda",
+    ("metabolomics", "pathway"): "plot_pathway",
+    # 蛋白组扩展
+    ("proteomics", "volcano"): "plot_volcano",
+    ("proteomics", "heatmap"): "plot_heatmap",
+    ("proteomics", "venn"): "plot_venn_simple",
+    ("proteomics", "network"): "plot_ppi",
+    ("proteomics", "coverage"): "plot_lollipop",
+    # 常规扩展
+    ("general", "roc"): "plot_roc",
+    ("general", "calibration"): "plot_calibration",
+    ("general", "venn"): "plot_venn_simple",
+    ("general", "upset"): "plot_upset_simple",
+    ("general", "motif"): "plot_motif",
+    ("general", "sashimi"): "plot_sashimi",
+    ("general", "spatial"): "plot_spatial",
+    ("general", "oncoplot"): "plot_oncoplot",
+    ("general", "ppi"): "plot_ppi",
+    ("general", "dose_response"): "plot_dose_response",
+    ("general", "ic50"): "plot_ic50",
+    ("general", "clonotype"): "plot_clonotype",
 }
+
+# 从 chart_catalog 反向生成的全领域自动路由（领域 → 推荐图型 → 函数）
+AUTO_FULL_ROUTING = {}
+
+
+def _build_auto_routing():
+    """从 chart_catalog 的 domains 字段反向生成路由：任何领域+图型都能路由"""
+    global AUTO_FULL_ROUTING
+    try:
+        from chart_catalog import suggest_for_domain
+        for domain in ["scRNA", "bulkRNA", "microbiome", "metabolomics", "proteomics",
+                       "genome", "phylogeny", "survival", "enrichment", "epigenetic",
+                       "multiomics", "spatial", "flow", "immunology", "cancer",
+                       "wgs", "protein", "rna", "clinical", "drug", "cellline", "general"]:
+            for fig in suggest_for_domain(domain, top_n=30):
+                key = (domain, fig)
+                if key not in ROUTING_TABLE:
+                    AUTO_FULL_ROUTING[key] = _resolve_function_name(fig)
+    except Exception:
+        pass
+
+
+def _resolve_function_name(fig: str) -> str:
+    """图型 → 已有绘图函数名（别名映射）"""
+    alias = {
+        "boxplot": "plot_box", "histogram": "plot_box", "kde": "plot_violin",
+        "stripplot": "plot_scatter", "beeswarm": "plot_scatter", "ecdf": "plot_ecdf",
+        "qqplot": "plot_qqplot", "bar": "plot_bar", "grouped_bar": "plot_bar",
+        "stacked_bar": "plot_bar", "lollipop": "plot_lollipop", "dumbbell": "plot_dumbbell",
+        "dotplot": "plot_dotplot", "slope": "plot_line", "waterfall": "plot_diverging_bar",
+        "errorbar": "plot_bar", "scatter": "plot_scatter", "bubble": "plot_bubble",
+        "hexbin": "plot_hexbin", "corr_heatmap": "plot_heatmap", "pairplot": "plot_pairplot",
+        "parallel_coords": "plot_parallel_coords", "line": "plot_line", "area": "plot_area",
+        "stacked_area": "plot_stacked_area", "step_line": "plot_line", "pie": "plot_pie",
+        "donut": "plot_donut", "treemap": "plot_treemap", "sunburst": "plot_donut",
+        "nightingale": "plot_nightingale", "waffle": "plot_waffle", "marimekko": "plot_treemap",
+        "circle_packing": "plot_treemap", "sankey": "plot_sankey", "network_graph": "plot_enrichment_network",
+        "dendrogram": "plot_dendrogram", "chord_diagram": "plot_circos", "arc_diagram": "plot_circos",
+        "alluvial": "plot_sankey", "wordcloud": "plot_bar", "venn": "plot_venn_simple",
+        "choropleth": "plot_heatmap", "bubble_map": "plot_bubble", "umap_plot": "plot_umap",
+        "tsne_plot": "plot_tsne", "pca_plot": "plot_pca", "manhattan_plot": "plot_manhattan",
+        "forest_plot": "plot_forest_plot", "funnel_plot": "plot_funnel_plot",
+        "calibration_curve": "plot_calibration", "residual_plot": "plot_scatter",
+        "upset_plot": "plot_upset_simple", "scatter_3d": "plot_bubble", "surface_3d": "plot_heatmap",
+        "bar_3d": "plot_bar", "jade_ring": "plot_nightingale", "bar_sig": "plot_bar",
+        "radial_bar_sig": "plot_radial_bar", "radial_bar": "plot_radial_bar",
+        "violin": "plot_violin", "heatmap": "plot_heatmap", "volcano": "plot_volcano",
+        "ridgeline": "plot_ridgeline", "raincloud": "plot_raincloud", "radar": "plot_radar",
+        "marginal_plot": "plot_marginal_plot", "bland_altman": "plot_bland_altman",
+        "diverging_bar": "plot_diverging_bar", "ma_plot": "plot_ma_plot",
+        "km": "plot_km", "forest": "plot_forest_plot", "roc_curve": "plot_roc",
+        "kaplan_meier": "plot_km", "manhattan": "plot_manhattan", "pca": "plot_pca",
+        "umap": "plot_umap", "tsne": "plot_tsne", "gsea": "plot_enrichment_bar",
+        "kegg_pathway": "plot_enrichment_dot", "enrichment_bar": "plot_enrichment_bar",
+        "enrichment_dot": "plot_enrichment_dot", "alpha_diversity": "plot_alpha_diversity",
+        "beta_diversity": "plot_beta_diversity", "composition": "plot_composition",
+        "lefse": "plot_lollipop", "marker": "plot_marker", "clustree": "plot_clustree",
+        "trajectory": "plot_trajectory", "cellchat": "plot_cellchat",
+        "genome_browser": "plot_genome_browser", "genome_track": "plot_genome_track",
+        "cnv": "plot_cnv", "circos": "plot_circos", "tree": "plot_tree",
+        "circle_tree": "plot_circle_tree", "pathway": "plot_pathway",
+        "plsda": "plot_plsda", "oplsda": "plot_plsda", "peaks": "plot_genome_track",
+        "motif": "plot_motif", "wgcna": "plot_heatmap", "mofa": "plot_heatmap",
+        "spatial": "plot_spatial", "flow_hist": "plot_flow_hist", "beta_dist": "plot_beta_dist",
+        "clonotype": "plot_clonotype", "oncoplot": "plot_oncoplot", "variant": "plot_variant",
+        "ppi": "plot_ppi", "roc": "plot_roc", "calibration": "plot_calibration",
+        "dose_response": "plot_dose_response", "ic50": "plot_ic50", "sashimi": "plot_sashimi",
+    }
+    return alias.get(fig, "plot_heatmap")
+
+
+_build_auto_routing()
 
 
 def _normalize_key(s: str) -> str:
     """规范化路由键：小写 + 去特殊字符"""
     return s.lower().strip().replace('-', '').replace('_', '').replace(' ', '')
+def _all_routing():
+    """合并路由表：基础 ROUTING_TABLE（含全领域扩展条目） + 自动反向生成"""
+    merged = dict(ROUTING_TABLE)
+    merged.update(AUTO_FULL_ROUTING)
+    return merged
 
 
 def get_native_plot_function(domain: str, plot_type: str):
-    """获取原生Python绘图函数（大小写不敏感）"""
+    """获取原生Python绘图函数（大小写不敏感，覆盖全领域路由）"""
     d = _normalize_key(domain)
     p = _normalize_key(plot_type)
-    for (rd, rp), func_name in ROUTING_TABLE.items():
+    for (rd, rp), func_name in _all_routing().items():
         if _normalize_key(rd) == d and _normalize_key(rp) == p:
             if hasattr(sys.modules[__name__], func_name):
                 return getattr(sys.modules[__name__], func_name)
@@ -217,11 +457,17 @@ def plot_heatmap(data, output_path: str, **kwargs):
     """热图（通用/单细胞）"""
     fig, ax = plt.subplots(figsize=(10, 8))
     if isinstance(data, pd.DataFrame):
-        im = ax.imshow(data.values, cmap='viridis', aspect='auto')
-        ax.set_xticks(range(data.shape[1]))
-        ax.set_xticklabels(data.columns, rotation=45, ha='right')
-        ax.set_yticks(range(data.shape[0]))
-        ax.set_yticklabels(data.index)
+        # 只取数值列（容忍混合类型表）
+        dfn = data.select_dtypes(include=[np.number])
+        if dfn.shape[1] == 0:
+            ax.text(0.5, 0.5, 'No numeric columns for heatmap', ha='center', va='center')
+            plt.tight_layout(); plt.savefig(output_path, bbox_inches='tight', dpi=300); plt.close()
+            return output_path
+        im = ax.imshow(dfn.values, cmap='viridis', aspect='auto')
+        ax.set_xticks(range(dfn.shape[1]))
+        ax.set_xticklabels(dfn.columns, rotation=45, ha='right')
+        ax.set_yticks(range(min(50, dfn.shape[0])))
+        ax.set_yticklabels(list(dfn.index)[:50], fontsize=6)
         plt.colorbar(im, ax=ax)
     elif hasattr(data, 'X') and hasattr(data, 'obs'):  # AnnData
         import scanpy as sc
@@ -269,10 +515,14 @@ def plot_box(data, output_path: str, x: str = None, y: str = None, **kwargs):
         if x and y:
             sns.boxplot(data=data, x=x, y=y, ax=ax, **kwargs)
         else:
-            for col in data.columns:
-                ax.boxplot(data[col], positions=[list(data.columns).index(col)+1])
-            ax.set_xticks(range(1, len(data.columns)+1))
-            ax.set_xticklabels(data.columns, rotation=45)
+            num_cols = data.select_dtypes(include=[np.number]).columns
+            if len(num_cols) == 0:
+                ax.text(0.5, 0.5, 'No numeric columns', ha='center', va='center')
+            else:
+                for col in num_cols:
+                    ax.boxplot(data[col].dropna(), positions=[list(num_cols).index(col)+1])
+                ax.set_xticks(range(1, len(num_cols)+1))
+                ax.set_xticklabels(num_cols, rotation=45)
     ax.set_ylabel('Value')
     ax.set_title('Box Plot')
     plt.tight_layout()
@@ -1431,6 +1681,496 @@ def plot_volcano_sig(data, output_path: str, **kwargs):
     return plot_volcano(data, output_path, **kwargs)
 
 
+# ═════════════════════════════════════════════════════════════
+# 全领域新增绘图函数（空间/流式/甲基化/免疫/癌症/WGS/蛋白/临床/药物）
+# ═════════════════════════════════════════════════════════════
+
+def plot_spatial(data, output_path: str, x: str = None, y: str = None,
+                 color: str = None, **kwargs):
+    """空间转录组：组织切片 2D 坐标散点 + 基因表达颜色"""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(9, 7))
+    if isinstance(data, pd.DataFrame):
+        num_cols = list(data.select_dtypes(include=[np.number]).columns)
+        xc = x or next((c for c in num_cols if c.lower() in ["x", "xcoord", "col", "pxl_col"]), None)
+        yc = y or next((c for c in num_cols if c.lower() in ["y", "ycoord", "row", "pxl_row"]), None)
+        if xc and yc:
+            cc = color or next((c for c in num_cols if c != xc and c != yc), None)
+            xs = pd.to_numeric(data[xc], errors="coerce").values
+            ys = pd.to_numeric(data[yc], errors="coerce").values
+            valid = ~(np.isnan(xs) | np.isnan(ys))
+            if cc:
+                sc = ax.scatter(xs[valid], ys[valid], s=12, alpha=0.8,
+                                c=data[cc].values[valid], cmap="inferno")
+                plt.colorbar(sc, ax=ax, label=cc, shrink=0.7)
+            else:
+                ax.scatter(xs[valid], ys[valid], s=12, alpha=0.8, color="steelblue")
+            ax.set_xlabel(xc); ax.set_ylabel(yc)
+            ax.set_aspect("equal", adjustable="box")
+            ax.set_title("Spatial Transcriptomics", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "Spatial\n(Requires x/y coordinate columns)",
+                    ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "Spatial\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_flow_hist(data, output_path: str, x: str = None, group_col: str = None, **kwargs):
+    """流式细胞术：分组密度直方叠加"""
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if isinstance(data, pd.DataFrame):
+        num_cols = list(data.select_dtypes(include=[np.number]).columns)
+        xc = x or (num_cols[0] if num_cols else None)
+        gc = group_col or next((c for c in data.columns if pd.api.types.is_object_dtype(data[c])
+                                or (data[c].nunique() <= 6 and data[c].nunique() > 1)), None)
+        if xc:
+            if gc:
+                groups = data[gc].unique()
+                for i, g in enumerate(groups):
+                    vals = pd.to_numeric(data.loc[data[gc] == g, xc], errors="coerce").dropna().values
+                    ax.hist(vals, bins=60, alpha=0.45, density=True,
+                            color=plt.cm.tab10(i), label=str(g))
+                ax.legend(frameon=False)
+            else:
+                vals = pd.to_numeric(data[xc], errors="coerce").dropna().values
+                ax.hist(vals, bins=60, alpha=0.7, density=True, color="steelblue")
+            ax.set_xlabel(xc); ax.set_ylabel("Density")
+            ax.set_title("Flow Cytometry Histogram", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "No numeric column", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "Flow Hist\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_beta_dist(data, output_path: str, **kwargs):
+    """甲基化：β 值分布密度图"""
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if isinstance(data, pd.DataFrame):
+        num_cols = list(data.select_dtypes(include=[np.number]).columns)[:8]
+        if num_cols:
+            for c in num_cols:
+                vals = pd.to_numeric(data[c], errors="coerce").dropna().values
+                vals = vals[(vals > 0) & (vals < 1)]
+                if len(vals) > 10:
+                    ax.hist(vals, bins=40, alpha=0.4, density=True, label=c)
+            ax.legend(frameon=False, fontsize=7)
+            ax.set_xlabel("Beta value"); ax.set_ylabel("Density")
+            ax.set_title("Methylation Beta Distribution", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "No numeric columns", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "Beta Dist\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_clonotype(data, output_path: str, **kwargs):
+    """免疫组库：克隆型占比（Top N 克隆型堆叠/环形）"""
+    fig, ax = plt.subplots(figsize=(8, 6))
+    if isinstance(data, pd.DataFrame):
+        if "frequency" in data.columns and "clonotype" in data.columns:
+            dfx = data.sort_values("frequency", ascending=False).head(15)
+            labels = dfx["clonotype"].astype(str).values
+            vals = dfx["frequency"].values
+        elif "clonotype" in data.columns:
+            vc = data["clonotype"].value_counts().head(15)
+            labels = vc.index.astype(str).values
+            vals = vc.values
+        elif data.shape[1] >= 2 and pd.api.types.is_numeric_dtype(data.iloc[:, -1]):
+            dfn = data.select_dtypes(include=[np.number])
+            vals = dfn.iloc[0].sort_values(ascending=False).head(15).values
+            labels = dfn.iloc[0].sort_values(ascending=False).head(15).index.astype(str).values
+        else:
+            ax.text(0.5, 0.5, "Clonotype\n(Requires clonotype column)", ha="center", va="center")
+            plt.tight_layout(); plt.savefig(output_path, bbox_inches="tight", dpi=300); plt.close()
+            return output_path
+        colors = plt.cm.viridis(np.linspace(0, 0.9, len(labels)))
+        ax.bar(np.arange(len(labels)), vals, color=colors, alpha=0.9)
+        ax.set_xticks(np.arange(len(labels)))
+        ax.set_xticklabels(labels, rotation=60, ha="right", fontsize=7)
+        ax.set_ylabel("Frequency / Count")
+        ax.set_title("TCR/BCR Clonotype Repertoire", fontweight="bold")
+    else:
+        ax.text(0.5, 0.5, "Clonotype\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_oncoplot(data, output_path: str, **kwargs):
+    """癌症基因组：Oncoplot 突变谱（样本 × 基因 tile 图）"""
+    fig, ax = plt.subplots(figsize=(12, max(4, 0.35 * data.shape[0] if hasattr(data, "shape") else 5)))
+    if isinstance(data, pd.DataFrame):
+        num_cols = list(data.select_dtypes(include=[np.number]).columns)
+        if len(num_cols) >= 2:
+            mat = data[num_cols[:20]].fillna(0).values
+            genes = num_cols[:20]
+            samples = [f"S{i}" for i in range(mat.shape[0])]
+            im = ax.imshow(mat.T, cmap="YlOrRd", aspect="auto")
+            ax.set_xticks(np.arange(mat.shape[0]))
+            ax.set_xticklabels(samples, rotation=90, fontsize=6)
+            ax.set_yticks(np.arange(len(genes)))
+            ax.set_yticklabels(genes, fontsize=8)
+            plt.colorbar(im, ax=ax, shrink=0.5)
+            ax.set_title("Oncoplot (Mutation Spectrum)", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "Oncoplot\n(Requires >=2 numeric columns)", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "Oncoplot\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_variant(data, output_path: str, **kwargs):
+    """WGS/WES：变异类型计数条形图"""
+    fig, ax = plt.subplots(figsize=(9, 5))
+    if isinstance(data, pd.DataFrame):
+        type_col = next((c for c in data.columns if c.lower() in ["type", "variant_type", "effect", "class"]), None)
+        if type_col:
+            vc = data[type_col].value_counts().head(12)
+            ax.bar(np.arange(len(vc)), vc.values, color="steelblue", alpha=0.9)
+            ax.set_xticks(np.arange(len(vc)))
+            ax.set_xticklabels(vc.index.astype(str), rotation=45, ha="right")
+            ax.set_ylabel("Count"); ax.set_title("Variant Type Spectrum", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "Variant\n(Requires type/effect column)", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "Variant\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_ppi(data, output_path: str, **kwargs):
+    """蛋白互作网络：简化弹簧布局网络图"""
+    try:
+        import networkx as nx
+    except ImportError:
+        fig, ax = plt.subplots(figsize=(7, 6))
+        ax.text(0.5, 0.5, "PPI requires networkx", ha="center", va="center")
+        plt.tight_layout(); plt.savefig(output_path, bbox_inches="tight", dpi=300); plt.close()
+        return output_path
+    fig, ax = plt.subplots(figsize=(9, 7))
+    G = nx.Graph()
+    if isinstance(data, pd.DataFrame):
+        if data.shape[1] >= 2:
+            for _, row in data.head(80).iterrows():
+                a, b = str(row.iloc[0]), str(row.iloc[1])
+                w = float(row.iloc[2]) if data.shape[1] >= 3 else 1.0
+                try:
+                    G.add_edge(a, b, weight=w)
+                except Exception:
+                    pass
+        else:
+            for i in range(min(40, len(data))):
+                G.add_edge(f"P{i}", f"P{(i + 1) % 40}")
+    else:
+        ax.text(0.5, 0.5, "PPI\n(Requires DataFrame edge list)", ha="center", va="center")
+        plt.tight_layout(); plt.savefig(output_path, bbox_inches="tight", dpi=300); plt.close()
+        return output_path
+    if G.number_of_nodes() == 0:
+        ax.text(0.5, 0.5, "PPI: empty network", ha="center", va="center")
+        plt.tight_layout(); plt.savefig(output_path, bbox_inches="tight", dpi=300); plt.close()
+        return output_path
+    pos = nx.spring_layout(G, seed=42, k=0.6)
+    weights = [G[u][v].get("weight", 1) for u, v in G.edges()]
+    nx.draw_networkx_edges(G, pos, ax=ax, alpha=0.35, width=[0.5 + 2 * min(w, 3) for w in weights])
+    deg = dict(G.degree())
+    node_colors = [deg.get(n, 1) for n in G.nodes()]
+    nx.draw_networkx_nodes(G, pos, ax=ax, node_size=250, node_color=node_colors,
+                           cmap="viridis", alpha=0.9)
+    nx.draw_networkx_labels(G, pos, ax=ax, font_size=7)
+    ax.set_title("Protein-Protein Interaction Network", fontweight="bold")
+    ax.axis("off")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_roc(data, output_path: str, y_true: str = None, y_score: str = None, **kwargs):
+    """ROC 曲线（临床/生存模型评估）"""
+    try:
+        from sklearn.metrics import roc_curve, auc
+    except ImportError:
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.text(0.5, 0.5, "ROC requires sklearn", ha="center", va="center")
+        plt.tight_layout(); plt.savefig(output_path, bbox_inches="tight", dpi=300); plt.close()
+        return output_path
+    fig, ax = plt.subplots(figsize=(6, 6))
+    if isinstance(data, pd.DataFrame):
+        num_cols = list(data.select_dtypes(include=[np.number]).columns)
+        yt = y_true or next((c for c in data.columns if c.lower() in ["y_true", "label", "event", "status"]), None)
+        if yt and len(num_cols) > 0:
+            y_true_vals = pd.to_numeric(data[yt], errors="coerce").values
+            for col in num_cols[:4]:
+                if col == yt:
+                    continue
+                score = pd.to_numeric(data[col], errors="coerce").values
+                valid = ~(np.isnan(y_true_vals) | np.isnan(score))
+                if np.unique(y_true_vals[valid]).size < 2:
+                    continue
+                fpr, tpr, _ = roc_curve(y_true_vals[valid], score[valid])
+                ax.plot(fpr, tpr, lw=2, label=f"{col} (AUC={auc(fpr, tpr):.3f})")
+            ax.plot([0, 1], [0, 1], "k--", lw=1)
+            ax.legend(frameon=False, fontsize=8)
+            ax.set_xlabel("False Positive Rate"); ax.set_ylabel("True Positive Rate")
+            ax.set_title("ROC Curve", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "ROC\n(Requires y_true + score columns)", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "ROC\n(Requires DataFrame)", ha="center", va="center")
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1.05)
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_calibration(data, output_path: str, **kwargs):
+    """校准曲线（预测概率 vs 观测频率）"""
+    fig, ax = plt.subplots(figsize=(6, 6))
+    if isinstance(data, pd.DataFrame):
+        num_cols = list(data.select_dtypes(include=[np.number]).columns)
+        pred_col = next((c for c in num_cols if "pred" in c.lower()), None)
+        obs_col = next((c for c in num_cols if "obs" in c.lower() or "actual" in c.lower()), None)
+        if pred_col and obs_col:
+            pred = pd.to_numeric(data[pred_col], errors="coerce").values
+            obs = pd.to_numeric(data[obs_col], errors="coerce").values
+            valid = ~(np.isnan(pred) | np.isnan(obs))
+            bins = np.linspace(0, 1, 11)
+            idx = np.digitize(pred[valid], bins) - 1
+            means = []
+            for b in range(10):
+                m = obs[valid][idx == b]
+                means.append(np.mean(m) if len(m) > 0 else np.nan)
+            ax.plot(bins[:-1] + 0.05, means, "o-", color="steelblue", lw=2)
+            ax.plot([0, 1], [0, 1], "k--", lw=1)
+            ax.set_xlabel("Predicted Probability"); ax.set_ylabel("Observed Frequency")
+            ax.set_title("Calibration Curve", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "Calibration\n(Requires pred+obs columns)", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "Calibration\n(Requires DataFrame)", ha="center", va="center")
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_dose_response(data, output_path: str, **kwargs):
+    """药物剂量-响应 S 曲线（多化合物）"""
+    fig, ax = plt.subplots(figsize=(8, 6))
+    if isinstance(data, pd.DataFrame):
+        num_cols = list(data.select_dtypes(include=[np.number]).columns)
+        if len(num_cols) >= 2:
+            dose = num_cols[0]
+            xd = pd.to_numeric(data[dose], errors="coerce").values
+            for i, col in enumerate(num_cols[1:6]):
+                yd = pd.to_numeric(data[col], errors="coerce").values
+                valid = ~(np.isnan(xd) | np.isnan(yd))
+                order = np.argsort(xd[valid])
+                ax.plot(xd[valid][order], yd[valid][order], "o-", lw=2,
+                        color=plt.cm.tab10(i), label=col)
+            ax.legend(frameon=False, fontsize=8)
+            ax.set_xlabel(dose); ax.set_ylabel("Response (%)")
+            ax.set_title("Dose-Response Curve", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "Dose-Response\n(Requires dose+response cols)", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "Dose-Response\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_ic50(data, output_path: str, **kwargs):
+    """IC50 比较（化合物 IC50 棒棒糖/柱状）"""
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if isinstance(data, pd.DataFrame):
+        ic_col = next((c for c in data.columns if "ic50" in c.lower() or "ic50" in c.lower()), None)
+        if ic_col:
+            dfx = data.sort_values(ic_col)
+            labels = dfx.iloc[:, 0].astype(str).values if data.shape[1] > 1 else dfx.index.astype(str).values
+            vals = pd.to_numeric(dfx[ic_col], errors="coerce").values
+            y = np.arange(len(labels))
+            ax.barh(y, vals, color="crimson", alpha=0.85)
+            ax.set_yticks(y); ax.set_yticklabels(labels)
+            ax.set_xlabel("IC50"); ax.set_title("IC50 Comparison", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "IC50\n(Requires ic50 column)", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "IC50\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_sashimi(data, output_path: str, **kwargs):
+    """剪接事件（Sashimi 简化版）：外显子连接计数"""
+    fig, ax = plt.subplots(figsize=(10, 4))
+    if isinstance(data, pd.DataFrame):
+        dfn = data.select_dtypes(include=[np.number])
+        if dfn.shape[1] >= 2:
+            xd = np.arange(len(data))
+            for i, col in enumerate(dfn.columns[:6]):
+                ax.plot(xd, dfn[col].values, lw=1.5, label=col,
+                        color=plt.cm.tab10(i), alpha=0.7)
+            ax.legend(frameon=False, fontsize=8)
+            ax.set_title("Splicing Junction (Sashimi-like)", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "Sashimi\n(Requires junction counts)", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "Sashimi\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_venn_simple(data, output_path: str, **kwargs):
+    """韦恩图（2-3 组集合交集，matplotlib 圆）"""
+    fig, ax = plt.subplots(figsize=(7, 7))
+    ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
+    sets = {}
+    if isinstance(data, pd.DataFrame):
+        obj_cols = [c for c in data.columns if not pd.api.types.is_numeric_dtype(data[c])
+                    or data[c].nunique() <= 2]
+        for c in obj_cols[:3]:
+            vals = set(data[c].dropna().astype(str).unique())
+            if vals and str(vals) not in {"{'nan'}", "{'True'}", "{'False'}", "{'0'}", "{'1'}"}:
+                sets[c] = vals
+        if len(sets) < 2:
+            # 退化为数值列分布
+            num_cols = list(data.select_dtypes(include=[np.number]).columns)
+            if len(num_cols) >= 2:
+                for c in num_cols[:3]:
+                    sets[c] = set(data[c].head(30).round(2).astype(str).values)
+    if len(sets) == 2:
+        names = list(sets)
+        a, b = sets[names[0]], sets[names[1]]
+        r = 2.2
+        c1, c2 = (4.0, 5.0), (6.0, 5.0)
+        circle1 = plt.Circle(c1, r, color="steelblue", alpha=0.35)
+        circle2 = plt.Circle(c2, r, color="crimson", alpha=0.35)
+        ax.add_patch(circle1); ax.add_patch(circle2)
+        only_a = len(a - b); inter = len(a & b); only_b = len(b - a)
+        ax.text(c1[0] - r / 1.6, 5.0, str(only_a), ha="center", fontsize=16)
+        ax.text(5.0, 5.0, str(inter), ha="center", fontsize=16)
+        ax.text(c2[0] + r / 1.6, 5.0, str(only_b), ha="center", fontsize=16)
+        ax.text(c1[0], 9.2, names[0], ha="center", fontsize=12)
+        ax.text(c2[0], 9.2, names[1], ha="center", fontsize=12)
+        ax.set_title("Venn Diagram", fontweight="bold")
+    elif len(sets) == 3:
+        names = list(sets)
+        circles = [(4.5, 6.2), (5.5, 6.2), (5.0, 4.4)]
+        colors = ["steelblue", "crimson", "gold"]
+        for (cx, cy), col, name in zip(circles, colors, names):
+            ax.add_patch(plt.Circle((cx, cy), 1.8, color=col, alpha=0.35))
+            ax.text(cx, cy + 2.4, name, ha="center", fontsize=11)
+        a, b, c = sets.values()
+        regs = {
+            "abc": a & b & c,
+        }
+        ax.text(5.0, 5.4, str(len(regs["abc"])), ha="center", fontsize=14)
+        ax.set_title("Venn Diagram (3-way)", fontweight="bold")
+    else:
+        ax.text(0.5, 0.5, "Venn\n(Requires >=2 set columns)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_upset_simple(data, output_path: str, **kwargs):
+    """UpSet 图（简化）：集合交集条形 + 点阵"""
+    fig, ax = plt.subplots(figsize=(10, 5))
+    if isinstance(data, pd.DataFrame):
+        obj_cols = [c for c in data.columns if not pd.api.types.is_numeric_dtype(data[c])
+                    or data[c].nunique() <= 2][:5]
+        if len(obj_cols) >= 3:
+            masks = []
+            names = []
+            for c in obj_cols:
+                vals = data[c].dropna().astype(str)
+                if vals.nunique() >= 2 and vals.nunique() <= 8:
+                    masks.append(set(vals.unique()))
+                    names.append(c)
+            if len(masks) >= 3:
+                from itertools import combinations
+                inter_sizes = []
+                combos = []
+                for r in range(1, len(masks) + 1):
+                    for combo in combinations(range(len(masks)), r):
+                        inter = set.intersection(*[masks[i] for i in combo]) if r > 1 else set(masks[combo[0]])
+                        combos.append(combo)
+                        inter_sizes.append(len(inter))
+                order = np.argsort(inter_sizes)[::-1][:15]
+                ax.bar(np.arange(len(order)), [inter_sizes[i] for i in order],
+                       color="steelblue", alpha=0.9)
+                ax.set_xticks([])
+                ax.set_ylabel("Intersection Size")
+                ax.set_title("UpSet Plot (Simplified)", fontweight="bold")
+            else:
+                ax.text(0.5, 0.5, "UpSet\n(Need >=3 set-like columns)", ha="center", va="center")
+        else:
+            ax.text(0.5, 0.5, "UpSet\n(Need >=3 categorical columns)", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "UpSet\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
+def plot_motif(data, output_path: str, **kwargs):
+    """转录因子 Motif 富集（简化）：Top motif 条形"""
+    fig, ax = plt.subplots(figsize=(9, 5))
+    if isinstance(data, pd.DataFrame):
+        name_col = next((c for c in data.columns if c.lower() in ["motif", "tf", "name", "factor"]), None)
+        p_col = next((c for c in data.columns if c.lower() in ["p", "pvalue", "q", "fdr"]), None)
+        if name_col:
+            dfx = data.copy()
+            if p_col:
+                dfx["_score"] = -np.log10(pd.to_numeric(dfx[p_col], errors="coerce").fillna(1) + 1e-20)
+                dfx = dfx.sort_values("_score", ascending=False).head(15)
+                ax.barh(np.arange(len(dfx)), dfx["_score"].values, color="steelblue", alpha=0.9)
+                ax.set_xlabel("-log10(p)")
+            else:
+                dfx = dfx.head(15)
+                ax.barh(np.arange(len(dfx)), np.ones(len(dfx)), color="steelblue", alpha=0.9)
+            ax.set_yticks(np.arange(len(dfx)))
+            ax.set_yticklabels(dfx[name_col].astype(str).values, fontsize=8)
+            ax.set_title("Transcription Factor Motif Enrichment", fontweight="bold")
+        else:
+            ax.text(0.5, 0.5, "Motif\n(Requires motif/tf column)", ha="center", va="center")
+    else:
+        ax.text(0.5, 0.5, "Motif\n(Requires DataFrame)", ha="center", va="center")
+    plt.tight_layout()
+    plt.savefig(output_path, bbox_inches="tight", dpi=300)
+    plt.close()
+    return output_path
+
+
 # ==================== 主路由函数 ====================
 
 def generate_figure(
@@ -1471,11 +2211,39 @@ def generate_figure(
     clean_domain = _normalize_key(domain)
     clean_type = _normalize_key(plot_type)
 
-    for (d, p), f in ROUTING_TABLE.items():
+    for (d, p), f in _all_routing().items():
         if clean_domain in _normalize_key(d) and clean_type in _normalize_key(p):
             func = getattr(sys.modules[__name__], f)
             print(f"Using fuzzy matched function: {func.__name__}")
             return func(data, str(output_path), **kwargs)
+
+    # 尝试同图型跨领域匹配（如 volcano 在任意领域都可用）
+    for (d, p), f in _all_routing().items():
+        if clean_type == _normalize_key(p) and clean_type in ["volcano", "heatmap", "box",
+                                                               "violin", "scatter", "line",
+                                                               "bar", "donut", "treemap",
+                                                               "sankey", "dendrogram", "qqplot",
+                                                               "ecdf", "ridgeline", "raincloud",
+                                                               "lollipop", "bubble", "hexbin",
+                                                               "radar", "ma_plot", "forest_plot",
+                                                               "manhattan", "pca", "umap", "tsne",
+                                                               "km", "roc", "spatial", "ppi"]:
+            func = getattr(sys.modules[__name__], f)
+            print(f"Using cross-domain matched function: {func.__name__}")
+            return func(data, str(output_path), **kwargs)
+
+    # 尝试图表目录引擎匹配（chart_catalog 中任意图型都能路由）
+    try:
+        from chart_catalog import get_chart
+        meta = get_chart(plot_type)
+        if meta:
+            func_name = _resolve_function_name(meta.get("id", plot_type))
+            if hasattr(sys.modules[__name__], func_name):
+                func = getattr(sys.modules[__name__], func_name)
+                print(f"Using catalog-resolved function: {func.__name__}")
+                return func(data, str(output_path), **kwargs)
+    except Exception:
+        pass
 
     # 默认：使用热图或散点图
     print(f"No specific function found for {domain}/{plot_type}, using fallback")
