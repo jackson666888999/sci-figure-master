@@ -158,11 +158,11 @@
         }
       ],
       "figures_plan": [
-        "histogram",
         "corr_heatmap",
-        "qqplot",
+        "bubble",
+        "histogram",
         "scatter",
-        "bubble"
+        "qqplot"
       ]
     },
     {
@@ -210,9 +210,9 @@
         }
       ],
       "figures_plan": [
-        "umap",
         "dendrogram",
         "pca",
+        "umap",
         "scatter"
       ]
     },
@@ -317,12 +317,12 @@
         }
       ],
       "figures_plan": [
-        "umap",
-        "pca",
-        "boxplot",
         "histogram",
-        "dendrogram",
-        "scatter"
+        "pca",
+        "umap",
+        "boxplot",
+        "scatter",
+        "dendrogram"
       ]
     },
     {
@@ -450,13 +450,13 @@
         }
       ],
       "figures_plan": [
-        "boxplot",
         "volcano",
-        "ma_plot",
         "lollipop",
         "violin",
+        "heatmap",
         "raincloud",
-        "heatmap"
+        "boxplot",
+        "ma_plot"
       ]
     },
     {
@@ -513,9 +513,9 @@
         }
       ],
       "figures_plan": [
-        "scatter",
         "corr_heatmap",
-        "bubble"
+        "bubble",
+        "scatter"
       ]
     },
     {
@@ -622,11 +622,11 @@
         "correlation"
       ],
       "figures": [
-        "histogram",
         "corr_heatmap",
-        "qqplot",
+        "bubble",
+        "histogram",
         "scatter",
-        "bubble"
+        "qqplot"
       ]
     },
     {
@@ -637,9 +637,9 @@
         "clustering"
       ],
       "figures": [
-        "umap",
         "dendrogram",
         "pca",
+        "umap",
         "scatter"
       ]
     },
@@ -652,12 +652,12 @@
         "clustering"
       ],
       "figures": [
-        "umap",
-        "pca",
-        "boxplot",
         "histogram",
-        "dendrogram",
-        "scatter"
+        "pca",
+        "umap",
+        "boxplot",
+        "scatter",
+        "dendrogram"
       ]
     },
     {
@@ -668,13 +668,13 @@
         "differential"
       ],
       "figures": [
-        "boxplot",
         "volcano",
-        "ma_plot",
         "lollipop",
         "violin",
+        "heatmap",
         "raincloud",
-        "heatmap"
+        "boxplot",
+        "ma_plot"
       ]
     },
     {
@@ -684,9 +684,9 @@
         "correlation"
       ],
       "figures": [
-        "scatter",
         "corr_heatmap",
-        "bubble"
+        "bubble",
+        "scatter"
       ]
     },
     {

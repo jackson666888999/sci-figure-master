@@ -77,7 +77,8 @@ description: >-
 | 模块 | 文件 | 能力 |
 |------|------|------|
 | 图表注册表 | `assets/chart_catalog.py` | **141 种图表类型**统一注册（SciVizKit 79 + bioinfo 41 + R 工具链 21），领域推荐决策树 |
-| 可执行路由 | `assets/bioinfo_router.py` | 零动手路由：`generate_figure(domain, plot_type, data, path)`。**覆盖 23 领域 × 487 路由条目**（多组学/空间/流式/甲基化/免疫/癌症/WGS/蛋白/临床/药物等），新增 15 个领域 Python 函数（spatial/oncoplot/ppi/roc/calibration/dose_response 等），五级回退链（精确→模糊→跨域→图表目录→兜底），任意组合不报错 |
+| 可执行路由 | `assets/bioinfo_router.py` | 零动手路由：`generate_figure(domain, plot_type, data, path)`。**覆盖 99 领域域 × 1129 路由条目**（70 生信领域 + K-Dense 22 学科 + 23 原生领域 + SciVizKit 141 图表），五级回退链（精确→模糊→跨域→图表目录→兜底），任意组合不报错 |
+| 70 领域配置 | `assets/domains_70_config.py` | 从 `references/bioinfo_70_domains_process.md` 程序化生成（`scripts/gen_domains_70_config.py`）：70 领域 × 594 图型 + K-Dense 22 学科映射 |
 | 无人值守出图 | `auto_figure.py` | 用户只给文件路径 → 自动识别数据类型 → 规划统计方法/分析工具/画图工具 → 批量出图 |
 | 全面数据分析 | `assets/comprehensive_analysis.py` | **StatAutopilot 统计方法自动选择器**（集成 compareGroups/scitex-stats 决策树：正态性→参数/非参数→分组数→配对性）+ 按领域跑完 ALL 标准分析模块（10 模块），产出完整分析结果库 |
 | ARIS 两阶段 | `assets/aris_pipeline.py` | **Phase1 先出顶刊故事**（文献调研→提炼→9阶段故事闭环，每阶段绑定证据链）→ **用户审查** → **Phase2 围绕故事主线筛选结果+证据链出图** |

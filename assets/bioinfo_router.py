@@ -314,15 +314,32 @@ AUTO_FULL_ROUTING = {}
 
 
 def _build_auto_routing():
-    """从 chart_catalog 的 domains 字段反向生成路由：任何领域+图型都能路由"""
+    """从 chart_catalog + 70 领域配置反向生成路由：任何领域+图型都能路由"""
     global AUTO_FULL_ROUTING
     try:
         from chart_catalog import suggest_for_domain
-        for domain in ["scRNA", "bulkRNA", "microbiome", "metabolomics", "proteomics",
+        domain_list = ["scRNA", "bulkRNA", "microbiome", "metabolomics", "proteomics",
                        "genome", "phylogeny", "survival", "enrichment", "epigenetic",
                        "multiomics", "spatial", "flow", "immunology", "cancer",
-                       "wgs", "protein", "rna", "clinical", "drug", "cellline", "general"]:
+                       "wgs", "protein", "rna", "clinical", "drug", "cellline", "general"]
+        for domain in domain_list:
             for fig in suggest_for_domain(domain, top_n=30):
+                key = (domain, fig)
+                if key not in ROUTING_TABLE:
+                    AUTO_FULL_ROUTING[key] = _resolve_function_name(fig)
+    except Exception:
+        pass
+    # 合并 70 领域路由配置（bioinfo_70_domains_process.md 程序化生成）
+    try:
+        from domains_70_config import DOMAINS_70_ROUTING, KDENSE_DISCIPLINE_ROUTING
+        for domain, figs in DOMAINS_70_ROUTING.items():
+            for fig in figs:
+                key = (domain, fig)
+                if key not in ROUTING_TABLE:
+                    AUTO_FULL_ROUTING[key] = _resolve_function_name(fig)
+        # 合并 K-Dense 22 学科路由
+        for domain, figs in KDENSE_DISCIPLINE_ROUTING.items():
+            for fig in figs:
                 key = (domain, fig)
                 if key not in ROUTING_TABLE:
                     AUTO_FULL_ROUTING[key] = _resolve_function_name(fig)
@@ -622,7 +639,11 @@ def plot_bar(data, output_path: str, x: str = None, y: str = None, **kwargs):
         if x and y:
             data.groupby(x)[y].mean().plot.bar(ax=ax, **kwargs)
         else:
-            data.mean().plot.bar(ax=ax, **kwargs)
+            dfn = data.select_dtypes(include=[np.number])
+            if dfn.shape[1] == 0:
+                ax.text(0.5, 0.5, 'No numeric columns', ha='center', va='center')
+            else:
+                dfn.mean().plot.bar(ax=ax, **kwargs)
     ax.set_title('Bar Plot')
     plt.tight_layout()
     plt.savefig(output_path, bbox_inches='tight', dpi=300)
