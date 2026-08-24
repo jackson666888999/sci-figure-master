@@ -11,7 +11,7 @@ bioinfo_router.py - 生物信息学绘图零动手路由系统
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -2258,6 +2258,46 @@ def generate_figure(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # ── R 桥路由（r_* 图型优先走 R 生成）──
+    if plot_type.startswith("r_") or plot_type in ("complex_heatmap", "enhanced_volcano",
+                                                     "circos", "ggtree", "phyloseq",
+                                                     "clusterprofiler"):
+        try:
+            from r_bridge import plot_r, RBridge
+            if RBridge.is_available():
+                # 图型名归一化：r_enhancedvolcano -> enhanced_volcano 等
+                r_type = plot_type[2:] if plot_type.startswith("r_") else plot_type
+                # 特殊别名映射
+                _alias = {
+                    "enhancedvolcano": "enhanced_volcano",
+                    "complexheatmap": "complex_heatmap",
+                    "survminer": "survminer",
+                }
+                r_type = _alias.get(r_type, r_type)
+                print(f"[R-bridge] generating {r_type} via Rscript")
+                # 数据格式适配：DataFrame → R 函数期望格式
+                r_data = data
+                if isinstance(data, pd.DataFrame):
+                    if r_type in ("enhanced_volcano",):
+                        # list of dicts
+                        r_data = data.to_dict("records")
+                    elif r_type in ("complex_heatmap",):
+                        # 仅数值矩阵
+                        r_data = data.select_dtypes(include=[np.number]).values.tolist()
+                # R 设备不支持 svg 后缀（pdf()/png()），强制 .pdf 且路径用正斜杠
+                r_out = str(output_path).replace("\\", "/")
+                if not r_out.lower().endswith(".pdf"):
+                    r_out = str(Path(r_out).with_suffix(".pdf"))
+                res = plot_r(r_type, r_data, r_out, **kwargs)
+                if res.get("status") == "success" and Path(r_out).exists():
+                    return r_out
+                else:
+                    print(f"[R-bridge] failed: {res.get('error', '')[:200]}; fallback to Python")
+            else:
+                print("[R-bridge] R not available, fallback to Python")
+        except Exception as e:
+            print(f"[R-bridge] error: {e}; fallback to Python")
+
     # 尝试精确匹配
     func = get_native_plot_function(domain, plot_type)
     if func:
@@ -2667,7 +2707,7 @@ def _auto_select_plot(df: pd.DataFrame, domain: str = None, top_n: int = 3) -> l
     return structure_cands[:top_n]
 
 
-def quick_plot(data, output_path: str, plot_type: str = "auto", domain: str = None, **kwargs) -> str:
+def quick_plot(data, output_path: str, plot_type: str = "auto", domain: str = None, top_n: int = 3, **kwargs) -> str:
     """
     快速绘图：自动判断数据类型和最佳图型
 
@@ -2675,10 +2715,12 @@ def quick_plot(data, output_path: str, plot_type: str = "auto", domain: str = No
         data: 数据
         output_path: 输出路径
         plot_type: 图型（"auto"表示自动判断）
+        domain: 领域（影响选型优先级）
+        top_n: 当 plot_type="auto" 时，首选候选在候选链中的回退深度（默认 3，向后兼容旧调用=1）
         **kwargs: 其他参数
 
     Returns:
-        输出文件路径
+        输出文件路径（top-1 候选）
     """
     # 自动判断数据类型
     if hasattr(data, 'obs') and 'louvain' in data.obs.columns:
@@ -2692,7 +2734,7 @@ def quick_plot(data, output_path: str, plot_type: str = "auto", domain: str = No
     elif isinstance(data, pd.DataFrame):
         # 通用数据：智能选型（覆盖领域×图型）
         if plot_type == "auto":
-            cands = _auto_select_plot(data, domain=domain, top_n=5)
+            cands = _auto_select_plot(data, domain=domain, top_n=top_n)
             plot_type = cands[0] if cands else "bar"
             print(f"[auto-select] domain={domain} struct={_detect_structure(data)} -> {plot_type} (cands={cands})")
             # 若首选无 native 函数，尝试候选链
@@ -2713,6 +2755,112 @@ def quick_plot(data, output_path: str, plot_type: str = "auto", domain: str = No
     else:
         # 其他数据
         return plot_scatter(data, output_path, **kwargs)
+
+
+def quick_plot_all(data, output_dir: str, domain: str = None, top_n: int = 5, **kwargs) -> List[str]:
+    """
+    【批量出图】一次输出所有兼容图型（解决"画图太少"问题）
+
+    对 DataFrame / AnnData / 机制图输入，自动列举所有结构兼容的图型，
+    逐一生成并保存到 output_dir，返回所有成功生成的文件路径列表。
+
+    Args:
+        data: 数据（DataFrame / AnnData / 机制图 dict）
+        output_dir: 输出目录（自动创建）
+        domain: 领域（影响选型优先级）
+        top_n: 最多生成前 N 个候选图型（默认 5，覆盖更全设 8）
+        **kwargs: 透传给各绘图函数
+
+    Returns:
+        成功生成的文件路径列表
+    """
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    results: List[str] = []
+
+    # ── 1. AnnData（单细胞）──
+    if hasattr(data, 'obs') and hasattr(data, 'var_names'):
+        sc_cands = ["UMAP", "heatmap", "violin", "pca", "tsne", "dotplot", "stacked_violin"]
+        for c in sc_cands[:top_n]:
+            p = out_dir / f"fig_{c.lower()}.svg"
+            try:
+                gp = generate_figure("scRNA", c, data, str(p), **kwargs)
+                if gp and Path(gp).exists():
+                    results.append(gp)
+                    print(f"  ✓ scRNA/{c} -> {gp}")
+            except Exception as e:
+                print(f"  ✗ scRNA/{c} failed: {e}")
+        return results
+
+    # ── 2. 机制图 dict ──
+    if isinstance(data, dict) and ("entities" in data or "relations" in data or "nodes" in data):
+        for c in ["mechanism_diagram", "pathway_diagram", "graphical_abstract", "flowchart"]:
+            p = out_dir / f"fig_{c}.svg"
+            try:
+                gp = generate_figure("general", c, data, str(p), **kwargs)
+                if gp and Path(gp).exists():
+                    results.append(gp)
+                    print(f"  ✓ mechanism/{c} -> {gp}")
+            except Exception as e:
+                print(f"  ✗ mechanism/{c} failed: {e}")
+        return results
+
+    # ── 3. 通用 DataFrame ──
+    if isinstance(data, pd.DataFrame):
+        cands = _auto_select_plot(data, domain=domain, top_n=max(top_n, 5))
+        # 追加 R 默认图型（复杂图优先 R）
+        r_prefixed = _r_preferred_for_structure(_detect_structure(data), domain)
+        for c in r_prefixed:
+            if c not in cands:
+                cands.append(c)
+        for c in cands[:top_n + len(r_prefixed)]:
+            # R 图型输出 .pdf，其余 .svg
+            ext = ".pdf" if c.startswith("r_") or c in ("complex_heatmap", "enhanced_volcano") else ".svg"
+            p = out_dir / f"fig_{c}{ext}"
+            try:
+                gp = generate_figure(domain or "general", c, data, str(p), **kwargs)
+                if gp and Path(gp).exists():
+                    results.append(gp)
+                    print(f"  ✓ {domain or 'general'}/{c} -> {gp}")
+            except Exception as e:
+                print(f"  ✗ {c} failed: {e}")
+        return results
+
+    # ── 4. 兜底：散点 ──
+    p = out_dir / "fig_scatter.svg"
+    try:
+        gp = plot_scatter(data, str(p), **kwargs)
+        if gp and Path(gp).exists():
+            results.append(gp)
+    except Exception as e:
+        print(f"  ✗ scatter failed: {e}")
+    return results
+
+
+# 复杂图默认走 R 的映射（用户要求：默认 R 语言画图）
+_R_PREFERRED_MAP = {
+    "diff":     ["r_enhancedvolcano", "r_complexheatmap"],
+    "wide":     ["r_complexheatmap"],
+    "grouped":  ["r_complexheatmap", "r_phyloseq"],
+    "count":    ["r_phyloseq", "r_complexheatmap"],
+    "surv":     ["r_survminer"],
+}
+
+def _r_preferred_for_structure(struct: str, domain: str = None) -> List[str]:
+    """返回该数据结构下优先用 R 生成的图型列表"""
+    out = list(_R_PREFERRED_MAP.get(struct, []))
+    # 领域补充
+    if domain in ("microbiome", "microbiota"):
+        if "r_phyloseq" not in out:
+            out.append("r_phyloseq")
+    if domain in ("bulkRNA", "proteomics", "metabolomics"):
+        if "r_enhancedvolcano" not in out:
+            out.append("r_enhancedvolcano")
+    if domain in ("phylogeny",):
+        out.append("r_ggtree")
+    if domain in ("multiomics",) and "r_complexheatmap" not in out:
+        out.append("r_complexheatmap")
+    return out
 
 
 if __name__ == "__main__":

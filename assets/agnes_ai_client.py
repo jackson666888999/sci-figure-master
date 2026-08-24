@@ -28,8 +28,33 @@ def _get_ssl_context() -> ssl.SSLContext:
         _SSL_CTX.verify_mode = ssl.CERT_NONE
     return _SSL_CTX
 
+# 代理绕过：agnes-ai 通过本地代理会 502（TLS 握手失败），直接直连
+_PROXIES_BYPASS = {
+    "http": None,
+    "https": None,
+}
+
+# 全局只初始化一次 opener（禁用代理 + 自定义 SSL）
+_OPENER_INSTALLED = False
+
+def _ensure_opener():
+    """安装全局 opener：禁用代理 + 自定义 SSL context（Windows 兼容）"""
+    global _OPENER_INSTALLED
+    if _OPENER_INSTALLED:
+        return
+    ctx = _get_ssl_context()
+    # 覆盖全局默认 HTTPS context（Windows urllib 的 HTTPSHandler 不接受 context 参数，
+    # 但 ssl._create_default_https_context 会被 urllib 内部调用）
+    ssl._create_default_https_context = lambda *a, **kw: ctx
+    # 禁用代理：用空 ProxyHandler 覆盖环境 HTTPS_PROXY
+    proxy_handler = urllib.request.ProxyHandler({})
+    opener = urllib.request.build_opener(proxy_handler)
+    urllib.request.install_opener(opener)
+    _OPENER_INSTALLED = True
+
 def _api_call(endpoint: str, method: str = "GET", data: dict = None, timeout: int = 120) -> dict:
     """通用 API 调用，处理 SSL 和错误"""
+    _ensure_opener()
     url = f"{AGNES_BASE_URL}/{endpoint.lstrip('/')}"
     headers = {
         "Authorization": f"Bearer {AGNES_API_KEY}",
@@ -37,8 +62,7 @@ def _api_call(endpoint: str, method: str = "GET", data: dict = None, timeout: in
     }
     req_data = json.dumps(data).encode() if data else None
     req = urllib.request.Request(url, data=req_data, headers=headers, method=method)
-    ctx = _get_ssl_context()
-    resp = urllib.request.urlopen(req, context=ctx, timeout=timeout)
+    resp = urllib.request.urlopen(req, timeout=timeout)
     return json.loads(resp.read().decode())
 
 def list_models() -> List[Dict]:

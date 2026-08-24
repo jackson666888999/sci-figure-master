@@ -130,24 +130,31 @@ library(ComplexHeatmap)
 library(circlize)
 
 # 数据矩阵
-mat <- matrix({data_str}, nrow={len(data)}, ncol={len(data[0]) if data else 0})
+mat <- matrix(c({data_str}), nrow={len(data)}, ncol={len(data[0]) if data else 0}, byrow=TRUE)
 rownames(mat) <- c({", ".join(f'"{n}"' for n in (row_names or [f"Gene{i}" for i in range(len(data))]))})
 colnames(mat) <- c({", ".join(f'"{n}"' for n in (col_names or [f"Sample{i}" for i in range(len(data[0]) if data else 0)]))})
 
 # 颜色映射
 col_fun <- colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
 
-# 绘图
-png("{output_path.replace('.pdf', '.png')}", width=1200, height=800, res=150)
+# 输出设备（依据后缀）
+out_ext <- tolower(substr("{output_path}", nchar("{output_path}") - 3, nchar("{output_path}")))
+if (out_ext == ".png") {{
+  png("{output_path}", width = 1200, height = 800, res = 150)
+}} else if (out_ext == ".svg") {{
+  svg("{output_path}", width = 10, height = 8)
+}} else {{
+  pdf("{output_path}", width = 10, height = 8)
+}}
 ht <- Heatmap(mat,
-    name="{title}",
-    col=col_fun,
-    show_row_names=TRUE,
-    show_column_names=TRUE,
-    row_names_gp=gpar(fontsize=8),
-    column_names_gp=gpar(fontsize=8)
+    name = "{title}",
+    col = col_fun,
+    show_row_names = TRUE,
+    show_column_names = TRUE,
+    row_names_gp = gpar(fontsize = 8),
+    column_names_gp = gpar(fontsize = 8)
 )
-draw(ht, heatmap_legend_side="right")
+draw(ht, heatmap_legend_side = "right")
 dev.off()
 '''
     return RBridge.run_script(r_script, output_path, packages=["ComplexHeatmap", "circlize"])
@@ -242,16 +249,137 @@ title("{title}")
 
 
 # ─────────────────────────────────────────────────────────────
+# 扩展 R 图型：ggtree / phyloseq / clusterProfiler
+# ─────────────────────────────────────────────────────────────
+
+def plot_ggtree(
+    data: str,
+    output_path: str,
+    title: str = "Phylogenetic Tree",
+    tree_format: str = "newick",
+    **kwargs
+) -> Dict:
+    """
+    ggtree 系统发育树（R）
+    data: Newick 字符串 或 树文件路径；若为路径则直接读取
+    """
+    import os as _os
+    if _os.path.exists(str(data)):
+        tree_src = f'read.tree("{data}")'
+    else:
+        # 写入临时 newick
+        import tempfile as _tmp
+        fd, tp = _tmp.mkstemp(suffix=".nwk")
+        with _open(fd, "w") as _f:
+            _f.write(str(data))
+        tree_src = f'read.tree("{tp}")'
+
+    r_script = f'''
+library(ggtree)
+library(ggplot2)
+
+tree <- {tree_src}
+p <- ggtree(tree) + geom_tiplab(size = 3) + ggtitle("{title}")
+ggsave("{output_path}", p, width = 10, height = 8, dpi = 300)
+cat("DONE:", "{output_path}", "\\n")
+'''
+    return RBridge.run_script(r_script, output_path, packages=["ggtree", "ggplot2"])
+
+
+def plot_phyloseq(
+    data: dict,
+    output_path: str,
+    plot_kind: str = "ord_nmds",   # ord_nmds | ord_pcoa | bar | alpha
+    group_col: str = "Group",
+    **kwargs
+) -> Dict:
+    """
+    phyloseq 微生物组可视化（R）
+    data: {"otu_table": [[...]], "tax_table": [...], "sample_names": [...], "groups": [...]}
+    """
+    otu = data.get("otu_table", [])
+    sample_names = data.get("sample_names", [f"S{i+1}" for i in range(len(otu[0]) if otu else 0)])
+    groups = data.get("groups", ["G1"] * len(sample_names))
+    # 构造 phyloseq 对象的最小 R 代码（从矩阵 + 样本数据）
+    otu_str = _python_to_r_matrix(otu)
+    sample_df = ", ".join(f'"{g}"' for g in groups)
+    r_script = f'''
+library(phyloseq)
+library(ggplot2)
+
+otu.mat <- matrix(c({otu_str}), nrow = {len(otu)}, byrow = TRUE,
+                  dimnames = list(NULL, c({", ".join(chr(34)+s+chr(34) for s in sample_names)})))
+sample.df <- data.frame(Sample = c({", ".join(chr(34)+s+chr(34) for s in sample_names)}),
+                        {group_col} = factor(c({sample_df})),
+                        row.names = c({", ".join(chr(34)+s+chr(34) for s in sample_names)}))
+sam <- sample_data(sample.df)
+otu <- otu_table(otu.mat, taxa_are_rows = TRUE)
+ps <- phyloseq(otu, sam)
+
+p <- plot_{plot_kind}(ps, color = "{group_col}")
+ggsave("{output_path}", p, width = 8, height = 6, dpi = 300)
+cat("DONE:", "{output_path}", "\\n")
+'''
+    return RBridge.run_script(r_script, output_path, packages=["phyloseq", "ggplot2"])
+
+
+def plot_clusterprofiler(
+    data: list,
+    output_path: str,
+    plot_kind: str = "dotplot",   # dotplot | enrichment_map | cnetplot | barplot
+    title: str = "Enrichment",
+    **kwargs
+) -> Dict:
+    """
+    clusterProfiler 富集分析可视化（R）
+    data: [{"term":..., "pvalue":..., "gene":[...], "count":...}, ...]
+    """
+    terms = [d.get("term", f"T{i}") for i, d in enumerate(data)]
+    pvals = [d.get("pvalue", 0.05) for d in data]
+    genes = [d.get("gene", []) for d in data]
+    counts = [d.get("count", len(g)) for g in genes]
+
+    term_str = ", ".join(f'"{t}"' for t in terms)
+    pval_str = ", ".join(str(p) for p in pvals)
+    count_str = ", ".join(str(c) for c in counts)
+    gene_str = ", ".join(
+        'c(' + ", ".join(f'"{g}"' for g in gl) + ')' for gl in genes
+    )
+
+    r_script = f'''
+library(clusterProfiler)
+library(ggplot2)
+library(enrichplot)
+
+# 构造富集结果对象（简化）
+yy <- data.frame(
+  Description = c({term_str}),
+  pvalue = c({pval_str}),
+  Count = c({count_str}),
+  geneID = c({gene_str})
+)
+# 模拟 enrichResult 结构（绘图接口兼容）
+rownames(yy) <- yy$Description
+yy$geneID <- sapply(yy$geneID, function(x) paste(unlist(x), collapse = "/"))
+
+p <- {plot_kind}(yy, showCategory = {min(20, len(data))})
+ggsave("{output_path}", p, width = 9, height = 7, dpi = 300)
+cat("DONE:", "{output_path}", "\\n")
+'''
+    return RBridge.run_script(r_script, output_path, packages=["clusterProfiler", "enrichplot", "ggplot2"])
+
+
+# ─────────────────────────────────────────────────────────────
 # 工具函数
 # ─────────────────────────────────────────────────────────────
 
 def _python_to_r_matrix(data: list) -> str:
-    """将 Python 二维列表转换为 R matrix 字符串"""
-    rows = []
+    """将 Python 二维列表转换为 R matrix 的扁平 data 向量字符串"""
+    flat = []
     for row in data:
-        values = ", ".join(str(v) for v in row)
-        rows.append(f"c({values})")
-    return f"\n    {',\n    '.join(rows)}"
+        for v in row:
+            flat.append(str(v))
+    return ", ".join(flat)
 
 
 def plot_r(
@@ -264,7 +392,8 @@ def plot_r(
     统一 R 绘图入口
 
     Args:
-        plot_type: 图型（"complex_heatmap" | "enhanced_volcano" | "circos" 等）
+        plot_type: 图型（"complex_heatmap" | "enhanced_volcano" | "circos" |
+                          "ggtree" | "phyloseq" | "clusterprofiler"）
         data: 数据
         output_path: 输出路径
     """
@@ -272,6 +401,9 @@ def plot_r(
         "complex_heatmap": plot_complex_heatmap,
         "enhanced_volcano": plot_enhanced_volcano,
         "circos": plot_circos_diagram,
+        "ggtree": plot_ggtree,
+        "phyloseq": plot_phyloseq,
+        "clusterprofiler": plot_clusterprofiler,
     }
     func = plot_funcs.get(plot_type)
     if not func:
