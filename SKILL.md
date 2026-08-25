@@ -219,10 +219,10 @@ run_sciplot("data.csv", profile="audit",   out_dir="out/fig")   # 归档/发布�
 直接调原仓库：`py -3.14 assets/sciplot-figure-skill/scripts/sciplot.py run --input data.csv --profile standard --out-dir out/fig`
 
 **运行环境（重要）**:
-- `pyproject.toml` 声明 `requires-python = ">=3.14,<3.15"`，但**实测在 Python 3.13 可 import 且 `sciplot.py --help` 正常**；完整 `run` 还需 `scikit-image` / `jsonschema` / `PyMuPDF` 等重依赖（当前 venv 缺）。
+- `pyproject.toml` 声明 `requires-python = ">=3.14,<3.15"`，但**实测在 Python 3.13 可完整跑通**（2026-08-25 验证）：managed venv 装齐 `scikit-image` / `jsonschema` / `pypdf` / `PyMuPDF`（清华镜像，~48s）后，`sciplot.py run --profile standard` 对自带 `examples/data/trend_comparison.csv` 返回 `status: ok`（14 个 QA gate 全过，2.4s）。**3.14 venv 非必需**。
 - 若需完整跑 sciplot 流水线，二选一：
   ```bash
-  # 方案A：在当前 3.13 venv 补依赖（轻量，推荐先试）
+  # 方案A（已验证可用，推荐）：在当前 3.13 venv 补依赖（轻量）
   python -m pip install --index-url https://pypi.tuna.tsinghua.edu.cn/simple scikit-image jsonschema PyMuPDF openpyxl
   # 方案B：建 3.14 venv（与官方声明一致）
   py -3.14 -m venv assets/sciplot-figure-skill/.venv
