@@ -127,6 +127,46 @@ generate_figure(domain="survival", plot_type="km", data=fit, output_path="KM.pdf
 # 见 assets/BIOINFO_USAGE.md（含 7 个场景完整示例）
 ```
 
+### E. 标签防重叠与版面自检模块（label_qa.py，2026-08-25 新增）
+
+针对"多面板大图文字重叠/遮挡"问题，整合出统一的**标签斥力 + 程序自检**模块：
+
+| 模块 | 文件 | 能力 |
+|------|------|------|
+| 标签防重叠 + QA | `assets/label_qa.py` | **7 个 API**：`repel_labels_cartesian`（Cartesian 面板用 adjustText 迭代斥力推开标签，可选引线）、`polar_node_labels`（极坐标 chord/dendro/radar 用周长铺开 + 引线防重叠）、`audit_layout`（程序自检缺字乱码/文字越界/刻度重叠）、`add_panel_labels` / `finalize_figure`（统一 a/b/c 面板编号对齐 + constrained_layout 兜底）、`auto_declutter`（渲染→自检→打印闭环）、`HAS_ADJUSTTEXT` 标志 |
+
+**整合来源（均已克隆到 `E:\git\` 参考，许可证兼容）**:
+- `adjustText`（pip，https://github.com/Phylosopher/adjustText，MIT）— 真实标签斥力算法（对同类数据点迭代排斥 + 可选引线），解决 Cartesian 面板（volcano/bubble/network/ridge/PCoA）文字重叠/压数据。**已 pip 安装 1.4.0**（清华镜像）。
+- `scipilot-figure-skill`（https://github.com/Haojae/scipilot-figure-skill，MIT）— 移植 `scripts/visual_qa.py:audit_layout`：缺字检测 via warnings+logging 双通道、文字越界、刻度标签重叠；移植 `scripts/layout_tools.py` 的 `add_panel_labels` / `finalize_figure`。
+- `sciplot-figure-skill`（https://github.com/peterbruce716-art/sciplot-figure-skill）— 参考 `references/AI_VISUAL_REVIEW.md` 的 AI 读图遮挡清单（图例/注释遮挡、面板编号、视觉层级、色彩可分辨性、拥挤度、平衡）作为 **advisory 层**（AI 读图为建议，程序自检为强制闭环）。
+
+> ⚠️ 两个 user 提供的 repo 本质是「QA / 顾问框架」而非标签斥力库；真正的文字推开由 `adjustText` 实现，极坐标面板由 `polar_node_labels` 自实现周长铺开 + 引线。三者的协同：adjustText 推开 + scipilot 程序自检 + sciplot AI 读图建议。
+
+**依赖安装**:
+```bash
+python -m pip install --index-url https://pypi.tuna.tsinghua.edu.cn/simple adjustText
+```
+
+**用法（在出图脚本顶部）**:
+```python
+import sys, os
+ASSETS = os.path.join(os.path.dirname(__file__), "..", "sci-figure-master", "assets")
+sys.path.insert(0, ASSETS)
+from label_qa import (repel_labels_cartesian, polar_node_labels,
+                      audit_layout, auto_declutter, HAS_ADJUSTTEXT)
+
+# Cartesian 面板（volcano/bubble/network/ridge/PCoA）：把标签推开，arrow=False 不画引线
+repel_labels_cartesian(ax, xs, ys, texts, fontsize=5.5, max_move=10, arrow=False)
+
+# 极坐标面板（chord/circular_dendro/radar）：沿周长铺开 + 细引线连回节点
+polar_node_labels(ax, node_theta_rad, texts, R=1.0, Rlab=1.24, fontsize=6, min_gap_deg=9)
+
+# 出图前程序自检（非破坏性；给定 out_png 还会渲一张 QA 预览供 AI 复核）
+verdict, issues = auto_declutter(fig, out_png="fig_qa_preview.png", verbose=True)
+```
+
+**实测效果（XNP 7 组学大图，56 面板，全真实数据）**: 原 metab/prot 网络中心拥挤、16S chord 节点堆叠、volcano/bubble top 标签压数据点 → 接入后全部用 adjustText 斥力 + 极坐标引线推开，无遮挡；每图写出 `_qa_preview.png` 供闭环复核。依赖仅在脚本内 `try/except` 软加载，`HAS_ADJUSTTEXT=False` 时自动回退原位置（不致命）。
+
 ### B. K-Dense 163 技能中的绘图/可视化/插图模块（按需调用）
 本 skill 运行时可直接调用已安装的 K-Dense 技能（见 `references/kdense-skills.md`）：
 - 可视化：`scientific-visualization`、`matplotlib`、`seaborn`
@@ -304,6 +344,7 @@ sci-figure-master/
 │   ├── EnhancedVolcano/          # ★出版级火山图(R)
 │   ├── jump-cellpainting-morphmap/# ★2025: Nature Methods 细胞成像
 │   ├── color-palettes/           # 共享配色
+│   ├── label_qa.py              # ★2026-08-25: 标签防重叠(adjustText)+版面QA(audit_layout)整合模块
 │   ├── INTEGRATION.md            # 通用集成指南
 │   ├── bioinfo_routing_config.md # ★生物信息学路由配置
 │   └── BIOINFO_USAGE.md          # ★零动手使用示例
@@ -318,7 +359,7 @@ sci-figure-master/
 ```
 
 ## 版权
-整合项目保留各自许可证（academic-figure-skill Apache-2.0 / nature-skills Apache-2.0 / PaperBanana MIT-0 / PlotNeuralNet MIT / scanpy BSD-3 / ComplexHeatmap GPL-3 / K-Dense MIT）。K-Dense 技能商用须保留其 LICENSE 版权声明。
+整合项目保留各自许可证（academic-figure-skill Apache-2.0 / nature-skills Apache-2.0 / PaperBanana MIT-0 / PlotNeuralNet MIT / scanpy BSD-3 / ComplexHeatmap GPL-3 / K-Dense MIT / adjustText MIT / scipilot-figure-skill MIT / sciplot-figure-skill 参考）。K-Dense 技能商用须保留其 LICENSE 版权声明；adjustText 与 scipilot 的移植代码保留 MIT 原始许可。
 
 ## 实时同步
 本仓库实时推送到私有 GitHub: jackson666888999/sci-figure-master
