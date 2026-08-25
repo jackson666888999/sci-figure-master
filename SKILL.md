@@ -127,7 +127,7 @@ generate_figure(domain="survival", plot_type="km", data=fit, output_path="KM.pdf
 # 见 assets/BIOINFO_USAGE.md（含 7 个场景完整示例）
 ```
 
-### E. 标签防重叠与版面自检模块（label_qa.py，2026-08-25 新增）
+### E. 标签防重叠与版面自检模块（label_qa.py 最小提取层，2026-08-25 新增；完整两仓库见 §F/§G）
 
 针对"多面板大图文字重叠/遮挡"问题，整合出统一的**标签斥力 + 程序自检**模块：
 
@@ -166,6 +166,69 @@ verdict, issues = auto_declutter(fig, out_png="fig_qa_preview.png", verbose=True
 ```
 
 **实测效果（XNP 7 组学大图，56 面板，全真实数据）**: 原 metab/prot 网络中心拥挤、16S chord 节点堆叠、volcano/bubble top 标签压数据点 → 接入后全部用 adjustText 斥力 + 极坐标引线推开，无遮挡；每图写出 `_qa_preview.png` 供闭环复核。依赖仅在脚本内 `try/except` 软加载，`HAS_ADJUSTTEXT=False` 时自动回退原位置（不致命）。
+
+### F. scipilot-figure-skill 完整集成（Haojae，MIT，19 文件，2026-08-25 完整克隆）
+
+「科研数据可视化顾问」skill：先 EDA 剖析 → 选图（主动拦截均值柱/双 Y 轴/饼图/rainbow 等 18 类经典错误）→ 查期刊规范 → 配环境（CJK + SciencePlots）→ 绘制 → **视觉自检闭环**（渲染 PNG → 程序自检缺字/裁切/刻度重叠 → AI 读图复核 → 回改）→ 多格式导出。中英文双语，默认色盲安全配色 + 灰度预览。
+
+**文件清单（已完整克隆到 `assets/scipilot-figure-skill/`，目录结构 1:1 保留）**:
+- `scripts/`（6）：`profile_data.py`（EDA 剖析）、`setup_style.py`（期刊预设 + CJK 字体）、`export_figure.py`（多格式 + 按最终尺寸 + 灰度预览）、`check_figure.py`（文件合规自检）、`layout_tools.py`（面板编号对齐 + constrained 兜底）、`visual_qa.py`（渲染预览 + 程序自检）
+- `references/`（7）：`chart_selection.md`（选图决策树）、`data_profiling.md`、`viz_pitfalls.md`（18 条避坑清单）、`journal_specs.md`（栏宽/字号/DPI/字体）、`plot_recipes.md`（9 类图配方）、`publication_checklist.md`、`visual_review.md`（AI 读图 8 项清单 + 回改协议）
+- `requirements.txt` / `README.md` / `SKILL.md` / `LICENSE`(MIT)
+
+**调用方式（两种）**:
+```python
+# 方式1：经桥接层 qa_bridge（推荐，零路径烦恼；已在 3.13 验证 6 脚本全部 import OK）
+import sys; sys.path.insert(0, "assets")
+from qa_bridge import (profile_csv, setup_style, export_figure,
+                       check_figure_file, audit_layout, add_panel_labels, finalize_figure)
+report = profile_csv("data.csv", group_cols=["group"])   # EDA 剖析
+setup_style(journal="nature", lang="zh")                 # 期刊预设 + CJK
+export_figure(fig, basename="figs/fig1", formats=["pdf","svg","png"],
+              dpi=300, grayscale_preview=True)            # 多格式 + 灰度预览
+issues = audit_layout(fig)                               # 程序自检：缺字/裁切/刻度重叠
+
+# 方式2：直接 import 原仓库脚本
+sys.path.insert(0, "assets/scipilot-figure-skill/scripts")
+import profile_data, setup_style, export_figure, check_figure, layout_tools, visual_qa
+```
+CLI：`python assets/qa_bridge.py profile data.csv --group group` / `python assets/qa_bridge.py check fig.pdf`
+
+> 注：`label_qa.py` 中的 `audit_layout` / `add_panel_labels` / `finalize_figure` 即取自本仓库的**最小自包含提取**（出图脚本零依赖即可调）；完整能力（EDA / 期刊样式 / 导出 / 文件自检）请用上面的桥接层或原仓库。
+
+### G. sciplot-figure-skill 完整集成（peterbruce716-art，MIT，~268 文件，2026-08-25 完整克隆）
+
+「可复现科研绘图 + 验证框架」：用 `VisualSpec v2` JSON 描述驱动**确定性**出图，按 profile（quick / standard / audit）分级做 QA 门禁——canvas 安全、boxed-text 安全、矢量结构、语义映射、统计报告、期刊评审建议。含 40+ JSON Schema、journal / figure_prior 样式、policies、examples、tests。
+
+**文件清单（已完整克隆到 `assets/sciplot-figure-skill/`，目录结构 1:1 保留）**:
+- `scripts/`（100+）：`sciplot.py`（统一 CLI 入口）、`run_reproduction.py`、`scientific_figure_pipeline.py`、`check_canvas_safety.py`、`check_boxed_text_safety.py`、`run_ai_visual_review.py`、`build_figure_contract.py`、`render_visualspec_matplotlib.py`（+`.R`）、`apply_style_profile.py`、`prepare_ai_visual_review.py`、`score_visual.py`、全套 `validate_*.py` / `test_*.py`
+- `references/`（40+，最常用）：`AI_VISUAL_REVIEW.md`（AI 读图遮挡清单，advisory）、`CJK_FONT_SUPPORT.md`、`EXPORT_REQUIREMENTS.md`、`WORKFLOW_PROFILES.md`、`FIGURE_CONTRACT_PROTOCOL.md`、`STATISTICAL_REPORTING_PROTOCOL.md`、`JOURNAL_REVIEW_ADVISORY_PROTOCOL.md`、`CHART_SELECTION.md`、`DIGITIZATION_WORKFLOW.md`
+- `schemas/`（40+ JSON）：`visualspec-v2.schema.json`、`figure-contract-v1`、`data-profile-v1`、`statistics-report-v1`、`style-profile-v1`、`manifest-v2`、`object-qa-report-v1` 等
+- `styles/`：`journal/`（nature / science / cell / elsevier / acs_like / chinese_thesis / generic_sci）、`figure_priors/`（box_violin / grouped_bar / heatmap / line_with_uncertainty / pca / scatter_regression）
+- `policies/`（hybrid-reconstruction / scientific-plot / journal-review）、`agents/openai.yaml`、`examples/`、`docs/`、`tests/`、`pyproject.toml` / `VERSION`(2.10.0) / `SKILL.md` / `LICENSE`(MIT)
+
+**调用方式**:
+```python
+# 经桥接层（子进程调用其 CLI；可用环境变量 SCIPILOT_PY 指定 3.14 venv 解释器）
+from qa_bridge import run_sciplot
+run_sciplot("data.csv", profile="standard", out_dir="out/fig")   # 普通 manuscript 图
+run_sciplot("data.csv", profile="audit",   out_dir="out/fig")   # 归档/发布级严格束
+# 等价 CLI：
+# python assets/qa_bridge.py sciplot data.csv --profile standard --out-dir out/fig
+```
+直接调原仓库：`py -3.14 assets/sciplot-figure-skill/scripts/sciplot.py run --input data.csv --profile standard --out-dir out/fig`
+
+**运行环境（重要）**:
+- `pyproject.toml` 声明 `requires-python = ">=3.14,<3.15"`，但**实测在 Python 3.13 可 import 且 `sciplot.py --help` 正常**；完整 `run` 还需 `scikit-image` / `jsonschema` / `PyMuPDF` 等重依赖（当前 venv 缺）。
+- 若需完整跑 sciplot 流水线，二选一：
+  ```bash
+  # 方案A：在当前 3.13 venv 补依赖（轻量，推荐先试）
+  python -m pip install --index-url https://pypi.tuna.tsinghua.edu.cn/simple scikit-image jsonschema PyMuPDF openpyxl
+  # 方案B：建 3.14 venv（与官方声明一致）
+  py -3.14 -m venv assets/sciplot-figure-skill/.venv
+  assets/sciplot-figure-skill/.venv/Scripts/python.exe -m pip install -r assets/sciplot-figure-skill/requirements.txt
+  ```
+- 设计原则：**AI 读图 = advisory**；接受的建议必须确定性重跑（`sciplot.py validate`）才算数，不自我认证严格性。
 
 ### B. K-Dense 163 技能中的绘图/可视化/插图模块（按需调用）
 本 skill 运行时可直接调用已安装的 K-Dense 技能（见 `references/kdense-skills.md`）：
@@ -344,7 +407,10 @@ sci-figure-master/
 │   ├── EnhancedVolcano/          # ★出版级火山图(R)
 │   ├── jump-cellpainting-morphmap/# ★2025: Nature Methods 细胞成像
 │   ├── color-palettes/           # 共享配色
-│   ├── label_qa.py              # ★2026-08-25: 标签防重叠(adjustText)+版面QA(audit_layout)整合模块
+│   ├── label_qa.py              # ★2026-08-25: 标签防重叠(adjustText)+版面QA(audit_layout)最小提取层
+│   ├── qa_bridge.py             # ★2026-08-25: 桥接层，暴露 scipilot/sciplot 两仓库真实能力(函数+CLI)
+│   ├── scipilot-figure-skill/    # ★2026-08-25: 完整克隆(Haojae, MIT) — 可视化顾问(EDA/选图/期刊样式/导出/自检)
+│   ├── sciplot-figure-skill/     # ★2026-08-25: 完整克隆(peterbruce716-art, MIT) — 可复现绘图+QA框架(VisualSpec/审计)
 │   ├── INTEGRATION.md            # 通用集成指南
 │   ├── bioinfo_routing_config.md # ★生物信息学路由配置
 │   └── BIOINFO_USAGE.md          # ★零动手使用示例
@@ -359,7 +425,7 @@ sci-figure-master/
 ```
 
 ## 版权
-整合项目保留各自许可证（academic-figure-skill Apache-2.0 / nature-skills Apache-2.0 / PaperBanana MIT-0 / PlotNeuralNet MIT / scanpy BSD-3 / ComplexHeatmap GPL-3 / K-Dense MIT / adjustText MIT / scipilot-figure-skill MIT / sciplot-figure-skill 参考）。K-Dense 技能商用须保留其 LICENSE 版权声明；adjustText 与 scipilot 的移植代码保留 MIT 原始许可。
+整合项目保留各自许可证（academic-figure-skill Apache-2.0 / nature-skills Apache-2.0 / PaperBanana MIT-0 / PlotNeuralNet MIT / scanpy BSD-3 / ComplexHeatmap GPL-3 / K-Dense MIT / adjustText MIT / scipilot-figure-skill MIT(Haojae) / sciplot-figure-skill MIT(peterbruce716-art)）。K-Dense 技能商用须保留其 LICENSE 版权声明；adjustText、scipilot-figure-skill、sciplot-figure-skill 的克隆代码保留各自 MIT 原始许可。
 
 ## 实时同步
 本仓库实时推送到私有 GitHub: jackson666888999/sci-figure-master

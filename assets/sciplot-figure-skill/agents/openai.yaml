@@ -1,0 +1,15 @@
+interface:
+  display_name: "SciPlot Figure Skill"
+  version: "2.10.0"
+  short_description: "Render scientific figures with quick, standard, or audit validation profiles."
+  default_prompt: "Use $sciplot-figure-skill with the standard profile for ordinary manuscript figures; select quick for previews and audit only for archival, reusable-data, benchmark, strict bundle, or release delivery."
+  trigger_examples:
+    - "Reproduce this paper figure with editable scientific plots and QA."
+    - "Build a manuscript-ready multi-panel figure from these data and scientific question."
+    - "Audit whether this figure is publication-ready with statistics and vector checks."
+  negative_examples:
+    - "帮我分析数据"
+    - "计算显著性"
+    - "清洗CSV"
+    - "做一个PPT流程图"
+    - "修复Python报错"
