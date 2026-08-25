@@ -238,8 +238,16 @@ def auto_route_and_plot(
                     continue
                 # 适配数据格式（去掉 r_ 前缀，保持下划线）
                 r_type = pt[2:]  # "r_enhanced_volcano" -> "enhanced_volcano"
-                r_data = df.to_dict("records") if r_type in ("enhanced_volcano", "ma_plot") else None
-                res = plot_r(r_type, r_data, str(out_file))
+                if r_type in ("enhanced_volcano", "ma_plot"):
+                    r_data = df.to_dict("records")
+                elif r_type == "complex_heatmap":
+                    # ComplexHeatmap 需要数值矩阵
+                    r_data = df.select_dtypes(include=[np.number]).values.tolist()
+                else:
+                    r_data = None
+                # 修复 Windows 路径转义问题：用正斜杠
+                r_out = str(out_file).replace("\\", "/")
+                res = plot_r(r_type, r_data, r_out)
                 if res.get("status") == "success" and out_file.exists():
                     generated.append(str(out_file))
                     print(f"  ✓ {pt} -> {out_file.name} ({out_file.stat().st_size/1024:.1f}KB)")
