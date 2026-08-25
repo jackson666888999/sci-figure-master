@@ -185,7 +185,7 @@ def plot_enhanced_volcano(
     else:
         genes = log2fcs = pvals = []
 
-    r_script = f'''
+    r_script = f"""
 library(EnhancedVolcano)
 
 # 数据
@@ -196,7 +196,8 @@ df <- data.frame(
 )
 
 # 绘图
-pdf("{output_path}", width=10, height=8)
+out_file <- "{output_path}"
+pdf(out_file, width=10, height=8)
 EnhancedVolcano(df,
   lab = "gene",
   x = "log2FC",
@@ -208,8 +209,71 @@ EnhancedVolcano(df,
   labSize = 3
 )
 dev.off()
-'''
+"""
     return RBridge.run_script(r_script, output_path, packages=["EnhancedVolcano"])
+
+
+def plot_ma_plot(
+    data: list,
+    output_path: str,
+    title: str = "MA Plot",
+    log2fc_col: str = "log2FC",
+    base_mean_col: str = "AveExpr",
+    **kwargs
+) -> Dict:
+    """
+    生成 MA 图（R ggplot2）
+
+    Args:
+        data: 差异表达数据列表（需含 log2FC 和 AveExpr 列）
+        output_path: 输出路径
+        title: 图表标题
+    """
+    log2fcs = [d.get(log2fc_col, 0) for d in data]
+    base_means = [d.get(base_mean_col, 0) for d in data]
+    genes = [str(d.get("feature_id", d.get("gene", f"feat{i}"))) for i, d in enumerate(data)]
+
+    # 取前 5000 个点避免过大
+    if len(log2fcs) > 5000:
+        idx = list(range(5000))
+        import random; random.seed(42)
+        idx = random.sample(range(len(log2fcs)), 5000)
+        log2fcs = [log2fcs[i] for i in idx]
+        base_means = [base_means[i] for i in idx]
+        genes = [genes[i] for i in idx]
+
+    r_script = f"""
+library(ggplot2)
+library(ggrepel)
+
+# 数据
+df <- data.frame(
+  baseMean = c({", ".join(str(v) for v in base_means)}),
+  log2FC = c({", ".join(str(v) for v in log2fcs)}),
+  gene = c({", ".join(f'"{g}"' for g in genes)})
+)
+df$baseMean <- as.numeric(df$baseMean)
+df$log2FC <- as.numeric(df$log2FC)
+
+# 过滤极端值
+df <- df[is.finite(df$baseMean) & is.finite(df$log2FC), ]
+
+# 绘图
+out_file <- "{output_path}"
+pdf(out_file, width=10, height=8)
+ggplot(df, aes(x=baseMean, y=log2FC)) +
+  geom_point(alpha=0.4, size=0.8, color="#666666") +
+  geom_hline(yintercept=0, linetype="solid", color="black", linewidth=0.5) +
+  geom_hline(yintercept=c(-1, 1), linetype="dashed", color="gray", linewidth=0.5) +
+  scale_x_log10(labels=scales::label_number()) +
+  labs(title="{title}", x="Base Mean (log10)", y="log2 Fold Change") +
+  theme_minimal() +
+  theme(plot.title=element_text(hjust=0.5, face="bold"),
+        axis.text=element_text(size=8),
+        axis.title=element_text(size=10))
+dev.off()
+"""
+    return RBridge.run_script(r_script, output_path, packages=["ggplot2", "ggrepel"])
 
 
 def plot_circos_diagram(
@@ -400,6 +464,7 @@ def plot_r(
     plot_funcs = {
         "complex_heatmap": plot_complex_heatmap,
         "enhanced_volcano": plot_enhanced_volcano,
+        "ma_plot": plot_ma_plot,
         "circos": plot_circos_diagram,
         "ggtree": plot_ggtree,
         "phyloseq": plot_phyloseq,

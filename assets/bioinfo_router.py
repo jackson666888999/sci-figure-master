@@ -2260,7 +2260,7 @@ def generate_figure(
 
     # ── R 桥路由（r_* 图型优先走 R 生成）──
     if plot_type.startswith("r_") or plot_type in ("complex_heatmap", "enhanced_volcano",
-                                                     "circos", "ggtree", "phyloseq",
+                                                     "ma_plot", "circos", "ggtree", "phyloseq",
                                                      "clusterprofiler"):
         try:
             from r_bridge import plot_r, RBridge
@@ -2271,6 +2271,7 @@ def generate_figure(
                 _alias = {
                     "enhancedvolcano": "enhanced_volcano",
                     "complexheatmap": "complex_heatmap",
+                    "maplot": "ma_plot",
                     "survminer": "survminer",
                 }
                 r_type = _alias.get(r_type, r_type)
@@ -2278,7 +2279,7 @@ def generate_figure(
                 # 数据格式适配：DataFrame → R 函数期望格式
                 r_data = data
                 if isinstance(data, pd.DataFrame):
-                    if r_type in ("enhanced_volcano",):
+                    if r_type in ("enhanced_volcano", "ma_plot"):
                         # list of dicts
                         r_data = data.to_dict("records")
                     elif r_type in ("complex_heatmap",):
@@ -2839,7 +2840,7 @@ def quick_plot_all(data, output_dir: str, domain: str = None, top_n: int = 5, **
 
 # 复杂图默认走 R 的映射（用户要求：默认 R 语言画图）
 _R_PREFERRED_MAP = {
-    "diff":     ["r_enhancedvolcano", "r_complexheatmap"],
+    "diff":     ["r_enhancedvolcano", "r_complexheatmap", "r_ma_plot"],
     "wide":     ["r_complexheatmap"],
     "grouped":  ["r_complexheatmap", "r_phyloseq"],
     "count":    ["r_phyloseq", "r_complexheatmap"],
@@ -2856,6 +2857,8 @@ def _r_preferred_for_structure(struct: str, domain: str = None) -> List[str]:
     if domain in ("bulkRNA", "proteomics", "metabolomics"):
         if "r_enhancedvolcano" not in out:
             out.append("r_enhancedvolcano")
+        if "r_ma_plot" not in out:
+            out.append("r_ma_plot")
     if domain in ("phylogeny",):
         out.append("r_ggtree")
     if domain in ("multiomics",) and "r_complexheatmap" not in out:
