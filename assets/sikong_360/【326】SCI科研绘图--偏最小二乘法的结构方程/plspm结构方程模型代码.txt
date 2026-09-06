@@ -1,0 +1,161 @@
+# 加载必要的R包
+library(plspm)
+library(dplyr)
+
+setwd("G:\\最小二乘法的结构方程模型")
+# 读取数据
+data <- read.csv(file.choose(), header = TRUE)
+
+# 指定变量关系
+comdata <- list(
+  soil = c("BD", "SM"),
+  plant=c("TN","TP","TOC"),
+  AK = "AK", 
+  AN = "AN", 
+  AP = "AP",
+  TRAD ="TRAD"
+)
+
+# 定义潜变量列表（包含模型中所有潜变量）
+latent_vars <- c("soil", "plant", "AK", "AN", "AP", "TRAD")
+
+# 将路径关系用公式列表表示
+model_formulas <- list(
+  TRAD = ~ soil + plant + AK + AN + AP,
+  AK   = ~ soil + plant,
+  AN   = ~ soil + plant,
+  AP   = ~ soil + plant
+)
+
+# 创建一个全0矩阵，用于存储路径关系
+dat_path <- matrix(0, nrow = length(latent_vars), ncol = length(latent_vars),
+                   dimnames = list(latent_vars, latent_vars))
+
+# 根据公式自动填充路径矩阵
+for (end_var in names(model_formulas)) {
+  # 提取公式右侧的自变量
+  rhs_vars <- all.vars(model_formulas[[end_var]])
+  # 将对应位置标记为1
+  dat_path[end_var, rhs_vars] <- 1
+}
+
+# 确保路径矩阵是下三角矩阵
+dat_path <- dat_path * lower.tri(dat_path)
+
+# 输出路径矩阵
+print(dat_path)
+
+# 定义测量模式（"A"或"P"）
+dat_modes <- c("A", "A", "A", "A", "A", "A")
+
+# 运行PLS-PM模型
+dat_pls <- plspm(data, dat_path, comdata, modes = dat_modes)
+
+# 查看PLS-PM模型结果
+summary(dat_pls)
+
+#查看因果关系的路径图，详情 ?innerplot
+innerplot(dat_pls, colpos = 'red', colneg = 'blue', show.values = TRUE, lcol = 'gray', box.lwd = 0)
+
+# 提取路径系数
+inner_model <- dat_pls$inner_model
+
+# 提取路径系数，去掉 Intercept 信息
+path_coefficients <- bind_rows(lapply(names(inner_model), function(name) {
+  data.frame(
+    Predictor = rownames(inner_model[[name]]),
+    Response = name,
+    Estimate = inner_model[[name]][, "Estimate"],
+    StdError = inner_model[[name]][, "Std. Error"],
+    tValue = inner_model[[name]][, "t value"],
+    pValue = inner_model[[name]][, "Pr(>|t|)"]
+  )
+})) %>%
+  filter(Predictor != "Intercept")  # 去掉 Intercept 信息
+
+# 提取 R² 值
+r_squared <- as.data.frame(dat_pls$inner_summary) %>%
+  select(Type, R2) %>%
+  filter(Type == "Endogenous") %>%
+  mutate(Response = rownames(.)) %>%
+  select(Response, R2)
+
+# 将 R² 值与路径系数表合并
+path_coefficients <- path_coefficients %>%
+  left_join(r_squared, by = "Response") %>%
+  arrange(Response, Predictor) %>%
+  mutate(Significance = ifelse(pValue < 0.001, "***",
+                               ifelse(pValue < 0.01, "**",
+                                      ifelse(pValue < 0.05, "*", "ns"))))
+
+# 打印整理后的路径系数和 R² 值表
+print(path_coefficients)
+
+
+#goodness-of-fit 值可以帮助评估模型优度
+dat_pls$gof
+
+#查看变量间的直接或间接影响状态
+dat_pls$effects
+
+
+# 加载必要的包
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+
+# 示例数据
+dat_pls_effects <-dat_pls$effects
+
+# 筛选出对 TRAD 的影响
+trad_effects <- dat_pls_effects %>%
+  filter(grepl("-> TRAD$", relationships))
+
+# 去掉 "-> TRAD" 只保留指标名称
+trad_effects <- trad_effects %>%
+  mutate(relationships = gsub(" -> TRAD", "", relationships))
+
+# 转换为长格式
+trad_effects_long <- trad_effects %>%
+  pivot_longer(
+    cols = c(direct, indirect, total),
+    names_to = "effect_type",
+    values_to = "effect_size"
+  )
+
+# 自定义 X 轴指标显示顺序（按需调整顺序）
+custom_order <- c("soil", "plant", "AK", "AN", "AP")  # 自定义顺序
+
+trad_effects_long <- trad_effects_long %>%
+  mutate(relationships = factor(relationships, levels = custom_order))
+
+# 绘制柱状图
+ggplot(trad_effects_long, aes(x = relationships, y = effect_size, fill = effect_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    x = "Predictor",
+    y = "Effect Size (Standardized)",
+    title = "Effects on TRAD: Direct, Indirect, and Total"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "direct" = "#008CB7",
+      "indirect" = "#A5C98C",
+      "total" = "#FFBD00"
+    ),
+    labels = c(
+      "direct" = "Direct Effect",
+      "indirect" = "Indirect Effect",
+      "total" = "Total Effect"
+    )
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    legend.title = element_blank()
+  ) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "black", size = 0.5) +  # 添加水平线
+  ylim(-1, 1)  # 设置 Y 轴范围
+
+
+
