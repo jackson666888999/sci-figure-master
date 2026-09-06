@@ -1,0 +1,13 @@
+channels:
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/bioconda/ 
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ 
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/
+  - bioconda
+  - hcc
+  - conda-forge
+  - defaults
+  - r
+show_channel_urls: true
+auto_activate_base: false
+restore_free_channel: true

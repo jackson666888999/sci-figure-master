@@ -1,0 +1,45 @@
+cluster	type	len	group	text
+861_0	tVCs	1	A	
+1003_0	tVCs	2	A	
+583_0	tVCs	3	A	
+866_0	tVCs	4	B	
+1001_0	tVCs	5	B	
+926_0	tVCs	6	B	
+1087_0	tVCs	7	C	
+425_0	tVCs	8	C	
+956_0	tVCs	9	C	
+954_0	tVCs	10	D	
+769_0	tVCs	11	D	
+955_0	tVCs	12	D	
+409_0	tVCs	13	D	
+1078_0	tVCs	14	D	
+1070_0	tVCs	15	D	
+168_0	tVCs	16	D	
+586_0	tVCs	17	D	
+1077_0	tVCs	18	H	
+379_1	tVCs	19	H	
+1232_0	tVCs	20	H	
+1008_0	tVCs	21	H	
+587_0	tVCs	22	H	
+861_0	Hodts	10	A	A
+1003_0	Hodts	10	A	A
+583_0	Hodts	10	A	A
+866_0	Hodts	12	B	B
+1001_0	Hodts	12	B	B
+926_0	Hodts	12	B	B
+1087_0	Hodts	8	C	C
+425_0	Hodts	8	C	C
+956_0	Hodts	8	C	C
+954_0	Hodts	7	D	D
+769_0	Hodts	7	D	D
+955_0	Hodts	7	D	D
+409_0	Hodts	7	D	D
+1078_0	Hodts	7	D	D
+1070_0	Hodts	7	D	D
+168_0	Hodts	7	D	D
+586_0	Hodts	7	D	D
+1077_0	Hodts	3	H	H
+379_1	Hodts	3	H	H
+1232_0	Hodts	3	H	H
+1008_0	Hodts	3	H	H
+587_0	Hodts	3	H	H
