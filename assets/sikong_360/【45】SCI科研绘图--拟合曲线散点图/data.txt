@@ -1,0 +1,298 @@
+Microcosm ID	Soil type	Soil layer	"Plant presence/
+absence"	Replicate	Sampling time	Sampling date	Days after planting	Season	"Total respiration 
+(Rtotal, g C-CO2 
+m-2 day-1)"	"Respiration of plant-derived OC 
+(Rplant, g C-CO2 
+m-2 day-1)"	"Respiration of soil-derived OC 
+(Rsoil, g C-CO2 
+m-2 day-1)"	"Native SOC decomposition rate 
+(kSOC, µg C-CO2 
+g-1 SOC day-1)"	"Rhizosphere priming effect (RPE,  % of change in kSOC)"
+1	Cambisol	Topsoil	Planted	a	1	2016/12/15	76	Fall	4.79	2.65	2.14	115.59	5.63
+2	Cambisol	Topsoil	Planted	b	1	2016/12/15	76	Fall	4.64	2.56	2.09	114.01	4.18
+3	Cambisol	Topsoil	Planted	c	1	2016/12/15	76	Fall	4.36	2.41	1.96	105.24	-3.83
+4	Cambisol	Topsoil	Planted	d	1	2016/12/15	76	Fall	3.95	1.91	2.05	104.34	-4.65
+5	Cambisol	Topsoil	Unplanted	a	1	2016/12/15	76	Fall	3	0.84	2.16	115.32	
+6	Cambisol	Topsoil	Unplanted	b	1	2016/12/15	76	Fall	2.08	0.62	1.46	77.74	
+7	Cambisol	Topsoil	Unplanted	c	1	2016/12/15	76	Fall	3.32	0.81	2.51	133.89	
+8	Cambisol	Topsoil	Unplanted	d	1	2016/12/15	76	Fall	2.78	0.71	2.08	110.78	
+9	Cambisol	Subsoil	Planted	a	1	2016/12/15	76	Fall	1.4	0.79	0.61	44	-12.78
+10	Cambisol	Subsoil	Planted	b	1	2016/12/15	76	Fall	1.69	1.09	0.6	43.21	-14.34
+11	Cambisol	Subsoil	Planted	c	1	2016/12/15	76	Fall	2.15	1.39	0.76	53.98	7
+12	Cambisol	Subsoil	Planted	d	1	2016/12/15	76	Fall	2.64	1.88	0.76	53.77	6.58
+13	Cambisol	Subsoil	Unplanted	a	1	2016/12/15	76	Fall	1.11	0.38	0.73	52.11	
+14	Cambisol	Subsoil	Unplanted	b	1	2016/12/15	76	Fall	1.03	0.53	0.5	35.9	
+15	Cambisol	Subsoil	Unplanted	c	1	2016/12/15	76	Fall	1.46	0.44	1.03	73.3	
+16	Cambisol	Subsoil	Unplanted	d	1	2016/12/15	76	Fall	0.83	0.26	0.57	40.49	
+17	Vertisol	Topsoil	Planted	a	1	2016/12/15	76	Fall	5.14	2.62	2.52	69.38	-28.42
+18	Vertisol	Topsoil	Planted	b	1	2016/12/15	76	Fall	6.45	3.5	2.95	81.23	-16.19
+19	Vertisol	Topsoil	Planted	c	1	2016/12/15	76	Fall	6.89	3.38	3.51	95.76	-1.19
+20	Vertisol	Topsoil	Planted	d	1	2016/12/15	76	Fall	7.03	3.27	3.75	104.9	8.24
+21	Vertisol	Topsoil	Unplanted	a	1	2016/12/15	76	Fall	4.78	1.11	3.67	101.2	
+22	Vertisol	Topsoil	Unplanted	b	1	2016/12/15	76	Fall	3.45	0.4	3.05	84.13	
+23	Vertisol	Topsoil	Unplanted	c	1	2016/12/15	76	Fall	4.31	0.91	3.41	93.98	
+24	Vertisol	Topsoil	Unplanted	d	1	2016/12/15	76	Fall	4.83	0.9	3.93	108.35	
+25	Vertisol	Subsoil	Planted	a	1	2016/12/15	76	Fall	1.15	0.65	0.49	47.63	0.93
+26	Vertisol	Subsoil	Planted	b	1	2016/12/15	76	Fall	1.32	0.84	0.48	48.28	2.33
+27	Vertisol	Subsoil	Planted	c	1	2016/12/15	76	Fall	1.85	1.2	0.66	66.07	40.02
+28	Vertisol	Subsoil	Planted	d	1	2016/12/15	76	Fall	1.24	0.57	0.67	63.91	35.44
+29	Vertisol	Subsoil	Unplanted	a	1	2016/12/15	76	Fall	0.61	0.11	0.5	48.71	
+30	Vertisol	Subsoil	Unplanted	b	1	2016/12/15	76	Fall	0.45	0.12	0.33	32.45	
+31	Vertisol	Subsoil	Unplanted	c	1	2016/12/15	76	Fall	0.66	0.09	0.57	55.67	
+32	Vertisol	Subsoil	Unplanted	d	1	2016/12/15	76	Fall	0.66	0.14	0.53	51.91	
+33	Andosol	Topsoil	Planted	a	1	2016/12/15	76	Fall	4.61	2.95	1.65	53.41	-10.36
+34	Andosol	Topsoil	Planted	b	1	2016/12/15	76	Fall	3.23	1.72	1.52	50.62	-15.04
+35	Andosol	Topsoil	Planted	c	1	2016/12/15	76	Fall	7.01	4.2	2.81	89.85	50.82
+36	Andosol	Topsoil	Planted	d	1	2016/12/15	76	Fall	6.37	3.76	2.61	81.77	37.26
+37	Andosol	Topsoil	Unplanted	a	1	2016/12/15	76	Fall	2.83	0.67	2.17	69.81	
+38	Andosol	Topsoil	Unplanted	b	1	2016/12/15	76	Fall	1.66	0.4	1.26	40.57	
+39	Andosol	Topsoil	Unplanted	c	1	2016/12/15	76	Fall	2.33	0.53	1.79	57.82	
+40	Andosol	Topsoil	Unplanted	d	1	2016/12/15	76	Fall	2.89	0.71	2.18	70.11	
+41	Andosol	Subsoil	Planted	a	1	2016/12/15	76	Fall	1.27	0.73	0.54	27.8	12.61
+42	Andosol	Subsoil	Planted	b	1	2016/12/15	76	Fall	1.24	0.69	0.55	24.05	-2.61
+43	Andosol	Subsoil	Planted	c	1	2016/12/15	76	Fall	1.37	0.69	0.67	35.77	44.89
+44	Andosol	Subsoil	Planted	d	1	2016/12/15	76	Fall	1.1	0.54	0.56	30.91	25.19
+45	Andosol	Subsoil	Unplanted	a	1	2016/12/15	76	Fall	0.7	0.23	0.47	23.55	
+46	Andosol	Subsoil	Unplanted	b	1	2016/12/15	76	Fall	0.63	0.25	0.37	18.83	
+47	Andosol	Subsoil	Unplanted	c	1	2016/12/15	76	Fall	0.91	0.25	0.66	33.07	
+48	Andosol	Subsoil	Unplanted	d	1	2016/12/15	76	Fall	0.65	0.19	0.46	23.32	
+1	Cambisol	Topsoil	Planted	a	2	2017/2/16	139	Winter	7.75	4.67	3.07	166.07	32.58
+2	Cambisol	Topsoil	Planted	b	2	2017/2/16	139	Winter	8.51	6.26	2.25	123.18	-1.66
+3	Cambisol	Topsoil	Planted	c	2	2017/2/16	139	Winter	6.1	3.78	2.33	125.12	-0.11
+4	Cambisol	Topsoil	Planted	d	2	2017/2/16	139	Winter	4.57	2.32	2.25	114.56	-8.54
+5	Cambisol	Topsoil	Unplanted	a	2	2017/2/16	139	Winter	3.19	0.85	2.34	124.69	
+6	Cambisol	Topsoil	Unplanted	b	2	2017/2/16	139	Winter	3.97	1.43	2.54	135.35	
+7	Cambisol	Topsoil	Unplanted	c	2	2017/2/16	139	Winter	2.5	0.51	1.99	105.94	
+8	Cambisol	Topsoil	Unplanted	d	2	2017/2/16	139	Winter	3.86	1.33	2.53	135.06	
+9	Cambisol	Subsoil	Planted	a	2	2017/2/16	139	Winter	2.82	2.22	0.6	42.99	2.36
+10	Cambisol	Subsoil	Planted	b	2	2017/2/16	139	Winter	4.49	3.85	0.64	46.72	11.24
+11	Cambisol	Subsoil	Planted	c	2	2017/2/16	139	Winter	2.14	0.88	1.26	89.41	112.9
+12	Cambisol	Subsoil	Planted	d	2	2017/2/16	139	Winter	3.08	1.97	1.11	78.88	87.82
+13	Cambisol	Subsoil	Unplanted	a	2	2017/2/16	139	Winter	0.82	0.22	0.6	42.97	
+14	Cambisol	Subsoil	Unplanted	b	2	2017/2/16	139	Winter	0.91	0.34	0.57	40.99	
+15	Cambisol	Subsoil	Unplanted	c	2	2017/2/16	139	Winter	0.78	0	0.78	56.04	
+16	Cambisol	Subsoil	Unplanted	d	2	2017/2/16	139	Winter	0.63	0.24	0.39	27.99	
+17	Vertisol	Topsoil	Planted	a	2	2017/2/16	139	Winter	11.19	7.44	3.75	103.25	5.11
+18	Vertisol	Topsoil	Planted	b	2	2017/2/16	139	Winter	11.17	6.8	4.38	120.62	22.8
+19	Vertisol	Topsoil	Planted	c	2	2017/2/16	139	Winter	6.01	2.49	3.52	96.15	-2.11
+20	Vertisol	Topsoil	Planted	d	2	2017/2/16	139	Winter	7.22	3.82	3.4	95.15	-3.13
+21	Vertisol	Topsoil	Unplanted	a	2	2017/2/16	139	Winter	6.13	1.55	4.58	126.21	
+22	Vertisol	Topsoil	Unplanted	b	2	2017/2/16	139	Winter	5.01	1.05	3.96	109.19	
+23	Vertisol	Topsoil	Unplanted	c	2	2017/2/16	139	Winter	3.84	0.58	3.26	89.91	
+24	Vertisol	Topsoil	Unplanted	d	2	2017/2/16	139	Winter	2.45	0	2.45	67.59	
+25	Vertisol	Subsoil	Planted	a	2	2017/2/16	139	Winter	3.12	2.73	0.38	36.92	-13.61
+26	Vertisol	Subsoil	Planted	b	2	2017/2/16	139	Winter	4.11	3.57	0.54	54.26	26.98
+27	Vertisol	Subsoil	Planted	c	2	2017/2/16	139	Winter	2.32	1.5	0.82	82.65	93.41
+28	Vertisol	Subsoil	Planted	d	2	2017/2/16	139	Winter	2.64	1.75	0.89	84.88	98.64
+29	Vertisol	Subsoil	Unplanted	a	2	2017/2/16	139	Winter	0.63	0.05	0.58	56.91	
+30	Vertisol	Subsoil	Unplanted	b	2	2017/2/16	139	Winter	0.47	0.15	0.32	31.48	
+31	Vertisol	Subsoil	Unplanted	c	2	2017/2/16	139	Winter	0.56	0.09	0.46	45.68	
+32	Vertisol	Subsoil	Unplanted	d	2	2017/2/16	139	Winter	0.51	0.14	0.37	36.84	
+33	Andosol	Topsoil	Planted	a	2	2017/2/16	139	Winter	7.55	5.87	1.68	54.27	-1.34
+34	Andosol	Topsoil	Planted	b	2	2017/2/16	139	Winter	6.43	4.07	2.37	78.95	43.52
+35	Andosol	Topsoil	Planted	c	2	2017/2/16	139	Winter	5.65	2.77	2.87	91.86	66.99
+36	Andosol	Topsoil	Planted	d	2	2017/2/16	139	Winter	4.67	2.61	2.06	64.36	16.99
+37	Andosol	Topsoil	Unplanted	a	2	2017/2/16	139	Winter	3.17	0.91	2.26	72.75	
+38	Andosol	Topsoil	Unplanted	b	2	2017/2/16	139	Winter	2.25	0.48	1.77	56.94	
+39	Andosol	Topsoil	Unplanted	c	2	2017/2/16	139	Winter	1.65	0.28	1.37	44.08	
+40	Andosol	Topsoil	Unplanted	d	2	2017/2/16	139	Winter	1.44	0	1.44	46.26	
+41	Andosol	Subsoil	Planted	a	2	2017/2/16	139	Winter	1.87	1.21	0.65	33.26	12.7
+42	Andosol	Subsoil	Planted	b	2	2017/2/16	139	Winter	2.13	1.21	0.91	40.06	35.75
+43	Andosol	Subsoil	Planted	c	2	2017/2/16	139	Winter	1.63	1.01	0.62	32.69	10.76
+44	Andosol	Subsoil	Planted	d	2	2017/2/16	139	Winter	0.85	0.3	0.55	30.23	2.45
+45	Andosol	Subsoil	Unplanted	a	2	2017/2/16	139	Winter	0.88	0.1	0.78	39.36	
+46	Andosol	Subsoil	Unplanted	b	2	2017/2/16	139	Winter	0.84	0.33	0.51	25.67	
+47	Andosol	Subsoil	Unplanted	c	2	2017/2/16	139	Winter	0.73	0.26	0.47	23.74	
+48	Andosol	Subsoil	Unplanted	d	2	2017/2/16	139	Winter	0.82	0.24	0.58	29.28	
+1	Cambisol	Topsoil	Planted	a	3	2017/3/23	174	Spring	9.35	6.56	2.79	150.9	7.34
+2	Cambisol	Topsoil	Planted	b	3	2017/3/23	174	Spring	11.42	7.9	3.52	192.33	36.81
+3	Cambisol	Topsoil	Planted	c	3	2017/3/23	174	Spring	8.3	5.75	2.56	137.57	-2.14
+4	Cambisol	Topsoil	Planted	d	3	2017/3/23	174	Spring	9.57	6.38	3.19	162.59	15.65
+5	Cambisol	Topsoil	Unplanted	a	3	2017/3/23	174	Spring	3.4	0.66	2.75	146.44	
+6	Cambisol	Topsoil	Unplanted	b	3	2017/3/23	174	Spring	3.43	0.75	2.69	143.36	
+7	Cambisol	Topsoil	Unplanted	c	3	2017/3/23	174	Spring	3.03	0.46	2.56	136.75	
+8	Cambisol	Topsoil	Unplanted	d	3	2017/3/23	174	Spring	3.21	0.66	2.55	135.78	
+9	Cambisol	Subsoil	Planted	a	3	2017/3/23	174	Spring	5.28	3.92	1.36	97.65	115.13
+10	Cambisol	Subsoil	Planted	b	3	2017/3/23	174	Spring	6.39	4.6	1.79	129.81	185.98
+11	Cambisol	Subsoil	Planted	c	3	2017/3/23	174	Spring	7.43	5.45	1.98	140.51	209.56
+12	Cambisol	Subsoil	Planted	d	3	2017/3/23	174	Spring	6.7	4.5	2.19	155.35	242.24
+13	Cambisol	Subsoil	Unplanted	a	3	2017/3/23	174	Spring	0.72	0.11	0.62	44.06	
+14	Cambisol	Subsoil	Unplanted	b	3	2017/3/23	174	Spring	0.97	0.26	0.71	50.52	
+15	Cambisol	Subsoil	Unplanted	c	3	2017/3/23	174	Spring	0.8	0.17	0.63	45.34	
+16	Cambisol	Subsoil	Unplanted	d	3	2017/3/23	174	Spring	0.83	0.25	0.58	41.65	
+17	Vertisol	Topsoil	Planted	a	3	2017/3/23	174	Spring	15.89	9.89	6	165.29	13.12
+18	Vertisol	Topsoil	Planted	b	3	2017/3/23	174	Spring	16.61	10.29	6.32	174.21	19.23
+19	Vertisol	Topsoil	Planted	c	3	2017/3/23	174	Spring	15.04	8.88	6.16	168.17	15.09
+20	Vertisol	Topsoil	Planted	d	3	2017/3/23	174	Spring	16.88	10.81	6.07	169.78	16.2
+21	Vertisol	Topsoil	Unplanted	a	3	2017/3/23	174	Spring	5.63	0.34	5.3	146.12	
+22	Vertisol	Topsoil	Unplanted	b	3	2017/3/23	174	Spring	5.8	0.41	5.39	148.69	
+23	Vertisol	Topsoil	Unplanted	c	3	2017/3/23	174	Spring	5.67	0.38	5.29	145.93	
+24	Vertisol	Topsoil	Unplanted	d	3	2017/3/23	174	Spring	5.43	0.22	5.21	143.73	
+25	Vertisol	Subsoil	Planted	a	3	2017/3/23	174	Spring	5.59	4.43	1.15	111.52	136.59
+26	Vertisol	Subsoil	Planted	b	3	2017/3/23	174	Spring	6.1	4.79	1.31	132.49	181.08
+27	Vertisol	Subsoil	Planted	c	3	2017/3/23	174	Spring	5.57	4.53	1.04	104.29	121.26
+28	Vertisol	Subsoil	Planted	d	3	2017/3/23	174	Spring	4.95	3.92	1.03	98.17	108.28
+29	Vertisol	Subsoil	Unplanted	a	3	2017/3/23	174	Spring	0.48	0.01	0.48	46.89	
+30	Vertisol	Subsoil	Unplanted	b	3	2017/3/23	174	Spring	0.46	0.04	0.42	41.01	
+31	Vertisol	Subsoil	Unplanted	c	3	2017/3/23	174	Spring	0.53	0.01	0.52	50.68	
+32	Vertisol	Subsoil	Unplanted	d	3	2017/3/23	174	Spring	0.58	0.07	0.51	49.95	
+33	Andosol	Topsoil	Planted	a	3	2017/3/23	174	Spring	7.17	4.96	2.21	71.35	6.87
+34	Andosol	Topsoil	Planted	b	3	2017/3/23	174	Spring	11.46	7.43	4.03	134.46	101.38
+35	Andosol	Topsoil	Planted	c	3	2017/3/23	174	Spring	10.33	7.42	2.91	92.95	39.22
+36	Andosol	Topsoil	Planted	d	3	2017/3/23	174	Spring	8.35	5.75	2.59	81.21	21.63
+37	Andosol	Topsoil	Unplanted	a	3	2017/3/23	174	Spring	3.31	0.34	2.97	95.69	
+38	Andosol	Topsoil	Unplanted	b	3	2017/3/23	174	Spring	1.53	0.14	1.4	44.98	
+39	Andosol	Topsoil	Unplanted	c	3	2017/3/23	174	Spring	2.02	0.25	1.76	56.8	
+40	Andosol	Topsoil	Unplanted	d	3	2017/3/23	174	Spring	2.4	0.24	2.16	69.6	
+41	Andosol	Subsoil	Planted	a	3	2017/3/23	174	Spring	2.48	1.69	0.8	40.62	58.79
+42	Andosol	Subsoil	Planted	b	3	2017/3/23	174	Spring	2.52	1.69	0.83	36.22	41.58
+43	Andosol	Subsoil	Planted	c	3	2017/3/23	174	Spring	2.84	1.94	0.91	48.15	88.21
+44	Andosol	Subsoil	Planted	d	3	2017/3/23	174	Spring	1.27	0.64	0.63	34.54	35.01
+45	Andosol	Subsoil	Unplanted	a	3	2017/3/23	174	Spring	0.71	0.14	0.57	28.73	
+46	Andosol	Subsoil	Unplanted	b	3	2017/3/23	174	Spring	0.53	0.17	0.37	18.5	
+47	Andosol	Subsoil	Unplanted	c	3	2017/3/23	174	Spring	0.84	0.25	0.59	29.99	
+48	Andosol	Subsoil	Unplanted	d	3	2017/3/23	174	Spring	0.69	0.19	0.5	25.11	
+1	Cambisol	Topsoil	Planted	a	4	2017/4/19	201	Spring	12.63	9	3.63	196.25	77.03
+2	Cambisol	Topsoil	Planted	b	4	2017/4/19	201	Spring	14.83	10.69	4.14	226.45	104.26
+3	Cambisol	Topsoil	Planted	c	4	2017/4/19	201	Spring	9.47	6.33	3.15	169.3	52.72
+4	Cambisol	Topsoil	Planted	d	4	2017/4/19	201	Spring	11.3	7.9	3.41	173.81	56.78
+5	Cambisol	Topsoil	Unplanted	a	4	2017/4/19	201	Spring	2.78	0.51	2.28	121.48	
+6	Cambisol	Topsoil	Unplanted	b	4	2017/4/19	201	Spring	2.96	0.67	2.29	122.24	
+7	Cambisol	Topsoil	Unplanted	c	4	2017/4/19	201	Spring	1.77	0.22	1.54	82.28	
+8	Cambisol	Topsoil	Unplanted	d	4	2017/4/19	201	Spring	2.86	0.66	2.2	117.43	
+9	Cambisol	Subsoil	Planted	a	4	2017/4/19	201	Spring	7.32	5.75	1.56	112.32	234.11
+10	Cambisol	Subsoil	Planted	b	4	2017/4/19	201	Spring	7.55	5.68	1.87	135.28	302.41
+11	Cambisol	Subsoil	Planted	c	4	2017/4/19	201	Spring	7.53	5.51	2.02	143.25	326.1
+12	Cambisol	Subsoil	Planted	d	4	2017/4/19	201	Spring	6.62	4.62	2	141.8	321.8
+13	Cambisol	Subsoil	Unplanted	a	4	2017/4/19	201	Spring	0.69	0.17	0.52	36.87	
+14	Cambisol	Subsoil	Unplanted	b	4	2017/4/19	201	Spring	0.8	0.3	0.5	35.52	
+15	Cambisol	Subsoil	Unplanted	c	4	2017/4/19	201	Spring	0.62	0.18	0.44	31.32	
+16	Cambisol	Subsoil	Unplanted	d	4	2017/4/19	201	Spring	0.61	0.18	0.43	30.76	
+17	Vertisol	Topsoil	Planted	a	4	2017/4/19	201	Spring	17.47	11.37	6.1	168.1	32.8
+18	Vertisol	Topsoil	Planted	b	4	2017/4/19	201	Spring	18.05	11.44	6.61	182.15	43.9
+19	Vertisol	Topsoil	Planted	c	4	2017/4/19	201	Spring	17.53	10.72	6.81	185.75	46.75
+20	Vertisol	Topsoil	Planted	d	4	2017/4/19	201	Spring	18.49	11.63	6.86	191.62	51.38
+21	Vertisol	Topsoil	Unplanted	a	4	2017/4/19	201	Spring	4.83	0.46	4.38	120.72	
+22	Vertisol	Topsoil	Unplanted	b	4	2017/4/19	201	Spring	4.34	0.37	3.96	109.35	
+23	Vertisol	Topsoil	Unplanted	c	4	2017/4/19	201	Spring	5.34	0.52	4.82	132.88	
+24	Vertisol	Topsoil	Unplanted	d	4	2017/4/19	201	Spring	5.61	0.41	5.2	143.37	
+25	Vertisol	Subsoil	Planted	a	4	2017/4/19	201	Spring	5.87	4.85	1.02	98.35	164.83
+26	Vertisol	Subsoil	Planted	b	4	2017/4/19	201	Spring	5.67	4.61	1.05	106.55	186.9
+27	Vertisol	Subsoil	Planted	c	4	2017/4/19	201	Spring	5.44	4.26	1.19	119.32	221.29
+28	Vertisol	Subsoil	Planted	d	4	2017/4/19	201	Spring	4.57	3.46	1.11	105.89	185.14
+29	Vertisol	Subsoil	Unplanted	a	4	2017/4/19	201	Spring	0.45	0.04	0.4	39.63	
+30	Vertisol	Subsoil	Unplanted	b	4	2017/4/19	201	Spring	0.38	0.1	0.28	27.16	
+31	Vertisol	Subsoil	Unplanted	c	4	2017/4/19	201	Spring	0.44	0.02	0.42	41.01	
+32	Vertisol	Subsoil	Unplanted	d	4	2017/4/19	201	Spring	0.51	0.09	0.41	40.76	
+33	Andosol	Topsoil	Planted	a	4	2017/4/19	201	Spring	13.77	10.01	3.75	121.29	104.81
+34	Andosol	Topsoil	Planted	b	4	2017/4/19	201	Spring	14.84	10.65	4.19	139.84	136.11
+35	Andosol	Topsoil	Planted	c	4	2017/4/19	201	Spring	14.58	9.63	4.95	158.42	167.5
+36	Andosol	Topsoil	Planted	d	4	2017/4/19	201	Spring	13.92	9.01	4.91	153.65	159.43
+37	Andosol	Topsoil	Unplanted	a	4	2017/4/19	201	Spring	2.69	0.4	2.29	73.78	
+38	Andosol	Topsoil	Unplanted	b	4	2017/4/19	201	Spring	1.71	0.26	1.45	46.8	
+39	Andosol	Topsoil	Unplanted	c	4	2017/4/19	201	Spring	2.37	0.31	2.06	66.31	
+40	Andosol	Topsoil	Unplanted	d	4	2017/4/19	201	Spring	1.78	0.23	1.55	50	
+41	Andosol	Subsoil	Planted	a	4	2017/4/19	201	Spring	2.97	2.14	0.83	42.22	114.77
+42	Andosol	Subsoil	Planted	b	4	2017/4/19	201	Spring	3.92	3.12	0.8	35.12	78.65
+43	Andosol	Subsoil	Planted	c	4	2017/4/19	201	Spring	3.52	2.35	1.17	62.29	216.87
+44	Andosol	Subsoil	Planted	d	4	2017/4/19	201	Spring	1.28	0.64	0.64	35.04	78.25
+45	Andosol	Subsoil	Unplanted	a	4	2017/4/19	201	Spring	0.55	0.18	0.37	18.76	
+46	Andosol	Subsoil	Unplanted	b	4	2017/4/19	201	Spring	0.52	0.18	0.34	17.31	
+47	Andosol	Subsoil	Unplanted	c	4	2017/4/19	201	Spring	0.52	0.17	0.36	17.91	
+48	Andosol	Subsoil	Unplanted	d	4	2017/4/19	201	Spring	0.57	0.08	0.49	24.66	
+1	Cambisol	Topsoil	Planted	a	5	2017/5/30	242	Summer	13.37	10.35	3.02	163.42	45.19
+2	Cambisol	Topsoil	Planted	b	5	2017/5/30	242	Summer	16.3	12.7	3.59	196.49	74.57
+3	Cambisol	Topsoil	Planted	c	5	2017/5/30	242	Summer	15.47	10.34	5.13	275.84	145.06
+4	Cambisol	Topsoil	Planted	d	5	2017/5/30	242	Summer	14.29	10.11	4.18	213.15	89.37
+5	Cambisol	Topsoil	Unplanted	a	5	2017/5/30	242	Summer	2.36	0.36	2	106.92	
+6	Cambisol	Topsoil	Unplanted	b	5	2017/5/30	242	Summer	3.21	0.63	2.58	137.57	
+7	Cambisol	Topsoil	Unplanted	c	5	2017/5/30	242	Summer	2.28	0.29	1.99	105.98	
+8	Cambisol	Topsoil	Unplanted	d	5	2017/5/30	242	Summer	2.19	0.32	1.87	99.78	
+9	Cambisol	Subsoil	Planted	a	5	2017/5/30	242	Summer	14.22	12.17	2.05	147.13	212.06
+10	Cambisol	Subsoil	Planted	b	5	2017/5/30	242	Summer	9.76	7.94	1.82	132.13	180.25
+11	Cambisol	Subsoil	Planted	c	5	2017/5/30	242	Summer	14.25	11.64	2.61	184.81	291.96
+12	Cambisol	Subsoil	Planted	d	5	2017/5/30	242	Summer	13.13	10.29	2.85	201.5	327.37
+13	Cambisol	Subsoil	Unplanted	a	5	2017/5/30	242	Summer	0.65	0.06	0.59	42.1	
+14	Cambisol	Subsoil	Unplanted	b	5	2017/5/30	242	Summer	0.76	0.07	0.69	49.61	
+15	Cambisol	Subsoil	Unplanted	c	5	2017/5/30	242	Summer	0.71	0.06	0.65	46.58	
+16	Cambisol	Subsoil	Unplanted	d	5	2017/5/30	242	Summer	0.81	0.11	0.7	50.31	
+17	Vertisol	Topsoil	Planted	a	5	2017/5/30	242	Summer	20.64	14.71	5.93	163.51	24.16
+18	Vertisol	Topsoil	Planted	b	5	2017/5/30	242	Summer	21.77	14.33	7.43	204.86	55.56
+19	Vertisol	Topsoil	Planted	c	5	2017/5/30	242	Summer	24.43	15.19	9.24	252.03	91.37
+20	Vertisol	Topsoil	Planted	d	5	2017/5/30	242	Summer	24.61	15.79	8.82	246.58	87.23
+21	Vertisol	Topsoil	Unplanted	a	5	2017/5/30	242	Summer	4.63	0.27	4.36	120.22	
+22	Vertisol	Topsoil	Unplanted	b	5	2017/5/30	242	Summer	4.83	0.37	4.46	122.96	
+23	Vertisol	Topsoil	Unplanted	c	5	2017/5/30	242	Summer	5.34	0.37	4.97	137.16	
+24	Vertisol	Topsoil	Unplanted	d	5	2017/5/30	242	Summer	5.57	0.26	5.31	146.44	
+25	Vertisol	Subsoil	Planted	a	5	2017/5/30	242	Summer	11.21	9.41	1.8	174.34	240.18
+26	Vertisol	Subsoil	Planted	b	5	2017/5/30	242	Summer	13.39	11.56	1.84	185.52	261.99
+27	Vertisol	Subsoil	Planted	c	5	2017/5/30	242	Summer	8.44	6.48	1.95	196.52	283.47
+28	Vertisol	Subsoil	Planted	d	5	2017/5/30	242	Summer	11.53	8.87	2.66	253.32	394.3
+29	Vertisol	Subsoil	Unplanted	a	5	2017/5/30	242	Summer	0.62	0	0.62	60.97	
+30	Vertisol	Subsoil	Unplanted	b	5	2017/5/30	242	Summer	0.5	0.05	0.45	44	
+31	Vertisol	Subsoil	Unplanted	c	5	2017/5/30	242	Summer	0.47	0	0.47	45.99	
+32	Vertisol	Subsoil	Unplanted	d	5	2017/5/30	242	Summer	0.59	0.04	0.55	54.04	
+33	Andosol	Topsoil	Planted	a	5	2017/5/30	242	Summer	16.58	12.28	4.3	138.91	76.4
+34	Andosol	Topsoil	Planted	b	5	2017/5/30	242	Summer	21.62	16.23	5.39	179.83	128.37
+35	Andosol	Topsoil	Planted	c	5	2017/5/30	242	Summer	16.52	10.94	5.58	178.35	126.5
+36	Andosol	Topsoil	Planted	d	5	2017/5/30	242	Summer	17.05	11.88	5.17	161.7	105.35
+37	Andosol	Topsoil	Unplanted	a	5	2017/5/30	242	Summer	2.96	0.18	2.78	89.67	
+38	Andosol	Topsoil	Unplanted	b	5	2017/5/30	242	Summer	2.4	0.12	2.28	73.6	
+39	Andosol	Topsoil	Unplanted	c	5	2017/5/30	242	Summer	2.49	0.15	2.35	75.68	
+40	Andosol	Topsoil	Unplanted	d	5	2017/5/30	242	Summer	2.49	0.13	2.36	76.03	
+41	Andosol	Subsoil	Planted	a	5	2017/5/30	242	Summer	6.35	4.82	1.53	78.26	230.76
+42	Andosol	Subsoil	Planted	b	5	2017/5/30	242	Summer	9.75	7.76	1.99	87.48	269.7
+43	Andosol	Subsoil	Planted	c	5	2017/5/30	242	Summer	10.15	6.96	3.19	169.5	616.34
+44	Andosol	Subsoil	Planted	d	5	2017/5/30	242	Summer	4.76	3.25	1.51	83.1	251.22
+45	Andosol	Subsoil	Unplanted	a	5	2017/5/30	242	Summer	0.51	0.1	0.41	20.43	
+46	Andosol	Subsoil	Unplanted	b	5	2017/5/30	242	Summer	0.54	0.09	0.45	22.47	
+47	Andosol	Subsoil	Unplanted	c	5	2017/5/30	242	Summer	0.65	0.12	0.52	26.26	
+48	Andosol	Subsoil	Unplanted	d	5	2017/5/30	242	Summer	0.58	0.07	0.51	25.49	
+1	Cambisol	Topsoil	Planted	a	6	2017/6/29	272	Summer	16.81	10.16	6.65	359.42	158.76
+2	Cambisol	Topsoil	Planted	b	6	2017/6/29	272	Summer	17.98	12.32	5.66	309.49	122.81
+3	Cambisol	Topsoil	Planted	c	6	2017/6/29	272	Summer	13.53	9.09	4.44	239.03	72.08
+4	Cambisol	Topsoil	Planted	d	6	2017/6/29	272	Summer	14.05	9.39	4.66	237.74	71.16
+5	Cambisol	Topsoil	Unplanted	a	6	2017/6/29	272	Summer	3.27	0.53	2.74	146.14	
+6	Cambisol	Topsoil	Unplanted	b	6	2017/6/29	272	Summer	3.13	0.43	2.69	143.66	
+7	Cambisol	Topsoil	Unplanted	c	6	2017/6/29	272	Summer	3.02	0.43	2.59	138.08	
+8	Cambisol	Topsoil	Unplanted	d	6	2017/6/29	272	Summer	2.87	0.48	2.39	127.72	
+9	Cambisol	Subsoil	Planted	a	6	2017/6/29	272	Summer	10.69	8.22	2.47	177.19	294.9
+10	Cambisol	Subsoil	Planted	b	6	2017/6/29	272	Summer	10.73	8.09	2.64	191.6	327.01
+11	Cambisol	Subsoil	Planted	c	6	2017/6/29	272	Summer	11.66	9.87	1.78	126.31	181.51
+12	Cambisol	Subsoil	Planted	d	6	2017/6/29	272	Summer	11.85	9.5	2.36	166.86	271.88
+13	Cambisol	Subsoil	Unplanted	a	6	2017/6/29	272	Summer	0.72	0.03	0.69	49.31	
+14	Cambisol	Subsoil	Unplanted	b	6	2017/6/29	272	Summer	1.17	0.01	1.16	82.76	
+15	Cambisol	Subsoil	Unplanted	c	6	2017/6/29	272	Summer	0.49	0.11	0.38	27.25	
+16	Cambisol	Subsoil	Unplanted	d	6	2017/6/29	272	Summer	0.44	0.16	0.28	20.16	
+17	Vertisol	Topsoil	Planted	a	6	2017/6/29	272	Summer	20.29	12.16	8.13	223.98	69.91
+18	Vertisol	Topsoil	Planted	b	6	2017/6/29	272	Summer	22.31	12.61	9.7	267.18	102.68
+19	Vertisol	Topsoil	Planted	c	6	2017/6/29	272	Summer	18.68	12.81	5.87	160.08	21.44
+20	Vertisol	Topsoil	Planted	d	6	2017/6/29	272	Summer	18.08	11.62	6.46	180.42	36.86
+21	Vertisol	Topsoil	Unplanted	a	6	2017/6/29	272	Summer	5.03	0.19	4.84	133.56	
+22	Vertisol	Topsoil	Unplanted	b	6	2017/6/29	272	Summer	5.95	0.05	5.9	162.77	
+23	Vertisol	Topsoil	Unplanted	c	6	2017/6/29	272	Summer	4.61	0.5	4.11	113.44	
+24	Vertisol	Topsoil	Unplanted	d	6	2017/6/29	272	Summer	4.61	0.35	4.26	117.52	
+25	Vertisol	Subsoil	Planted	a	6	2017/6/29	272	Summer	6.63	4.56	2.06	199.46	301.39
+26	Vertisol	Subsoil	Planted	b	6	2017/6/29	272	Summer	10.2	7.68	2.53	255.23	413.61
+27	Vertisol	Subsoil	Planted	c	6	2017/6/29	272	Summer	6.25	4.84	1.41	142.25	186.25
+28	Vertisol	Subsoil	Planted	d	6	2017/6/29	272	Summer	6.87	4.84	2.03	193.68	289.75
+29	Vertisol	Subsoil	Unplanted	a	6	2017/6/29	272	Summer	0.79	0	0.79	77.25	
+30	Vertisol	Subsoil	Unplanted	b	6	2017/6/29	272	Summer	0.79	0	0.79	77.28	
+31	Vertisol	Subsoil	Unplanted	c	6	2017/6/29	272	Summer	0.29	0.11	0.18	17.85	
+32	Vertisol	Subsoil	Unplanted	d	6	2017/6/29	272	Summer	0.42	0.16	0.27	26.38	
+33	Andosol	Topsoil	Planted	a	6	2017/6/29	272	Summer	19.19	12.81	6.38	206.28	130.88
+34	Andosol	Topsoil	Planted	b	6	2017/6/29	272	Summer	18.71	12.74	5.97	199.1	122.84
+35	Andosol	Topsoil	Planted	c	6	2017/6/29	272	Summer	20.65	15.98	4.67	149.2	66.99
+36	Andosol	Topsoil	Planted	d	6	2017/6/29	272	Summer	17.84	12.55	5.29	165.58	85.33
+37	Andosol	Topsoil	Unplanted	a	6	2017/6/29	272	Summer	3.74	0.14	3.61	116.17	
+38	Andosol	Topsoil	Unplanted	b	6	2017/6/29	272	Summer	2.96	0.07	2.89	93.12	
+39	Andosol	Topsoil	Unplanted	c	6	2017/6/29	272	Summer	2.68	0.26	2.42	78.11	
+40	Andosol	Topsoil	Unplanted	d	6	2017/6/29	272	Summer	2.36	0.18	2.17	69.99	
+41	Andosol	Subsoil	Planted	a	6	2017/6/29	272	Summer	11.37	8.24	3.13	159.88	787.5
+42	Andosol	Subsoil	Planted	b	6	2017/6/29	272	Summer	12.79	9.97	2.81	123.49	585.51
+43	Andosol	Subsoil	Planted	c	6	2017/6/29	272	Summer	11.88	9.37	2.51	133.55	641.37
+44	Andosol	Subsoil	Planted	d	6	2017/6/29	272	Summer	11.52	9.08	2.45	134.78	648.16
+45	Andosol	Subsoil	Unplanted	a	6	2017/6/29	272	Summer	0.52	0.06	0.46	23.15	
+46	Andosol	Subsoil	Unplanted	b	6	2017/6/29	272	Summer	0.46	0.07	0.4	20.11	
+47	Andosol	Subsoil	Unplanted	c	6	2017/6/29	272	Summer	0.48	0.2	0.29	14.6	
+48	Andosol	Subsoil	Unplanted	d	6	2017/6/29	272	Summer	0.45	0.17	0.28	14.19	
