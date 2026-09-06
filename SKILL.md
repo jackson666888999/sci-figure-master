@@ -230,6 +230,27 @@ run_sciplot("data.csv", profile="audit",   out_dir="out/fig")   # 归档/发布�
   ```
 - 设计原则：**AI 读图 = advisory**；接受的建议必须确定性重跑（`sciplot.py validate`）才算数，不自我认证严格性。
 
+### H. 司空工作室 R 模板库（50套基础 + 361个 SCI/Nature 模板，2026-09-06 集成）
+
+**即开即用的 R 代码模板大全**（每套含 R 脚本 + 示例数据 + PDF/PNG 成图参照）：
+
+| 目录 | 内容 | 规模 |
+|------|------|------|
+| `assets/sikong_50/` | 50 套基础图型（柱状/箱线/小提琴/气泡/热图/火山/GSEA/森林/生存…），每套 = 1 R 脚本 + input.txt + PDF 成图 | 690 文件 |
+| `assets/sikong_360/` | 361 个进阶模板：293 R 脚本 + 112 Rmd，覆盖降维(PCoA/OPLS-DA/RDA/CCA)、单细胞(UMAP/plot1cell/muscat)、热图家族(环状/组合/注释/离散)、网络图、CNV、进化树、circos、WGCNA、ROC、三元图、3D 基因组等 | 4078 文件 |
+| `docs/文献读图知识攻略.pdf` | 配套读图教程（R 脚本 ↔ 成图对照） | 61MB |
+| `assets/SIKONG_INDEX.md` | 全量模板索引：361 目录逐一列出 + 脚本定位 | — |
+
+**使用方式**：用户报出图型/领域 → 在 `SIKONG_INDEX.md` 检索对应目录 → 套用 R 脚本改数据路径即可。典型路由示例：
+```text
+"瀑布图"        → assets/sikong_360/【100】SCI科研绘图--瀑布图/
+"环形热图"      → assets/sikong_360/【173】SCI科研绘图--环形热图/
+"复现Nature UMAP" → assets/sikong_360/【229】SCI科研绘图--复现Nature-单细胞UMAP修饰.../
+"WGCNA共表达"   → assets/sikong_360/【351】SCI科研绘图--WGCNA.../
+"免疫治疗预测"  → assets/sikong_360/【353】SCI科研绘图--免疫治疗预测immunotherapy/
+```
+**过滤说明**：媒体与工作区快照未入库（mp4 教程 1.13GB、.RData 2.98GB、>20MB 大文件、.Rhistory），需视频或大数据的模板编号见 `assets/SIKONG_INDEX.md` 注释，原始 zip 保留在 `E:\sci_figure_master\`。
+
 ### B. K-Dense 163 技能中的绘图/可视化/插图模块（按需调用）
 本 skill 运行时可直接调用已安装的 K-Dense 技能（见 `references/kdense-skills.md`）：
 - 可视化：`scientific-visualization`、`matplotlib`、`seaborn`
@@ -311,6 +332,7 @@ run_sciplot("data.csv", profile="audit",   out_dir="out/fig")   # 归档/发布�
 | **CNV** | "拷贝数"、"CNV" | `assets/cnvkit/` |
 | **流式细胞术** | "流式"、"FACS"、"CyTOF" | `assets/flowCore/` |
 | **通用热图/圈图** | "热图"、"圈图"、"Circos"、"和弦图" | `assets/ComplexHeatmap/`、`assets/circlize/` |
+| **司空R模板库** | "模板"、"套用R代码"、"瀑布图/环形热图/三元图/WGCNA/plot1cell 等进阶图型" | `assets/sikong_50/`、`assets/sikong_360/`（+ `assets/SIKONG_INDEX.md` 索引）|
 | **科研卡通机制图** | "机制图"、"卡通图"、"画不了的代码图"、"肠脑轴示意图"、"信号通路卡通" | `skills/cartoon-mechanism/` |
 
 ---
@@ -406,6 +428,9 @@ sci-figure-master/
 │   ├── circlize/                 # ★圈图/和弦图(R)
 │   ├── EnhancedVolcano/          # ★出版级火山图(R)
 │   ├── jump-cellpainting-morphmap/# ★2025: Nature Methods 细胞成像
+│   ├── sikong_50/               # ★2026-09: 司空50套基础R图型模板(脚本+数据+成图)
+│   ├── sikong_360/              # ★2026-09: 司空361个SCI/Nature进阶模板(293 R+112 Rmd)
+│   ├── SIKONG_INDEX.md          # ★司空模板全量索引(361目录检索)
 │   ├── color-palettes/           # 共享配色
 │   ├── label_qa.py              # ★2026-08-25: 标签防重叠(adjustText)+版面QA(audit_layout)最小提取层
 │   ├── qa_bridge.py             # ★2026-08-25: 桥接层，暴露 scipilot/sciplot 两仓库真实能力(函数+CLI)
