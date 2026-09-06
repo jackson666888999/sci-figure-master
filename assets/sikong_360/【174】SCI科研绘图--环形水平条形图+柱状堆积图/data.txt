@@ -1,0 +1,10 @@
+sample	group	value1	value2	value3	value4	value5
+PRAMEF18	groupA	59	24	16	16	14
+CYP2D6	groupA	30	55	50	57	65
+PDPR	groupB	78	25	39	25	24
+OR4Q3	groupB	44	80	84	92	97
+SULT1A3	groupB	62	44	35	40	36
+OR9G1	groupC	87	67	65	74	66
+GRPIN2	groupC	99	57	40	56	56
+OR4K1	groupD	91	12	20	13	20
+OR4K2	groupD	84	57	54	59	51

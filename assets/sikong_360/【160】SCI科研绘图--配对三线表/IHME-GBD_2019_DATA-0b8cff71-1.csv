@@ -1,0 +1,201 @@
+measure,location,sex,age,cause,rei,metric,year,val,upper,lower
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Unsafe sex,Number,1990,20101247.925711367,25593991.162972745,16360545.894534728
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Unsafe sex,Percent,1990,0.007755933196338342,0.00985276823981787,0.006289653783780628
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Unsafe sex,Rate,1990,375.7349573541055,478.4059782597097,305.81330257162824
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Unsafe sex,Percent,1990,0.008189797533946065,0.010267398818192728,0.006713028244704499
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Unsafe sex,Rate,1990,409.67470019003935,512.6958271059759,337.7285159531538
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Intimate partner violence,Number,1990,5178493.726475368,8118363.2851352,2783640.273408786
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Intimate partner violence,Percent,1990,0.001995389767553407,0.0030868479473987963,0.0010702727574325543
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Intimate partner violence,Rate,1990,96.79703104337828,151.74942839363334,52.03214065533725
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Intimate partner violence,Percent,1990,0.002005525638945746,0.0031506105158283786,0.0010663513713484827
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Intimate partner violence,Rate,1990,100.47621037966574,159.19816918505134,53.189266551355885
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,"Unsafe water, sanitation, and handwashing",Number,1990,214981962.78057373,254705668.1869137,175186587.317427
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,"Unsafe water, sanitation, and handwashing",Percent,1990,0.08294024748816156,0.09763168707791887,0.06671751715969773
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,"Unsafe water, sanitation, and handwashing",Rate,1990,4018.4688490877434,4760.9891548895985,3274.6088779159813
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,"Unsafe water, sanitation, and handwashing",Percent,1990,0.07224045711798073,0.0858086693662125,0.0572370448888122
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,"Unsafe water, sanitation, and handwashing",Rate,1990,3613.967745908772,4297.75639838406,2942.833205956109
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Air pollution,Number,1990,280717766.36550605,318927645.32964605,248482188.17536533
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Air pollution,Percent,1990,0.10829854127590458,0.12272229556333937,0.09568180118906168
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Air pollution,Rate,1990,5247.2104400528315,5961.434118908762,4644.659113820744
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Air pollution,Percent,1990,0.1090861488274232,0.12257122884151206,0.09649656561749659
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Air pollution,Rate,1990,5457.3333268563,6157.567690961573,4852.88850529468
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Other environmental risks,Number,1990,17238550.201162707,23620387.052180655,11405393.768346421
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Other environmental risks,Percent,1990,0.006648301961418049,0.009063638564570552,0.00444229707806556
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Other environmental risks,Rate,1990,322.225065260532,441.515131525073,213.19099973265773
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Other environmental risks,Percent,1990,0.008142563139436699,0.011216739287311766,0.005369174580167659
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Other environmental risks,Rate,1990,407.4343421751856,563.5217834688898,268.52463287820683
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Child and maternal malnutrition,Number,1990,665322525.2708337,725198457.8726679,612705770.244709
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Child and maternal malnutrition,Percent,1990,0.25663846563702103,0.27779705459975235,0.23752643602853812
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Child and maternal malnutrition,Rate,1990,12436.289109175568,13555.497283007953,11452.770360542816
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Child and maternal malnutrition,Percent,1990,0.20773086942558788,0.22524249995580892,0.19187263695147125
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Child and maternal malnutrition,Rate,1990,10394.114133190147,11343.21740917343,9572.236482226168
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Drug use,Number,1990,16696007.221010378,19644915.23347898,14093695.121859487
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Drug use,Percent,1990,0.00643531706292575,0.007410744952111665,0.0055457590047483536
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Drug use,Rate,1990,312.08378625816886,367.2051314801648,263.4410537666273
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Drug use,Percent,1990,0.006638145034430209,0.007539224914092844,0.005772776422037851
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Drug use,Rate,1990,332.4036452570266,388.0615620850628,285.04613445239875
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High fasting plasma glucose,Number,1990,77209953.41098937,91339334.37652454,65303495.278245024
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High fasting plasma glucose,Percent,1990,0.02977531093804872,0.035089783640120976,0.025357575480243425
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High fasting plasma glucose,Rate,1990,1443.2177872441152,1707.3258851167204,1220.6608318113697
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High fasting plasma glucose,Percent,1990,0.039155345429101755,0.04714661779215117,0.03302126669569715
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High fasting plasma glucose,Rate,1990,1959.6380241776178,2362.42821383978,1638.6897443132045
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High systolic blood pressure,Number,1990,153731856.97931767,169476398.86733225,138661444.40099725
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High systolic blood pressure,Percent,1990,0.05932222302177442,0.06542206985523509,0.053078727761743744
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High systolic blood pressure,Rate,1990,2873.574463613664,3167.8733447933864,2591.876489022686
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High systolic blood pressure,Percent,1990,0.07905026705185524,0.08730762095844738,0.07045603599657045
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High systolic blood pressure,Rate,1990,3953.91957710423,4359.130397687905,3557.533283963533
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High body-mass index,Number,1990,67283003.77844168,103627486.6875517,37963402.972293995
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High body-mass index,Percent,1990,0.02595066100883931,0.039884206708121525,0.014576744393222889
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High body-mass index,Rate,1990,1257.662044106858,1937.0175142935761,709.6165198065331
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High body-mass index,Percent,1990,0.03272419046564786,0.050405038793150427,0.01827372738047301
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High body-mass index,Rate,1990,1637.5831235880485,2514.254422758115,919.2113772996065
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low bone mineral density,Number,1990,8588936.022894002,10138618.972807543,7041724.560920922
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low bone mineral density,Percent,1990,0.0033085446511250424,0.0037361175565596067,0.002796260574154884
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low bone mineral density,Rate,1990,160.54543092080215,189.51229204554724,131.62476714755232
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Low bone mineral density,Percent,1990,0.004521230931210837,0.005112208763840361,0.003817815495345349
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Low bone mineral density,Rate,1990,226.56750129969313,268.0782307712354,185.25840855220687
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Dietary risks,Number,1990,132041973.52739772,156824070.56786484,111262093.86642504
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Dietary risks,Percent,1990,0.05094729195544731,0.060900059632690504,0.04283542388039275
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Dietary risks,Rate,1990,2468.144538867622,2931.37449399568,2079.7245150415306
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Dietary risks,Percent,1990,0.06639867954687878,0.07986926686267837,0.05567690226873618
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Dietary risks,Rate,1990,3321.504870814016,3952.959450857191,2783.6849191506285
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low physical activity,Number,1990,8610219.336500943,15888866.250800556,4279938.3151525855
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low physical activity,Percent,1990,0.0033222166875288136,0.006448153207639074,0.0016528672124354726
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low physical activity,Rate,1990,160.94326119283357,296.99660962409394,80.00112461998536
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Low physical activity,Percent,1990,0.00485727917864623,0.009305782958415984,0.0024243327024130318
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Low physical activity,Rate,1990,242.98174108722193,463.63190289507776,122.15730314336197
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Occupational risks,Number,1990,63055880.57631578,70977417.25356588,55069275.21402059
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Occupational risks,Percent,1990,0.02430001357970591,0.026387449241896732,0.022239710364438992
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Occupational risks,Rate,1990,1178.6481459672398,1326.7184676012755,1029.3615526026724
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Occupational risks,Percent,1990,0.026752751907608115,0.028932180496259074,0.024527152529106946
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Occupational risks,Rate,1990,1339.9934676851328,1505.0187527557505,1170.025437868524
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Tobacco,Number,1990,200785029.59654215,215585558.5317807,185597479.64867693
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Tobacco,Percent,1990,0.07746597120215479,0.08344763928001359,0.0710422004242071
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Tobacco,Rate,1990,3753.0980569769645,4029.751333870627,3469.210536507382
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Tobacco,Percent,1990,0.09462709527648282,0.10112982145765911,0.08780791589789692
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Tobacco,Rate,1990,4733.944396613948,5029.600609439417,4430.349485958627
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Alcohol use,Number,1990,67807885.76841821,76067066.10497794,60313564.35625078
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Alcohol use,Percent,1990,0.026152877753690934,0.029044715399248848,0.02348612968741745
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Alcohol use,Rate,1990,1267.4732017448637,1421.8547994947094,1127.3884395149055
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Alcohol use,Percent,1990,0.029498159826759653,0.03288320014290468,0.026423277275363317
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Alcohol use,Rate,1990,1476.1727578272782,1657.7289644511397,1314.3919290414087
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Non-optimal temperature,Number,1990,40447924.10912203,58657975.44744082,32568518.871735573
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Non-optimal temperature,Percent,1990,0.015607331922436626,0.022590571139187443,0.012450415215213548
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Non-optimal temperature,Rate,1990,756.0574893842171,1096.4419713977709,608.7746937196623
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Non-optimal temperature,Percent,1990,0.018020555795916396,0.023491268303321135,0.01508337316602833
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Non-optimal temperature,Rate,1990,901.2828249655016,1172.1365516985093,756.0124220185326
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Kidney dysfunction,Number,1990,42090331.23650002,47117510.816121355,37406192.07065919
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Kidney dysfunction,Percent,1990,0.016237407527738775,0.01805921152797994,0.014386248298603329
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Kidney dysfunction,Rate,1990,786.7575620485674,880.7262107584013,699.2010662418219
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Kidney dysfunction,Percent,1990,0.020469632965718687,0.022981929752643925,0.017914253006366475
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Kidney dysfunction,Rate,1990,1024.1294646677634,1154.8049380119207,898.3788971436145
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High LDL cholesterol,Number,1990,69718898.07369426,83278990.52809419,58516399.55657796
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High LDL cholesterol,Percent,1990,0.026904088295377767,0.032215733882768854,0.02245488048437074
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High LDL cholesterol,Rate,1990,1303.1940748806828,1556.6609630510804,1093.795617722998
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High LDL cholesterol,Percent,1990,0.035585324948591825,0.04315035315577593,0.029109542500442523
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High LDL cholesterol,Rate,1990,1779.8651445948426,2154.3355918716397,1465.1333896874185
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Childhood sexual abuse and bullying,Number,1990,4713229.191048554,8147986.335448735,2185089.0291306754
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Childhood sexual abuse and bullying,Percent,1990,0.0018119830712671184,0.00311077191272781,0.0008602905589895635
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Childhood sexual abuse and bullying,Rate,1990,88.10025007619411,152.30314603282616,40.84394840606804
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Childhood sexual abuse and bullying,Percent,1990,0.001739023041312032,0.002993061798167027,0.0008307489889242738
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Childhood sexual abuse and bullying,Rate,1990,87.32474995516404,150.67862110215924,41.42057733218148
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,"Unsafe water, sanitation, and handwashing",Number,2019,87538461.19475682,108592067.69821715,69748717.14223668
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,"Unsafe water, sanitation, and handwashing",Percent,2019,0.03450935596767427,0.043103400517735924,0.02778528307378966
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,"Unsafe water, sanitation, and handwashing",Rate,2019,1131.358467691281,1403.4580187690274,901.4414997987179
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,"Unsafe water, sanitation, and handwashing",Percent,2019,0.03788290858318018,0.04668763155298236,0.030649905477371515
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,"Unsafe water, sanitation, and handwashing",Rate,2019,1244.2928152674708,1544.1250918845126,993.1986294977213
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Air pollution,Number,2019,213284886.63351315,239530188.99946108,188894775.4286593
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Air pollution,Percent,2019,0.08414928705743566,0.09426662788678818,0.07462951706617336
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Air pollution,Rate,2019,2756.5216389462094,3095.7193431732903,2441.300666782303
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Air pollution,Percent,2019,0.08504824877867904,0.0951889992214385,0.07560965669808352
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Air pollution,Rate,2019,2791.0848912511046,3141.3929322603876,2468.8132844761017
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Other environmental risks,Number,2019,23561861.602421537,32524843.53586137,15480385.121776681
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Other environmental risks,Percent,2019,0.009296397353533933,0.012862822403167511,0.0060987299951488685
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Other environmental risks,Rate,2019,304.5165664857072,420.35531173850217,200.07051245370957
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Other environmental risks,Percent,2019,0.008843489588691102,0.012205334689341669,0.005792697648971467
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Other environmental risks,Rate,2019,290.1840899527336,400.5251617216241,190.65174782230912
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Child and maternal malnutrition,Number,2019,294779309.4235401,349534865.05704343,252994742.37972838
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Child and maternal malnutrition,Percent,2019,0.11615198666782138,0.1311542402408895,0.10316916291199284
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Child and maternal malnutrition,Rate,2019,3809.7661675195764,4517.434096263288,3269.736983791344
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Child and maternal malnutrition,Percent,2019,0.134672457661968,0.15184164812187892,0.11992978630687491
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Child and maternal malnutrition,Rate,2019,4425.237366213221,5249.547154512417,3789.8070031218126
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Intimate partner violence,Number,2019,8497964.170677193,13256990.912465736,4440756.4434688315
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Intimate partner violence,Percent,2019,0.0033479649300210386,0.005140700627044221,0.0017736031002701567
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Intimate partner violence,Rate,2019,109.82879515374196,171.3350762650008,57.392914345334646
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Intimate partner violence,Percent,2019,0.00318031451775316,0.004905036979665702,0.001692079088789087
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Intimate partner violence,Rate,2019,104.49624391017419,163.2293279203728,54.66792238016828
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Tobacco,Number,2019,229772303.16066334,246398939.00530827,213076969.43039048
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Tobacco,Percent,2019,0.09068404449529062,0.09811202099367632,0.0826164544461814
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Tobacco,Rate,2019,2969.6071563720193,3184.491962379843,2753.834489947686
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Tobacco,Percent,2019,0.08508664872245837,0.09186622251409697,0.07752856954880998
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Tobacco,Rate,2019,2791.0354431153582,2993.0565889897466,2588.539126462119
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Alcohol use,Number,2019,92996235.2226489,105098270.32875778,82358722.07311887
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Alcohol use,Percent,2019,0.036687061538995085,0.04140586026234956,0.032619329840508006
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Alcohol use,Rate,2019,1201.8954496866986,1358.3037267654097,1064.4148450171378
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Alcohol use,Percent,2019,0.03433202089881474,0.038743359203517576,0.0305442108066318
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Alcohol use,Rate,2019,1126.6631630006257,1273.5787884885317,998.4431983562898
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Non-optimal temperature,Number,2019,37603449.41475478,44296862.24997828,32417838.379509624
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Non-optimal temperature,Percent,2019,0.014851051356047225,0.017763795460196664,0.012620664613707071
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Non-optimal temperature,Rate,2019,485.9918752185214,572.4984140076347,418.97236316854907
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Non-optimal temperature,Percent,2019,0.014710219891707682,0.01785490638413502,0.012502072300433185
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Non-optimal temperature,Rate,2019,482.24479876774507,582.2883645025827,413.74936153592967
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Kidney dysfunction,Number,2019,76486944.94458751,86284798.3750056,67791320.40698357
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Kidney dysfunction,Percent,2019,0.030184910521315427,0.03405572595668376,0.026464904593698328
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Kidney dysfunction,Rate,2019,988.5272330567187,1115.1559662148188,876.1438495906226
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Kidney dysfunction,Percent,2019,0.02881613549104401,0.032383543157627356,0.025220328627769722
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Kidney dysfunction,Rate,2019,945.3082775214781,1066.7725482075991,836.3301191983772
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High LDL cholesterol,Number,2019,98618020.78378923,118987709.31977518,80335172.42363814
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High LDL cholesterol,Percent,2019,0.03893241945917509,0.04739135523027716,0.03163915138051212
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High LDL cholesterol,Rate,2019,1274.5521380878147,1537.8126443257538,1038.2622259341915
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High LDL cholesterol,Percent,2019,0.03680999806662253,0.044988956705340956,0.02966912762594389
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High LDL cholesterol,Rate,2019,1207.1496189640718,1461.1063260546057,975.0670741589632
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Childhood sexual abuse and bullying,Number,2019,7331056.2524546785,12794757.925673407,3513988.9153230293
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Childhood sexual abuse and bullying,Percent,2019,0.002877125088005462,0.004904274636972261,0.0014008169730252188
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Childhood sexual abuse and bullying,Rate,2019,94.7475253178483,165.36111697309286,45.41525017076869
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Childhood sexual abuse and bullying,Percent,2019,0.002826570979777213,0.004843714998672952,0.001354919703804168
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Childhood sexual abuse and bullying,Rate,2019,93.22428804468416,162.69687850535456,43.989240260788705
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Unsafe sex,Number,2019,46645465.16697142,53526830.00579432,41865753.19999927
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Unsafe sex,Percent,2019,0.01841581620524658,0.02149517389865323,0.016247890201306698
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Unsafe sex,Rate,2019,602.8520638333151,691.787718783367,541.0784441791111
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Unsafe sex,Percent,2019,0.017406289553946283,0.02035439382973268,0.015297924853790548
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Unsafe sex,Rate,2019,570.7807873906826,658.1011442179125,510.23732864716374
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Drug use,Number,2019,30927026.665281802,35669628.87886885,26668899.960044023
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Drug use,Percent,2019,0.012194086170265708,0.013816803375381563,0.010683035379896186
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Drug use,Rate,2019,399.70491850930927,460.99892688004905,344.67233467447153
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Drug use,Percent,2019,0.011563579827883377,0.013102747515527507,0.010111459586412165
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Drug use,Rate,2019,379.6795505646205,438.75121498309807,326.9542459379529
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High fasting plasma glucose,Number,2019,172068733.66272017,204905610.29230657,142535291.0334238
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High fasting plasma glucose,Percent,2019,0.06784350607766196,0.08031094409559338,0.05810879881326964
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High fasting plasma glucose,Rate,2019,2223.8387126902585,2648.226780750583,1842.1446556700937
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High fasting plasma glucose,Percent,2019,0.06409080916792248,0.07595139042505167,0.05471036999526221
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High fasting plasma glucose,Rate,2019,2104.2644044607077,2520.71694114511,1740.7247598276151
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High systolic blood pressure,Number,2019,235424636.13987815,260554757.72156942,211056308.49663252
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High systolic blood pressure,Percent,2019,0.09294126902971614,0.1045978965440134,0.08190473502489429
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High systolic blood pressure,Rate,2019,3042.65864358081,3367.443606184887,2727.7192050027757
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High systolic blood pressure,Percent,2019,0.08799256397952673,0.09918705333135175,0.07738854054101639
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High systolic blood pressure,Rate,2019,2885.5658359076765,3201.0493837583276,2580.7500422398584
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High body-mass index,Number,2019,160265357.4943574,218870439.28782707,105969034.15898442
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High body-mass index,Percent,2019,0.06320159418300639,0.08564491119834369,0.04206839750536803
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,High body-mass index,Rate,2019,2071.290342600535,2828.710048542925,1369.5575918578566
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High body-mass index,Percent,2019,0.058869194629409635,0.08005332557749727,0.038929858498720285
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,High body-mass index,Rate,2019,1932.5384127601212,2639.7366260227254,1276.610999881663
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low bone mineral density,Number,2019,16647466.399422338,20036301.74188327,13503526.235824967
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low bone mineral density,Percent,2019,0.006554507323415144,0.0074111786370116275,0.005507559465501715
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low bone mineral density,Rate,2019,215.15402280935527,258.95177191274325,174.52133087652436
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Low bone mineral density,Percent,2019,0.006291373674788963,0.007138195784180056,0.005283976399102195
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Low bone mineral density,Rate,2019,206.8471553138596,248.68929505138325,167.91626227864123
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Dietary risks,Number,2019,187695611.7225311,225396721.89282456,155915464.87063298
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Dietary risks,Percent,2019,0.07407711623215128,0.09014827331664388,0.060712433906992956
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Dietary risks,Rate,2019,2425.8025189446566,2913.056574480628,2015.0717640896612
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Dietary risks,Percent,2019,0.06973046337382631,0.08479197056636412,0.0571386892791422
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Dietary risks,Rate,2019,2287.316882461873,2750.7020849138776,1899.5540264811998
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low physical activity,Number,2019,15747938.20678884,28617800.833784133,8515093.969910767
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low physical activity,Percent,2019,0.006211569490934229,0.011112647745013684,0.003348106774448438
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Low physical activity,Rate,2019,203.52840335279657,369.86018326243453,110.05018290888717
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Low physical activity,Percent,2019,0.006045507172803758,0.010753281442703913,0.0032590732987682457
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Low physical activity,Rate,2019,198.4190830382157,360.3156769061536,108.1612870969248
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Occupational risks,Number,2019,66108349.12364522,75967679.01658835,56387137.98680964
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Occupational risks,Percent,2019,0.02603581873606111,0.028273593893273604,0.023820973236488716
+DALYs (Disability-Adjusted Life Years),Global,Both,All ages,All causes,Occupational risks,Rate,2019,854.3929096460664,981.8161726084611,728.7547114670409
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Occupational risks,Percent,2019,0.024567070376965316,0.02678448983841925,0.022413838407092577
+DALYs (Disability-Adjusted Life Years),Global,Both,Age-standardized,All causes,Occupational risks,Rate,2019,807.4702641813253,927.7723578996745,690.0647378312789

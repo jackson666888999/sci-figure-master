@@ -1,0 +1,8 @@
+sample	value	group
+A	50	A
+B	40	A
+C	70	A
+D	35	B
+E	38	B
+F	65	C
+G	20	C

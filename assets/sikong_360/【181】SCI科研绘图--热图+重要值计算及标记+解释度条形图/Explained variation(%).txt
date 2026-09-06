@@ -1,0 +1,11 @@
+env	Explained variation(%)
+pH	53.99
+N_P	84.69
+C_N	8.51
+AK	38.68
+AP	70.82
+AN	78.98
+TK	60.93
+TP	66.91
+TN	48
+SOM	48.69

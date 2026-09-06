@@ -1,0 +1,5 @@
+group	value
+S. parasanguinis (SGB8076)	12
+Ruminococcaceae SGB15073 (SGB15073)	3
+S. thermophilus-salivarius-vest. (SGB8002)	32
+B. angulatum (SGB17231)	5

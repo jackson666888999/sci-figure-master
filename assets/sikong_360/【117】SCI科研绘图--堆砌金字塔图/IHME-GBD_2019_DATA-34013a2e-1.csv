@@ -1,0 +1,832 @@
+measure,location,sex,age,cause,rei,metric,year,val,upper,lower
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Alcohol use,Number,2019,4183.19496,6210.829963,2402.541282
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Alcohol use,Number,2019,992.3565949,1407.779798,649.6312738
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Alcohol use,Percent,2019,0.08390436,0.12418999,0.048766477
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Alcohol use,Percent,2019,0.03478376,0.0478489,0.024040909
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Alcohol use,Rate,2019,1.374386259,2.040564555,0.789353534
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Alcohol use,Rate,2019,0.335509225,0.475961072,0.219636052
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Drug use,Number,2019,831.7539098,1203.445826,516.8692481
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Drug use,Number,2019,583.7319043,894.695495,347.0303607
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Drug use,Percent,2019,0.016725837,0.023939414,0.010440591
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Drug use,Percent,2019,0.020510008,0.031457814,0.012063706
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Drug use,Rate,2019,0.273272261,0.395391423,0.169817089
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Drug use,Rate,2019,0.19735591,0.302490651,0.117328678
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Metabolic risks,Number,2019,3811.976964,8403.310164,1118.273194
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Metabolic risks,Number,2019,1292.587871,3216.005008,190.5724316
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Metabolic risks,Percent,2019,0.076556797,0.172707152,0.021787959
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Metabolic risks,Percent,2019,0.045382707,0.107563177,0.006964652
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Metabolic risks,Rate,2019,1.252422804,2.760902643,0.367408004
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Metabolic risks,Rate,2019,0.437015441,1.087310099,0.064431283
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,High body-mass index,Number,2019,3811.976964,8403.310164,1118.273194
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,High body-mass index,Number,2019,1292.587871,3216.005008,190.5724316
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,High body-mass index,Percent,2019,0.076556797,0.172707152,0.021787959
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,High body-mass index,Percent,2019,0.045382707,0.107563177,0.006964652
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,High body-mass index,Rate,2019,1.252422804,2.760902643,0.367408004
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,High body-mass index,Rate,2019,0.437015441,1.087310099,0.064431283
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,All risk factors,Number,2019,8316.419924,12901.74144,4891.546566
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,All risk factors,Number,2019,2741.958782,4584.655513,1588.67443
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,All risk factors,Percent,2019,0.166931351,0.254753397,0.101527337
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,All risk factors,Percent,2019,0.096216373,0.156213674,0.055811522
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,All risk factors,Rate,2019,2.732354905,4.238859611,1.607114765
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,All risk factors,Rate,2019,0.927038194,1.550041815,0.537120355
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Behavioral risks,Number,2019,4982.19784,7059.369705,3147.389419
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Behavioral risks,Number,2019,1558.258295,2111.672399,1122.541918
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Behavioral risks,Percent,2019,0.09997442,0.140710426,0.063714077
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Behavioral risks,Percent,2019,0.054663769,0.071172726,0.040959422
+DALYs (Disability-Adjusted Life Years),Global,Male,20-24 years,Liver cancer,Behavioral risks,Rate,2019,1.636898189,2.319351791,1.034072954
+DALYs (Disability-Adjusted Life Years),Global,Female,20-24 years,Liver cancer,Behavioral risks,Rate,2019,0.52683686,0.713942522,0.379524025
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Alcohol use,Number,2019,11492.52813,16938.44199,6382.388884
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Alcohol use,Number,2019,2084.168284,3313.674097,1294.018908
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Alcohol use,Percent,2019,0.111220497,0.161523167,0.063386108
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Alcohol use,Percent,2019,0.050841823,0.078629509,0.032016465
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Alcohol use,Rate,2019,3.770798607,5.557650394,2.094117399
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Alcohol use,Rate,2019,0.693121491,1.102012131,0.430345439
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Drug use,Number,2019,2392.284224,3492.89924,1591.787231
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Drug use,Number,2019,1494.432785,2296.355349,891.2224133
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Drug use,Percent,2019,0.023165805,0.033288512,0.015604755
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Drug use,Percent,2019,0.036456683,0.055136002,0.022274722
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Drug use,Rate,2019,0.784929297,1.146050673,0.522279259
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Drug use,Rate,2019,0.496996086,0.763687489,0.29638941
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Metabolic risks,Number,2019,11385.85727,23958.21681,3618.95497
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Metabolic risks,Number,2019,2873.620587,6554.252315,576.2196534
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Metabolic risks,Percent,2019,0.110108354,0.231093596,0.034120662
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Metabolic risks,Percent,2019,0.070108942,0.154349877,0.014110121
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Metabolic risks,Rate,2019,3.73579897,7.860899671,1.187410656
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Metabolic risks,Rate,2019,0.955665721,2.179715128,0.191630507
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,High fasting plasma glucose,Number,2019,128.5880095,353.1410528,21.38252878
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,High fasting plasma glucose,Number,2019,132.548451,355.983652,22.13586483
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.001246012,0.003338806,0.00019832
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.003227866,0.008693616,0.00052139
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,High fasting plasma glucose,Rate,2019,0.042190846,0.115868656,0.007015794
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,High fasting plasma glucose,Rate,2019,0.04408098,0.118387714,0.007361615
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,High body-mass index,Number,2019,11267.44672,23900.3778,3514.183314
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,High body-mass index,Number,2019,2747.69284,6448.538117,433.3575288
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,High body-mass index,Percent,2019,0.108961004,0.230711254,0.033754875
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,High body-mass index,Percent,2019,0.067042569,0.150609356,0.010820591
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,High body-mass index,Rate,2019,3.696947437,7.841922187,1.153034162
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,High body-mass index,Rate,2019,0.913786556,2.144558282,0.14411956
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,All risk factors,Number,2019,23428.85438,35279.86981,14436.43559
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,All risk factors,Number,2019,6114.55531,9386.835998,3634.843347
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,All risk factors,Percent,2019,0.226670775,0.334738758,0.145834618
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,All risk factors,Percent,2019,0.149152362,0.226148968,0.093849161
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,All risk factors,Rate,2019,7.687211245,11.57563266,4.736720295
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,All risk factors,Rate,2019,2.03348728,3.12173341,1.208821792
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Behavioral risks,Number,2019,13779.0708,19436.74454,8636.059806
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Behavioral risks,Number,2019,3557.005404,5083.516309,2440.327518
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Behavioral risks,Percent,2019,0.133364497,0.185978684,0.084149582
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Behavioral risks,Percent,2019,0.086767868,0.119812736,0.061009039
+DALYs (Disability-Adjusted Life Years),Global,Male,25-29 years,Liver cancer,Behavioral risks,Rate,2019,4.521033178,6.377365227,2.833566464
+DALYs (Disability-Adjusted Life Years),Global,Female,25-29 years,Liver cancer,Behavioral risks,Rate,2019,1.182935614,1.690599762,0.811567598
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Tobacco,Number,2019,10748.15308,21307.67762,317.929276
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Tobacco,Number,2019,371.4342216,777.8102001,15.29534379
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Tobacco,Percent,2019,0.04480252,0.090237119,0.001449809
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Tobacco,Percent,2019,0.005592188,0.011965111,0.000238732
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Tobacco,Rate,2019,3.545202094,7.028186404,0.104866718
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Tobacco,Rate,2019,0.124409472,0.260522458,0.005123076
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Smoking,Number,2019,10748.15308,21307.67762,317.929276
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Smoking,Number,2019,371.4342216,777.8102001,15.29534379
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Smoking,Percent,2019,0.04480252,0.090237119,0.001449809
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Smoking,Percent,2019,0.005592188,0.011965111,0.000238732
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Smoking,Rate,2019,3.545202094,7.028186404,0.104866718
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Smoking,Rate,2019,0.124409472,0.260522458,0.005123076
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Alcohol use,Number,2019,29817.76309,44226.44577,17349.38441
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Alcohol use,Number,2019,4495.487372,6583.135667,3006.181868
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Alcohol use,Percent,2019,0.124400501,0.181764892,0.074658592
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Alcohol use,Percent,2019,0.0674121,0.097051417,0.045259347
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Alcohol use,Rate,2019,9.835177765,14.5877796,5.722571451
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Alcohol use,Rate,2019,1.505734202,2.204978395,1.006901028
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Drug use,Number,2019,6792.511104,9545.24416,4693.859223
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Drug use,Number,2019,3918.959372,5601.316633,2588.805362
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Drug use,Percent,2019,0.028373404,0.039367539,0.020566027
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Drug use,Percent,2019,0.058742205,0.082330146,0.039364361
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Drug use,Rate,2019,2.240461633,3.148431116,1.548236188
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Drug use,Rate,2019,1.312629905,1.876124507,0.867103487
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Metabolic risks,Number,2019,30543.34567,63235.42401,9847.479164
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Metabolic risks,Number,2019,5564.108019,12539.84013,1113.448444
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Metabolic risks,Percent,2019,0.12731501,0.264221284,0.041811478
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Metabolic risks,Percent,2019,0.083426877,0.180944697,0.017446682
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Metabolic risks,Rate,2019,10.07450604,20.85775631,3.248121189
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Metabolic risks,Rate,2019,1.863661724,4.20013774,0.372942301
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,High fasting plasma glucose,Number,2019,356.3567905,955.048961,59.13283769
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,High fasting plasma glucose,Number,2019,249.4401034,686.8788758,40.63287389
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.001489287,0.003933589,0.000250703
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.003740712,0.010006058,0.000613502
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,High fasting plasma glucose,Rate,2019,0.117541761,0.315016129,0.019504547
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,High fasting plasma glucose,Rate,2019,0.083548337,0.230065604,0.013609716
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,High body-mass index,Number,2019,30218.57795,62892.10726,9695.390416
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,High body-mass index,Number,2019,5328.974652,12487.45333,861.1916662
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,High body-mass index,Percent,2019,0.125957764,0.262718238,0.040450993
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,High body-mass index,Percent,2019,0.079900743,0.175812884,0.013564388
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,High body-mass index,Rate,2019,9.967383704,20.74451571,3.197955794
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,High body-mass index,Rate,2019,1.784905335,4.182591122,0.288450537
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,All risk factors,Number,2019,69773.49237,98297.35195,45703.18238
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,All risk factors,Number,2019,13401.76817,19658.86245,8710.519405
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,All risk factors,Percent,2019,0.2909995,0.399865805,0.199230032
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,All risk factors,Percent,2019,0.200936855,0.284264064,0.134807468
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,All risk factors,Rate,2019,23.01429181,32.42268467,15.0748707
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,All risk factors,Rate,2019,4.48883492,6.584607877,2.917531716
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Behavioral risks,Number,2019,45397.33229,62868.28867,31004.81597
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Behavioral risks,Number,2019,8686.607694,11571.50521,6357.518082
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Behavioral risks,Percent,2019,0.189401047,0.253287242,0.131612678
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Behavioral risks,Percent,2019,0.130250246,0.168226025,0.096574717
+DALYs (Disability-Adjusted Life Years),Global,Male,30-34 years,Liver cancer,Behavioral risks,Rate,2019,14.97398821,20.73665932,10.22671874
+DALYs (Disability-Adjusted Life Years),Global,Female,30-34 years,Liver cancer,Behavioral risks,Rate,2019,2.909522644,3.875800267,2.129409255
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Tobacco,Number,2019,37001.12681,71481.89656,2981.056472
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Tobacco,Number,2019,1157.69355,2301.014362,79.29565907
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Tobacco,Percent,2019,0.099452207,0.186145675,0.00809457
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Tobacco,Percent,2019,0.012168954,0.024213993,0.000825523
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Tobacco,Rate,2019,13.57639123,26.2280173,1.093804229
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Tobacco,Rate,2019,0.431273742,0.857193231,0.029539886
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Smoking,Number,2019,37001.12681,71481.89656,2981.056472
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Smoking,Number,2019,1157.69355,2301.014362,79.29565907
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Smoking,Percent,2019,0.099452207,0.186145675,0.00809457
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Smoking,Percent,2019,0.012168954,0.024213993,0.000825523
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Smoking,Rate,2019,13.57639123,26.2280173,1.093804229
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Smoking,Rate,2019,0.431273742,0.857193231,0.029539886
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Alcohol use,Number,2019,53775.42285,80578.82106,31956.78993
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Alcohol use,Number,2019,8818.102877,13842.28143,5288.386947
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Alcohol use,Percent,2019,0.144731205,0.20934642,0.089964074
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Alcohol use,Percent,2019,0.092328325,0.143417538,0.058232747
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Alcohol use,Rate,2019,19.73118774,29.56584554,11.72553163
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Alcohol use,Rate,2019,3.284993881,5.156643152,1.970074403
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Drug use,Number,2019,14485.03735,20670.14185,10211.30762
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Drug use,Number,2019,8348.848916,12311.49768,5218.208233
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Drug use,Percent,2019,0.039024548,0.054258961,0.028003975
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Drug use,Percent,2019,0.087371828,0.126227046,0.057112642
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Drug use,Rate,2019,5.314825548,7.584253695,3.746715823
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Drug use,Rate,2019,3.110183448,4.586382708,1.943930838
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Metabolic risks,Number,2019,51027.48624,103932.9787,17021.98849
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Metabolic risks,Number,2019,9073.265676,19638.83856,1835.472011
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Metabolic risks,Percent,2019,0.137470495,0.279888741,0.046567687
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Metabolic risks,Percent,2019,0.095019447,0.201993311,0.020288473
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Metabolic risks,Rate,2019,18.72291945,38.13491381,6.245679396
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Metabolic risks,Rate,2019,3.380049274,7.316025385,0.683765478
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,High fasting plasma glucose,Number,2019,722.470472,1926.851922,134.3208552
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,High fasting plasma glucose,Number,2019,437.6585396,1212.686257,71.81909834
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.001951262,0.005053352,0.000332921
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.004585822,0.012373586,0.000760655
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,High fasting plasma glucose,Rate,2019,0.265087651,0.706997267,0.049284782
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,High fasting plasma glucose,Rate,2019,0.163040242,0.451760088,0.026754655
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,High body-mass index,Number,2019,50371.11033,103440.1636,16574.32416
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,High body-mass index,Number,2019,8662.813641,19314.33721,1494.301341
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,High body-mass index,Percent,2019,0.13569795,0.279098801,0.045207398
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,High body-mass index,Percent,2019,0.090718805,0.197361645,0.015173913
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,High body-mass index,Rate,2019,18.48208311,37.95409089,6.081423152
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,High body-mass index,Rate,2019,3.227144228,7.195139414,0.556669709
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,All risk factors,Number,2019,135015.4405,181785.9551,93268.41832
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,All risk factors,Number,2019,25148.37367,34785.61879,17151.99339
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,All risk factors,Percent,2019,0.363390278,0.480193483,0.259405561
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,All risk factors,Percent,2019,0.263309013,0.356089328,0.183590228
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,All risk factors,Rate,2019,49.53963842,66.70059701,34.22189123
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,All risk factors,Rate,2019,9.368483764,12.95863141,6.389604898
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Behavioral risks,Number,2019,98089.84846,135771.8386,64858.0931
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Behavioral risks,Number,2019,17974.64762,24007.04898,12722.40608
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Behavioral risks,Percent,2019,0.263923938,0.351822705,0.18118098
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Behavioral risks,Percent,2019,0.18818896,0.249097077,0.140378034
+DALYs (Disability-Adjusted Life Years),Global,Male,35-39 years,Liver cancer,Behavioral risks,Rate,2019,35.99096227,49.81717472,23.79762247
+DALYs (Disability-Adjusted Life Years),Global,Female,35-39 years,Liver cancer,Behavioral risks,Rate,2019,6.696066975,8.943307887,4.739457762
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Tobacco,Number,2019,90986.51393,165589.7222,15586.80415
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Tobacco,Number,2019,2702.005177,5163.632258,277.9265606
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Tobacco,Percent,2019,0.151237969,0.261757615,0.026938909
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Tobacco,Percent,2019,0.018684382,0.036270645,0.001940997
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Tobacco,Rate,2019,36.57829057,66.570184,6.266188544
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Tobacco,Rate,2019,1.104217867,2.110201361,0.113579158
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Smoking,Number,2019,90986.51393,165589.7222,15586.80415
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Smoking,Number,2019,2702.005177,5163.632258,277.9265606
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Smoking,Percent,2019,0.151237969,0.261757615,0.026938909
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Smoking,Percent,2019,0.018684382,0.036270645,0.001940997
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Smoking,Rate,2019,36.57829057,66.570184,6.266188544
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Smoking,Rate,2019,1.104217867,2.110201361,0.113579158
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Alcohol use,Number,2019,95685.03593,137655.2091,58441.9419
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Alcohol use,Number,2019,15810.14007,23294.78392,10177.83833
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Alcohol use,Percent,2019,0.159407352,0.221621426,0.104453233
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Alcohol use,Percent,2019,0.109004189,0.158664655,0.071572716
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Alcohol use,Rate,2019,38.46718482,55.33998415,23.49476027
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Alcohol use,Rate,2019,6.461067989,9.519788061,4.159337309
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Drug use,Number,2019,30155.73494,40543.22,21605.03947
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Drug use,Number,2019,17071.94144,23612.69755,11841.02496
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Drug use,Percent,2019,0.050246995,0.067932984,0.037291176
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Drug use,Percent,2019,0.117644245,0.158707291,0.08439065
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Drug use,Rate,2019,12.12317284,16.29913729,8.68563238
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Drug use,Rate,2019,6.97672341,9.649708578,4.839025269
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Metabolic risks,Number,2019,85917.20171,173651.6031,29307.22474
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Metabolic risks,Number,2019,15048.14394,32427.70088,3232.21799
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Metabolic risks,Percent,2019,0.143026931,0.292152991,0.049546344
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Metabolic risks,Percent,2019,0.103735516,0.215986874,0.022958356
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Metabolic risks,Rate,2019,34.54033168,69.81121181,11.78205578
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Metabolic risks,Rate,2019,6.149666018,13.25210145,1.32089786
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,High fasting plasma glucose,Number,2019,1509.885295,3852.699997,282.6897903
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,High fasting plasma glucose,Number,2019,835.9285557,2143.266896,135.8016398
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.002519126,0.006563282,0.000458175
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.005760688,0.014903269,0.000978095
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,High fasting plasma glucose,Rate,2019,0.607002298,1.54885789,0.113646615
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,High fasting plasma glucose,Rate,2019,0.341615647,0.875880484,0.055497524
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,High body-mass index,Number,2019,84545.29275,173342.0513,28189.73373
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,High body-mass index,Number,2019,14266.54053,31541.69765,2507.501467
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,High body-mass index,Percent,2019,0.140737825,0.288275947,0.047974848
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,High body-mass index,Percent,2019,0.098349071,0.211316044,0.016889662
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,High body-mass index,Rate,2019,33.98879846,69.68676618,11.33280337
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,High body-mass index,Rate,2019,5.830251214,12.89002198,1.024730799
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,All risk factors,Number,2019,254062.6163,341683.8601,175923.9237
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,All risk factors,Number,2019,45840.7446,61420.31704,32699.26012
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,All risk factors,Percent,2019,0.422883133,0.540792372,0.307975502
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,All risk factors,Percent,2019,0.316002105,0.405671192,0.233907062
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,All risk factors,Rate,2019,102.1379521,137.3633408,70.72472745
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,All risk factors,Rate,2019,18.73355746,25.10040028,13.3630785
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Behavioral risks,Number,2019,197412.5781,274567.3911,130583.134
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Behavioral risks,Number,2019,34650.46968,44086.14864,26216.52173
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Behavioral risks,Percent,2019,0.328588298,0.428270397,0.225157404
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Behavioral risks,Percent,2019,0.238873486,0.29454865,0.184064711
+DALYs (Disability-Adjusted Life Years),Global,Male,40-44 years,Liver cancer,Behavioral risks,Rate,2019,79.36357082,110.3812574,52.49687689
+DALYs (Disability-Adjusted Life Years),Global,Female,40-44 years,Liver cancer,Behavioral risks,Rate,2019,14.16047166,18.01651361,10.71380321
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Tobacco,Number,2019,174836.3584,292462.7187,54697.59214
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Tobacco,Number,2019,5494.530709,10022.22271,1121.547815
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Tobacco,Percent,2019,0.196407402,0.317247801,0.06210958
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Tobacco,Percent,2019,0.025600633,0.046628854,0.005189166
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Tobacco,Rate,2019,73.34594602,122.6916128,22.94629491
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Tobacco,Rate,2019,2.333839193,4.257007087,0.476385043
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Smoking,Number,2019,174836.3584,292462.7187,54697.59214
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Smoking,Number,2019,5494.530709,10022.22271,1121.547815
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Smoking,Percent,2019,0.196407402,0.317247801,0.06210958
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Smoking,Percent,2019,0.025600633,0.046628854,0.005189166
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Smoking,Rate,2019,73.34594602,122.6916128,22.94629491
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Smoking,Rate,2019,2.333839193,4.257007087,0.476385043
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Alcohol use,Number,2019,155229.547,217756.6886,101747.5845
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Alcohol use,Number,2019,26481.20349,41173.7086,15696.67516
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Alcohol use,Percent,2019,0.174864633,0.239687901,0.116332192
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Alcohol use,Percent,2019,0.122959961,0.185204127,0.074980759
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Alcohol use,Rate,2019,65.12065384,91.35153851,42.68433013
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Alcohol use,Rate,2019,11.24807083,17.48881205,6.667269261
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Drug use,Number,2019,58811.35693,81391.25924,41379.00731
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Drug use,Number,2019,33439.10744,46545.65303,23137.28471
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Drug use,Percent,2019,0.066215585,0.090578139,0.047865216
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Drug use,Percent,2019,0.15513942,0.205538624,0.110835778
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Drug use,Rate,2019,24.6720685,34.14460792,17.35898908
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Drug use,Rate,2019,14.20348773,19.77058189,9.827718645
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Metabolic risks,Number,2019,131931.5873,263234.3333,44850.85924
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Metabolic risks,Number,2019,24067.00862,50203.35313,5450.097831
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Metabolic risks,Percent,2019,0.14860014,0.298007649,0.049853306
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Metabolic risks,Percent,2019,0.111722341,0.229151564,0.025653526
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Metabolic risks,Rate,2019,55.34688078,110.4299551,18.81547254
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Metabolic risks,Rate,2019,10.22262518,21.32421482,2.314966027
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,High fasting plasma glucose,Number,2019,2939.764249,7427.872121,534.88669
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,High fasting plasma glucose,Number,2019,1672.026353,4287.401774,279.6980277
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.003311313,0.008329918,0.00058575
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.007766172,0.019838798,0.001342045
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,High fasting plasma glucose,Rate,2019,1.233266306,3.116081304,0.224391372
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,High fasting plasma glucose,Rate,2019,0.710204537,1.821102989,0.118803635
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,High body-mass index,Number,2019,129255.2268,260807.4066,42087.22632
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,High body-mass index,Number,2019,22504.94178,49169.30099,3903.971223
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,High body-mass index,Percent,2019,0.145585964,0.296121043,0.049261755
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,High body-mass index,Percent,2019,0.104467032,0.223739661,0.018800434
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,High body-mass index,Rate,2019,54.2241155,109.4118303,17.65609544
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,High body-mass index,Rate,2019,9.559126695,20.88499416,1.658238261
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,All risk factors,Number,2019,425897.5243,553554.0388,303449.1908
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,All risk factors,Number,2019,79842.30449,102342.609,60361.55659
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,All risk factors,Percent,2019,0.479168899,0.587884615,0.370196978
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,All risk factors,Percent,2019,0.370608353,0.459779353,0.289756736
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,All risk factors,Rate,2019,178.6691116,232.2225481,127.3005694
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,All risk factors,Rate,2019,33.91356048,43.47071748,25.63898065
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Behavioral risks,Number,2019,347380.9083,462137.953,240456.5655
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Behavioral risks,Number,2019,63178.09796,80819.93989,47674.39805
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Behavioral risks,Percent,2019,0.390783225,0.496217296,0.287375427
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Behavioral risks,Percent,2019,0.293275048,0.357078175,0.228778704
+DALYs (Disability-Adjusted Life Years),Global,Male,45-49 years,Liver cancer,Behavioral risks,Rate,2019,145.7304509,193.8724054,100.8744087
+DALYs (Disability-Adjusted Life Years),Global,Female,45-49 years,Liver cancer,Behavioral risks,Rate,2019,26.83532571,34.32881775,20.25002399
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Tobacco,Number,2019,268254.3755,416560.9271,121334.2093
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Tobacco,Number,2019,12381.52832,21180.65151,3770.855764
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Tobacco,Percent,2019,0.227691888,0.342296826,0.1024405
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Tobacco,Percent,2019,0.037629561,0.064700467,0.012074477
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Tobacco,Rate,2019,123.2866189,191.4466006,55.76380401
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Tobacco,Rate,2019,5.647712274,9.66134571,1.720038741
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Smoking,Number,2019,268254.3755,416560.9271,121334.2093
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Smoking,Number,2019,12381.52832,21180.65151,3770.855764
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Smoking,Percent,2019,0.227691888,0.342296826,0.1024405
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Smoking,Percent,2019,0.037629561,0.064700467,0.012074477
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Smoking,Rate,2019,123.2866189,191.4466006,55.76380401
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Smoking,Rate,2019,5.647712274,9.66134571,1.720038741
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Alcohol use,Number,2019,227559.166,310282.6308,156792.9264
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Alcohol use,Number,2019,43623.95824,65706.56988,27433.01642
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Alcohol use,Percent,2019,0.193782895,0.259706714,0.134657204
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Alcohol use,Percent,2019,0.132163618,0.194070645,0.084747367
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Alcohol use,Rate,2019,104.5835697,142.6023206,72.06022169
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Alcohol use,Rate,2019,19.89863917,29.97140512,12.51330042
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Drug use,Number,2019,103222.3962,137676.4672,74742.83371
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Drug use,Number,2019,62275.14083,82080.86157,45486.31102
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Drug use,Percent,2019,0.087841384,0.115855716,0.065378648
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Drug use,Percent,2019,0.188671785,0.241707478,0.140756778
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Drug use,Rate,2019,47.43982347,63.27451737,34.35094484
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Drug use,Rate,2019,28.40619253,37.4403771,20.74813306
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Metabolic risks,Number,2019,184689.5803,365073.3814,65325.95606
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Metabolic risks,Number,2019,39983.57861,83751.27107,9195.651937
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Metabolic risks,Percent,2019,0.157186007,0.309690456,0.055007403
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Metabolic risks,Percent,2019,0.12109185,0.244341953,0.028707735
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Metabolic risks,Rate,2019,84.88120225,167.783518,30.02305642
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Metabolic risks,Rate,2019,18.23811584,38.20231796,4.194506121
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,High fasting plasma glucose,Number,2019,5054.278024,12406.84702,975.5147606
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,High fasting plasma glucose,Number,2019,3292.526746,8094.833204,541.4996137
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.004309124,0.010524068,0.000776643
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.009968578,0.024814413,0.001689871
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,High fasting plasma glucose,Rate,2019,2.322887921,5.702043881,0.44833534
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,High fasting plasma glucose,Rate,2019,1.501853667,3.692378491,0.246999719
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,High body-mass index,Number,2019,180089.2875,363932.1957,60101.96359
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,High body-mass index,Number,2019,36908.92151,80177.14261,6422.365081
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,High body-mass index,Percent,2019,0.153264146,0.306645053,0.053559675
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,High body-mass index,Percent,2019,0.111782883,0.235785124,0.020034388
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,High body-mass index,Rate,2019,82.76696071,167.2590423,27.62216969
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,High body-mass index,Rate,2019,16.83564126,36.57201444,2.929498618
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,All risk factors,Number,2019,623683.2702,787004.259,479817.6178
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,All risk factors,Number,2019,138780.7078,174399.0658,106891.0884
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,All risk factors,Percent,2019,0.530314934,0.628037985,0.424979048
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,All risk factors,Percent,2019,0.42045409,0.507526517,0.340407471
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,All risk factors,Rate,2019,286.637642,361.698086,220.5186464
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,All risk factors,Rate,2019,63.30345387,79.55041728,48.75731788
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Behavioral risks,Number,2019,525485.175,670349.0386,400365.1362
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Behavioral risks,Number,2019,112911.4873,140790.4415,88607.64422
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Behavioral risks,Percent,2019,0.446784537,0.54135625,0.344149556
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Behavioral risks,Percent,2019,0.342137604,0.412955688,0.276634952
+DALYs (Disability-Adjusted Life Years),Global,Male,50-54 years,Liver cancer,Behavioral risks,Rate,2019,241.5069294,308.0846913,184.0032018
+DALYs (Disability-Adjusted Life Years),Global,Female,50-54 years,Liver cancer,Behavioral risks,Rate,2019,51.50346357,64.22017413,40.41750477
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Tobacco,Number,2019,306060.0472,456179.3627,150967.7964
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Tobacco,Number,2019,18895.36154,30084.75744,7930.772267
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Tobacco,Percent,2019,0.243521427,0.355289483,0.120200125
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Tobacco,Percent,2019,0.048529375,0.079989884,0.020499868
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Tobacco,Rate,2019,167.4636025,249.6027827,82.60343445
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Tobacco,Rate,2019,10.03735781,15.98124886,4.212885728
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Smoking,Number,2019,306060.0472,456179.3627,150967.7964
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Smoking,Number,2019,18895.36154,30084.75744,7930.772267
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Smoking,Percent,2019,0.243521427,0.355289483,0.120200125
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Smoking,Percent,2019,0.048529375,0.079989884,0.020499868
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Smoking,Rate,2019,167.4636025,249.6027827,82.60343445
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Smoking,Rate,2019,10.03735781,15.98124886,4.212885728
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Alcohol use,Number,2019,276740.4363,359580.1928,201762.8814
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Alcohol use,Number,2019,53432.57248,77224.62419,33996.71526
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Alcohol use,Percent,2019,0.220751452,0.285462115,0.161858558
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Alcohol use,Percent,2019,0.136736513,0.194643878,0.089108345
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Alcohol use,Rate,2019,151.4211045,196.7476481,110.3964378
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Alcohol use,Rate,2019,28.38378338,41.02229974,18.05931021
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Drug use,Number,2019,141854.9172,190722.5963,102910.1002
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Drug use,Number,2019,84548.62811,110595.1702,60550.78205
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Drug use,Percent,2019,0.113104113,0.150839746,0.083494041
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Drug use,Percent,2019,0.216592482,0.279703145,0.159665167
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Drug use,Rate,2019,77.6172378,104.3556431,56.30821882
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Drug use,Rate,2019,44.91286558,58.74898415,32.1650297
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Metabolic risks,Number,2019,205947.1445,396593.8483,73125.68655
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Metabolic risks,Number,2019,49589.31651,100791.8242,11794.72345
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Metabolic risks,Percent,2019,0.164111087,0.316438673,0.059120473
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Metabolic risks,Percent,2019,0.126947062,0.252498731,0.03083209
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Metabolic risks,Rate,2019,112.6858963,217.0000141,40.01139977
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Metabolic risks,Rate,2019,26.34221697,53.54137319,6.265445588
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,High fasting plasma glucose,Number,2019,7041.899128,16779.88833,1337.966564
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,High fasting plasma glucose,Number,2019,4672.686619,11605.90018,832.117998
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.005619582,0.013421842,0.001048251
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.011962819,0.030180793,0.002120042
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,High fasting plasma glucose,Rate,2019,3.853040627,9.18127202,0.732080854
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,High fasting plasma glucose,Rate,2019,2.482166189,6.165141248,0.442027323
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,High body-mass index,Number,2019,199524.0792,389159.986,67176.57659
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,High body-mass index,Number,2019,45216.82561,96016.9916,8182.374648
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,High body-mass index,Percent,2019,0.158985341,0.313894653,0.053638207
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,High body-mass index,Percent,2019,0.115752467,0.238964018,0.019965742
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,High body-mass index,Rate,2019,109.1714563,212.9325071,36.7562889
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,High body-mass index,Rate,2019,24.019517,51.0049463,4.346538801
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,All risk factors,Number,2019,722107.645,878831.0758,570926.7179
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,All risk factors,Number,2019,178028.9169,221365.9285,139042.1609
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,All risk factors,Percent,2019,0.57528521,0.664744471,0.468523671
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,All risk factors,Percent,2019,0.455893076,0.540673917,0.370753088
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,All risk factors,Rate,2019,395.1079166,480.8605999,312.3878657
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,All risk factors,Rate,2019,94.57029632,117.591242,73.86023903
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Behavioral risks,Number,2019,625012.2577,764156.772,496169.4703
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Behavioral risks,Number,2019,147973.9002,179543.0381,115696.8038
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Behavioral risks,Percent,2019,0.497976754,0.585624741,0.400432032
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Behavioral risks,Percent,2019,0.378980904,0.442713264,0.308939195
+DALYs (Disability-Adjusted Life Years),Global,Male,55-59 years,Liver cancer,Behavioral risks,Rate,2019,341.981272,418.1154876,271.4837421
+DALYs (Disability-Adjusted Life Years),Global,Female,55-59 years,Liver cancer,Behavioral risks,Rate,2019,78.60484594,95.37460886,61.45901021
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Tobacco,Number,2019,317546.9593,457630.3793,166775.3471
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Tobacco,Number,2019,25773.74295,39572.09407,11840.25382
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Tobacco,Percent,2019,0.257237342,0.363822645,0.134095455
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Tobacco,Percent,2019,0.058087163,0.091573687,0.02748059
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Tobacco,Rate,2019,208.7000654,300.766508,109.6090667
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Tobacco,Rate,2019,16.07035287,24.67385187,7.382593104
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Smoking,Number,2019,317546.9593,457630.3793,166775.3471
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Smoking,Number,2019,25773.74295,39572.09407,11840.25382
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Smoking,Percent,2019,0.257237342,0.363822645,0.134095455
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Smoking,Percent,2019,0.058087163,0.091573687,0.02748059
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Smoking,Rate,2019,208.7000654,300.766508,109.6090667
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Smoking,Rate,2019,16.07035287,24.67385187,7.382593104
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Alcohol use,Number,2019,303236.7548,387029.0259,226847.9764
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Alcohol use,Number,2019,65278.90605,92552.85315,43184.12537
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Alcohol use,Percent,2019,0.246095342,0.315006639,0.184246916
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Alcohol use,Percent,2019,0.146770076,0.203292915,0.100435103
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Alcohol use,Rate,2019,199.2950293,254.3654746,149.0903506
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Alcohol use,Rate,2019,40.70247218,57.70822703,26.92601282
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Drug use,Number,2019,159085.5158,216879.4412,116011.1934
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Drug use,Number,2019,101341.9823,135481.6431,70976.18385
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Drug use,Percent,2019,0.129019417,0.173079906,0.094118654
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Drug use,Percent,2019,0.228069714,0.299669589,0.160788918
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Drug use,Rate,2019,104.555111,142.5387718,76.24555343
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Drug use,Rate,2019,63.1883937,84.47503401,44.25481864
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Metabolic risks,Number,2019,203196.148,393031.2974,73664.14682
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Metabolic risks,Number,2019,56924.2732,114713.9365,13890.74257
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Metabolic risks,Percent,2019,0.164792519,0.318268103,0.059617373
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Metabolic risks,Percent,2019,0.128124132,0.253633395,0.032314603
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Metabolic risks,Rate,2019,133.545758,258.3103226,48.41398039
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Metabolic risks,Rate,2019,35.49322111,71.52602716,8.661106584
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,High fasting plasma glucose,Number,2019,8620.050727,20952.53446,1778.885488
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,High fasting plasma glucose,Number,2019,6250.235424,15277.74993,1129.644993
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.006997238,0.016633395,0.001455421
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.01405324,0.034396237,0.002480286
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,High fasting plasma glucose,Rate,2019,5.665320035,13.77054695,1.1691295
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,High fasting plasma glucose,Rate,2019,3.897124643,9.525928496,0.704352243
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,High body-mass index,Number,2019,195276.9609,383953.696,66057.75492
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,High body-mass index,Number,2019,51042.42222,108667.1331,9141.415583
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,High body-mass index,Percent,2019,0.158364216,0.312975518,0.054553754
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,High body-mass index,Percent,2019,0.11490029,0.238971319,0.020340688
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,High body-mass index,Rate,2019,128.3410636,252.3442884,43.41486312
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,High body-mass index,Rate,2019,31.82579023,67.75574578,5.699823051
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,All risk factors,Number,2019,750469.2996,890459.5623,611845.5802
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,All risk factors,Number,2019,213376.8156,261463.9555,168640.6197
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,All risk factors,Percent,2019,0.608467967,0.694750414,0.511121131
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,All risk factors,Percent,2019,0.480066523,0.570200355,0.393066058
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,All risk factors,Rate,2019,493.2278119,585.2330292,402.1207222
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,All risk factors,Rate,2019,133.0439559,163.027079,105.1502016
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Behavioral risks,Number,2019,664258.5942,789845.4607,540693.9095
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Behavioral risks,Number,2019,180338.8188,217752.9114,142586.9426
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Behavioral risks,Percent,2019,0.538595924,0.61972465,0.448092847
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Behavioral risks,Percent,2019,0.405743069,0.472699914,0.33110205
+DALYs (Disability-Adjusted Life Years),Global,Male,60-64 years,Liver cancer,Behavioral risks,Rate,2019,436.5679091,519.1068423,355.358006
+DALYs (Disability-Adjusted Life Years),Global,Female,60-64 years,Liver cancer,Behavioral risks,Rate,2019,112.4442213,135.7725237,88.90530519
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Tobacco,Percent,2019,0.063718189,0.099383197,0.031152688
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Tobacco,Rate,2019,238.1269922,340.2331127,130.9134762
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Tobacco,Rate,2019,22.25065914,34.20985037,10.68329194
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Smoking,Number,2019,294364.8251,420585.0826,161830.9716
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Smoking,Number,2019,30031.02505,46171.97483,14418.90804
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Smoking,Percent,2019,0.264599314,0.374447714,0.148890579
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Smoking,Percent,2019,0.063718189,0.099383197,0.031152688
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Smoking,Rate,2019,238.1269922,340.2331127,130.9134762
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Smoking,Rate,2019,22.25065914,34.20985037,10.68329194
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Alcohol use,Number,2019,300226.5025,385166.3594,230104.3116
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Alcohol use,Number,2019,75307.63886,106213.4675,52106.26341
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Alcohol use,Percent,2019,0.270199987,0.343009174,0.208867071
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Alcohol use,Percent,2019,0.159458608,0.221960279,0.114475509
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Alcohol use,Rate,2019,242.8688075,311.5810684,186.1433261
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Alcohol use,Rate,2019,55.79711648,78.6959372,38.60669771
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Drug use,Number,2019,151764.4546,192605.1598,117487.2444
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Drug use,Number,2019,107783.8839,144101.1158,75016.80942
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Drug use,Percent,2019,0.136485237,0.170924415,0.107438515
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Drug use,Percent,2019,0.228273896,0.296651847,0.160250128
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Drug use,Rate,2019,122.7701479,155.808315,95.04153262
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Drug use,Rate,2019,79.85949391,106.7677445,55.58163443
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Metabolic risks,Number,2019,171135.3011,329022.1483,62565.47204
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Metabolic risks,Number,2019,58019.04494,119026.9324,14645.71986
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Metabolic risks,Percent,2019,0.153996955,0.295338218,0.055518536
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Metabolic risks,Percent,2019,0.122782097,0.243153936,0.031202519
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Metabolic risks,Rate,2019,138.4402315,266.1631006,50.61245912
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Metabolic risks,Rate,2019,42.98760999,88.18972037,10.8513419
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,High fasting plasma glucose,Number,2019,8827.919357,21314.92678,1801.572011
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,High fasting plasma glucose,Number,2019,7342.731776,17229.30715,1380.063772
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.007953673,0.019541752,0.001602667
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.015546826,0.03708312,0.0029813
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,High fasting plasma glucose,Rate,2019,7.141362368,17.24275107,1.457385148
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,High fasting plasma glucose,Rate,2019,5.440394446,12.7655796,1.022520162
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,High body-mass index,Number,2019,162899.7141,323664.7302,55401.30875
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,High body-mass index,Number,2019,51050.81477,111022.3235,8780.01242
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,High body-mass index,Percent,2019,0.146576939,0.290133748,0.049690799
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,High body-mass index,Percent,2019,0.108028058,0.226619202,0.019074258
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,High body-mass index,Rate,2019,131.7780375,261.8292069,44.81699542
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,High body-mass index,Rate,2019,37.82469217,82.25892632,6.505307869
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,All risk factors,Number,2019,697837.1094,812754.704,587084.11
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,All risk factors,Number,2019,232148.0522,282895.3912,186601.6569
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,All risk factors,Percent,2019,0.627610038,0.711941792,0.537360754
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,All risk factors,Percent,2019,0.491601419,0.580004288,0.402964931
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,All risk factors,Rate,2019,564.5166738,657.4794832,474.9228216
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,All risk factors,Rate,2019,172.0036919,209.603532,138.2573473
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Behavioral risks,Number,2019,630231.1928,737794.8126,522549.8152
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Behavioral risks,Number,2019,199389.0104,243354.0445,159283.0811
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Behavioral risks,Percent,2019,0.566815076,0.643695217,0.480113286
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Behavioral risks,Percent,2019,0.422300087,0.497914034,0.347888544
+DALYs (Disability-Adjusted Life Years),Global,Male,65-69 years,Liver cancer,Behavioral risks,Rate,2019,509.8267373,596.8405347,422.7176795
+DALYs (Disability-Adjusted Life Years),Global,Female,65-69 years,Liver cancer,Behavioral risks,Rate,2019,147.731784,180.3064626,118.0164026
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Tobacco,Number,2019,213737.4799,306581.9487,120110.4346
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Tobacco,Number,2019,26895.09384,40799.75955,13724.92519
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Tobacco,Percent,2019,0.256750502,0.359752943,0.148592007
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Tobacco,Percent,2019,0.06572702,0.10005243,0.033915063
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Tobacco,Rate,2019,242.597788,347.978757,136.3285736
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Tobacco,Rate,2019,27.17129199,41.21875114,13.86587279
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Smoking,Number,2019,213737.4799,306581.9487,120110.4346
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Smoking,Number,2019,26895.09384,40799.75955,13724.92519
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Smoking,Percent,2019,0.256750502,0.359752943,0.148592007
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Smoking,Percent,2019,0.06572702,0.10005243,0.033915063
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Smoking,Rate,2019,242.597788,347.978757,136.3285736
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Smoking,Rate,2019,27.17129199,41.21875114,13.86587279
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Alcohol use,Number,2019,234937.0668,301268.5424,178319.8513
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Alcohol use,Number,2019,63580.18079,90608.02377,43548.92056
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Alcohol use,Percent,2019,0.282520943,0.366374757,0.217200103
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Alcohol use,Percent,2019,0.155130348,0.220414128,0.109695605
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Alcohol use,Rate,2019,266.6598892,341.947898,202.397827
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Alcohol use,Rate,2019,64.23311505,91.53851944,43.99614455
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Drug use,Number,2019,123823.3216,154874.9815,94901.75432
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Drug use,Number,2019,89688.72445,123842.9772,62448.36991
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Drug use,Percent,2019,0.148788897,0.184324187,0.116709031
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Drug use,Percent,2019,0.218795457,0.295435514,0.154882151
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Drug use,Rate,2019,140.5428002,175.7872692,107.7160434
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Drug use,Rate,2019,90.60977941,125.114778,63.08968108
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Metabolic risks,Number,2019,118857.7425,230189.9725,42556.78325
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Metabolic risks,Number,2019,47448.46546,96610.14776,12713.85949
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Metabolic risks,Percent,2019,0.142891487,0.278918993,0.052706264
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Metabolic risks,Percent,2019,0.115766221,0.230699429,0.032200385
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Metabolic risks,Rate,2019,134.9067343,261.2718095,48.30309351
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Metabolic risks,Rate,2019,47.93573568,97.60228202,12.84442399
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,High fasting plasma glucose,Number,2019,7916.47844,19140.73386,1680.18813
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,High fasting plasma glucose,Number,2019,7105.254794,16600.13128,1425.398055
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.009531167,0.02306996,0.001972459
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.017354228,0.040231138,0.003424847
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,High fasting plasma glucose,Rate,2019,8.985415936,21.7252477,1.907058715
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,High fasting plasma glucose,Rate,2019,7.178221939,16.7706057,1.440036126
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,High body-mass index,Number,2019,111376.7525,225540.0215,37823.22347
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,High body-mass index,Number,2019,40649.3097,89472.1739,7129.24389
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,High body-mass index,Percent,2019,0.133884431,0.273972321,0.045268106
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,High body-mass index,Percent,2019,0.099159178,0.210192072,0.01756408
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,High body-mass index,Rate,2019,126.4156094,255.9939901,42.93037586
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,High body-mass index,Rate,2019,41.06675625,90.391005,7.20245739
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,All risk factors,Number,2019,527711.6633,611889.0061,446758.0283
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,All risk factors,Number,2019,195739.7157,240347.8428,157057.3578
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,All risk factors,Percent,2019,0.634231307,0.717333856,0.546323258
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,All risk factors,Percent,2019,0.477593206,0.568139142,0.396376968
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,All risk factors,Rate,2019,598.9669302,694.5104781,507.0823772
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,All risk factors,Rate,2019,197.7498573,242.8160858,158.6702524
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Behavioral risks,Number,2019,482453.7767,567361.4541,406248.4183
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Behavioral risks,Number,2019,168460.5456,208578.5375,134511.9917
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Behavioral risks,Percent,2019,0.579838875,0.657524475,0.497958449
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Behavioral risks,Percent,2019,0.411046786,0.49124022,0.338875043
+DALYs (Disability-Adjusted Life Years),Global,Male,70-74 years,Liver cancer,Behavioral risks,Rate,2019,547.5980117,643.970509,461.1028804
+DALYs (Disability-Adjusted Life Years),Global,Female,70-74 years,Liver cancer,Behavioral risks,Rate,2019,170.1905448,210.7205269,135.8933576
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Tobacco,Number,2019,135944.5869,195394.6804,78358.96204
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Tobacco,Number,2019,22228.21254,33441.05599,11656.39518
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Tobacco,Percent,2019,0.250554655,0.353623485,0.147970833
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Tobacco,Percent,2019,0.071054946,0.106240492,0.037541551
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Tobacco,Rate,2019,237.6445545,341.5691851,136.979199
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Tobacco,Rate,2019,31.82336248,47.87640232,16.6880575
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Smoking,Number,2019,135944.5869,195394.6804,78358.96204
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Smoking,Number,2019,22228.21254,33441.05599,11656.39518
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Smoking,Percent,2019,0.250554655,0.353623485,0.147970833
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Smoking,Percent,2019,0.071054946,0.106240492,0.037541551
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Smoking,Rate,2019,237.6445545,341.5691851,136.979199
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Smoking,Rate,2019,31.82336248,47.87640232,16.6880575
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Alcohol use,Number,2019,143790.0482,177915.2912,112465.4703
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Alcohol use,Number,2019,41338.03482,55312.26779,29943.41121
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Alcohol use,Percent,2019,0.265218127,0.325059123,0.20770791
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Alcohol use,Percent,2019,0.131978901,0.172096927,0.096185951
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Alcohol use,Rate,2019,251.359195,311.0134876,196.6007415
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Alcohol use,Rate,2019,59.18223356,79.18865919,42.86894536
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Drug use,Number,2019,89185.37808,113058.0243,68430.03855
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Drug use,Number,2019,65348.90795,94085.48935,45752.06418
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Drug use,Percent,2019,0.164382129,0.205148334,0.126802882
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Drug use,Percent,2019,0.208583953,0.29067147,0.148459339
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Drug use,Rate,2019,155.9048427,197.6365842,119.6224608
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Drug use,Rate,2019,93.5577695,134.6989384,65.50164661
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Metabolic risks,Number,2019,72480.4545,142648.2881,26429.29428
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Metabolic risks,Number,2019,34670.74224,69914.31892,9329.520669
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Metabolic risks,Percent,2019,0.133664307,0.260437946,0.049328459
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Metabolic risks,Percent,2019,0.110665201,0.215287528,0.030335005
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Metabolic risks,Rate,2019,126.7029876,249.3632856,46.20101474
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Metabolic risks,Rate,2019,49.63690156,100.0939104,13.35675181
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,High fasting plasma glucose,Number,2019,6218.937267,14646.51559,1283.586602
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,High fasting plasma glucose,Number,2019,6054.132617,14146.6592,1160.530893
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.011473366,0.027450134,0.002411905
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.019335261,0.044528443,0.003590354
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,High fasting plasma glucose,Rate,2019,10.8713161,25.60355473,2.24383606
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,High fasting plasma glucose,Rate,2019,8.667492107,20.25328229,1.661491908
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,High body-mass index,Number,2019,66545.32467,137878.7104,21353.91821
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,High body-mass index,Number,2019,28836.18665,63206.89646,4863.707628
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,High body-mass index,Percent,2019,0.122714618,0.253984401,0.039773704
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,High body-mass index,Percent,2019,0.092030689,0.197994975,0.016418216
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,High body-mass index,Rate,2019,116.327795,241.0255931,37.32875647
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,High body-mass index,Rate,2019,41.28377028,90.49112578,6.963201856
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,All risk factors,Number,2019,339864.1688,389346.5692,290201.587
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,All risk factors,Number,2019,141114.023,173340.7714,113915.5584
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,All risk factors,Percent,2019,0.626608797,0.703883172,0.546289069
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,All risk factors,Percent,2019,0.450510381,0.537404244,0.373662634
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,All risk factors,Rate,2019,594.1161087,680.616228,507.3010143
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,All risk factors,Rate,2019,202.0280622,248.1659824,163.0889619
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Behavioral risks,Number,2019,311731.679,357469.8965,267301.4798
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Behavioral risks,Number,2019,120230.4638,145746.4561,96785.41311
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Behavioral risks,Percent,2019,0.574732874,0.646654057,0.498176717
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Behavioral risks,Percent,2019,0.38385704,0.455307758,0.319831168
+DALYs (Disability-Adjusted Life Years),Global,Male,75-79 years,Liver cancer,Behavioral risks,Rate,2019,544.9377401,624.8926581,467.2693669
+DALYs (Disability-Adjusted Life Years),Global,Female,75-79 years,Liver cancer,Behavioral risks,Rate,2019,172.1297933,208.6601563,138.5643258
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Tobacco,Number,2019,71976.06204,106753.0644,41273.33761
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Tobacco,Number,2019,14600.57041,22558.41263,7776.148026
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Tobacco,Percent,2019,0.236320112,0.339288801,0.138808446
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Tobacco,Percent,2019,0.06722263,0.102444029,0.036240097
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Tobacco,Rate,2019,204.25841,302.9508782,117.1281962
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Tobacco,Rate,2019,29.6852661,45.86481645,15.81013734
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Smoking,Number,2019,71976.06204,106753.0644,41273.33761
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Smoking,Number,2019,14600.57041,22558.41263,7776.148026
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Smoking,Percent,2019,0.236320112,0.339288801,0.138808446
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Smoking,Percent,2019,0.06722263,0.102444029,0.036240097
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Smoking,Rate,2019,204.25841,302.9508782,117.1281962
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Smoking,Rate,2019,29.6852661,45.86481645,15.81013734
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Alcohol use,Number,2019,71545.19971,89856.75275,54748.17175
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Alcohol use,Number,2019,23697.82544,32360.63753,16654.45129
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Alcohol use,Percent,2019,0.235066909,0.291680953,0.18475771
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Alcohol use,Percent,2019,0.109075049,0.143101869,0.078930686
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Alcohol use,Rate,2019,203.0356805,255.0014119,155.3679681
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Alcohol use,Rate,2019,48.18142269,65.79428813,33.86113039
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Drug use,Number,2019,55252.15184,70217.0192,41572.37231
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Drug use,Number,2019,42973.95292,60673.28674,29425.91773
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Drug use,Percent,2019,0.181468173,0.226464732,0.140664914
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Drug use,Percent,2019,0.197735723,0.270201305,0.142438497
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Drug use,Rate,2019,156.798196,199.2664824,117.9768166
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Drug use,Rate,2019,87.37283491,123.3583765,59.82753918
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Metabolic risks,Number,2019,35840.46549,73137.61147,12768.09652
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Metabolic risks,Number,2019,21102.18053,43332.4887,5972.226538
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Metabolic risks,Percent,2019,0.117698547,0.235756909,0.041156427
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Metabolic risks,Percent,2019,0.097032912,0.194460934,0.02774909
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Metabolic risks,Rate,2019,101.7104338,207.5547315,36.23414536
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Metabolic risks,Rate,2019,42.90406654,88.10179478,12.14247999
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,High fasting plasma glucose,Number,2019,3641.831254,8670.728824,725.9811541
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,High fasting plasma glucose,Number,2019,4107.688427,9801.055654,752.009125
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.011971956,0.028922145,0.002432175
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.01890734,0.043657488,0.00351408
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,High fasting plasma glucose,Rate,2019,10.33502862,24.60636541,2.06023714
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,High fasting plasma glucose,Rate,2019,8.351579466,19.92709442,1.528953346
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,High body-mass index,Number,2019,32333.10406,69465.17339,10152.65332
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,High body-mass index,Number,2019,17114.8748,39220.54165,2906.210234
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,High body-mass index,Percent,2019,0.106168485,0.227219754,0.033141184
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,High body-mass index,Percent,2019,0.078678665,0.175559029,0.013653683
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,High body-mass index,Rate,2019,91.75701253,197.1328448,28.81186836
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,High body-mass index,Rate,2019,34.79724412,79.74155688,5.908784502
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,All risk factors,Number,2019,183809.2194,214104.8226,153680.6359
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,All risk factors,Number,2019,89696.66624,111176.9218,69689.60912
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,All risk factors,Percent,2019,0.603722788,0.681760811,0.523855035
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,All risk factors,Percent,2019,0.412745409,0.497532926,0.341099636
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,All risk factors,Rate,2019,521.6259106,607.6007689,436.1250317
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,All risk factors,Rate,2019,182.3674919,226.0402447,141.6899842
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Behavioral risks,Number,2019,169117.1048,197215.3677,140446.0068
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Behavioral risks,Number,2019,76252.1755,94177.38506,59237.06889
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Behavioral risks,Percent,2019,0.555469811,0.629171199,0.476738085
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Behavioral risks,Percent,2019,0.350920047,0.421268817,0.287293333
+DALYs (Disability-Adjusted Life Years),Global,Male,80-84 years,Liver cancer,Behavioral risks,Rate,2019,479.9316599,559.6707613,398.5669294
+DALYs (Disability-Adjusted Life Years),Global,Female,80-84 years,Liver cancer,Behavioral risks,Rate,2019,155.0327184,191.4775011,120.4383188
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Tobacco,Number,2019,28206.87511,42323.11704,15635.75322
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Tobacco,Number,2019,6254.94358,9915.998838,3269.437033
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Tobacco,Percent,2019,0.22487027,0.329040961,0.127137554
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Tobacco,Percent,2019,0.056657323,0.087445161,0.030357474
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Tobacco,Rate,2019,173.2257854,259.9173131,96.02324331
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Tobacco,Rate,2019,22.99814403,36.45909297,12.02104908
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Smoking,Number,2019,28206.87511,42323.11704,15635.75322
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Smoking,Number,2019,6254.94358,9915.998838,3269.437033
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Smoking,Percent,2019,0.22487027,0.329040961,0.127137554
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Smoking,Percent,2019,0.056657323,0.087445161,0.030357474
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Smoking,Rate,2019,173.2257854,259.9173131,96.02324331
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Smoking,Rate,2019,22.99814403,36.45909297,12.02104908
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Alcohol use,Number,2019,24969.06706,31233.81937,19102.1789
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Alcohol use,Number,2019,9784.07959,13251.61517,6781.582968
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Alcohol use,Percent,2019,0.199072745,0.245850777,0.155518283
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Alcohol use,Percent,2019,0.088559117,0.115486867,0.065928842
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Alcohol use,Rate,2019,153.3415607,191.8150405,117.3114686
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Alcohol use,Rate,2019,35.97405297,48.72346976,24.934489
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Drug use,Number,2019,22736.14252,29578.54046,16610.04487
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Drug use,Number,2019,19332.53946,27347.40658,12813.27192
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Drug use,Percent,2019,0.181293355,0.232588451,0.135316354
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Drug use,Percent,2019,0.174926581,0.233406132,0.124241613
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Drug use,Rate,2019,139.6285881,181.6495405,102.0066228
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Drug use,Rate,2019,71.08178059,100.5508023,47.1117716
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Metabolic risks,Number,2019,14678.9076,30514.65234,5103.85511
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Metabolic risks,Number,2019,10618.31205,22340.25114,2878.726912
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Metabolic risks,Percent,2019,0.116961899,0.236698908,0.040621255
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Metabolic risks,Percent,2019,0.09605474,0.193783288,0.026734268
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Metabolic risks,Rate,2019,90.1470045,187.398448,31.34410695
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Metabolic risks,Rate,2019,39.04135454,82.14051925,10.58448814
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,High fasting plasma glucose,Number,2019,1364.762578,3273.671936,271.5332637
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,High fasting plasma glucose,Number,2019,1800.062942,4460.707951,311.5499396
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.010885846,0.02563757,0.002158517
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.016298686,0.038828219,0.002914049
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,High fasting plasma glucose,Rate,2019,8.381363355,20.10447417,1.667556675
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,High fasting plasma glucose,Rate,2019,6.618462068,16.4011078,1.145505198
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,High body-mass index,Number,2019,13364.97888,29251.96333,4072.413909
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,High body-mass index,Number,2019,8872.426734,20283.93044,1466.604907
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,High body-mass index,Percent,2019,0.106481311,0.229727219,0.033706488
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,High body-mass index,Percent,2019,0.080245701,0.177137395,0.013689954
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,High body-mass index,Rate,2019,82.07782516,179.643945,25.0097572
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,High body-mass index,Rate,2019,32.62209249,74.57984999,5.392405296
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,All risk factors,Number,2019,71826.17103,85298.67169,58265.3879
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,All risk factors,Number,2019,40577.65667,51882.43881,30050.21879
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,All risk factors,Percent,2019,0.572655377,0.652895656,0.493689538
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,All risk factors,Percent,2019,0.367214651,0.452354698,0.296030885
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,All risk factors,Rate,2019,441.1032715,523.8414159,357.8229613
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,All risk factors,Rate,2019,149.1957171,190.7610813,110.4884882
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Behavioral risks,Number,2019,65339.9264,77538.96276,52755.94797
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Behavioral risks,Number,2019,33377.08016,42102.02824,24737.13068
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Behavioral risks,Percent,2019,0.52095883,0.599600318,0.445727786
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Behavioral risks,Percent,2019,0.302078753,0.362622228,0.246202312
+DALYs (Disability-Adjusted Life Years),Global,Male,85-89 years,Liver cancer,Behavioral risks,Rate,2019,401.2695495,476.1870172,323.988052
+DALYs (Disability-Adjusted Life Years),Global,Female,85-89 years,Liver cancer,Behavioral risks,Rate,2019,122.7206748,154.8005185,90.95335349
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Tobacco,Number,2019,5579.869934,8864.171094,2798.64943
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Tobacco,Number,2019,2240.170433,3715.575166,1142.609801
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Tobacco,Percent,2019,0.193342365,0.300041586,0.102461035
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Tobacco,Percent,2019,0.057296707,0.091359188,0.02973677
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Tobacco,Rate,2019,105.1241909,167.0000958,52.72627504
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Tobacco,Rate,2019,19.39591844,32.17031697,9.892982329
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Smoking,Number,2019,5579.869934,8864.171094,2798.64943
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Smoking,Number,2019,2240.170433,3715.575166,1142.609801
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Smoking,Percent,2019,0.193342365,0.300041586,0.102461035
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Smoking,Percent,2019,0.057296707,0.091359188,0.02973677
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Smoking,Rate,2019,105.1241909,167.0000958,52.72627504
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Smoking,Rate,2019,19.39591844,32.17031697,9.892982329
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Alcohol use,Number,2019,5461.742588,7265.29334,3922.160816
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Alcohol use,Number,2019,2913.793552,4145.602871,1879.994658
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Alcohol use,Percent,2019,0.18919627,0.242362026,0.141506537
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Alcohol use,Percent,2019,0.074454864,0.101739308,0.052439325
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Alcohol use,Rate,2019,102.8986835,136.8773991,73.89311705
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Alcohol use,Rate,2019,25.22830462,35.8935972,16.27743252
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Drug use,Number,2019,4683.745713,6483.091826,3200.947636
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Drug use,Number,2019,5648.99553,8319.482415,3480.746111
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Drug use,Percent,2019,0.162312407,0.218387695,0.1141291
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Drug use,Percent,2019,0.144321203,0.20172138,0.097529236
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Drug use,Rate,2019,88.24130026,122.1408009,60.30553296
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Drug use,Rate,2019,48.91032172,72.03202043,30.1371122
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Metabolic risks,Number,2019,3563.812204,7471.310497,1264.392772
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Metabolic risks,Number,2019,3695.982595,7856.373517,989.7178687
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Metabolic risks,Percent,2019,0.123394508,0.249659705,0.043046476
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Metabolic risks,Percent,2019,0.094444561,0.194935857,0.024323102
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Metabolic risks,Rate,2019,67.14186509,140.7587417,23.82103322
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Metabolic risks,Rate,2019,32.00067991,68.02231551,8.569208297
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,High fasting plasma glucose,Number,2019,301.0620461,728.5874102,59.46590423
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,High fasting plasma glucose,Number,2019,537.134149,1362.227628,91.16775907
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.010429713,0.024953622,0.002045196
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,High fasting plasma glucose,Percent,2019,0.01374094,0.03432298,0.002439157
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,High fasting plasma glucose,Rate,2019,5.671978804,13.72651386,1.120331681
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,High fasting plasma glucose,Rate,2019,4.650632823,11.79448473,0.789351736
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,High body-mass index,Number,2019,3274.418998,7083.854437,1028.394049
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,High body-mass index,Number,2019,3175.409568,7214.928779,518.8318669
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,High body-mass index,Percent,2019,0.113369094,0.243098591,0.035356943
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,High body-mass index,Percent,2019,0.081126854,0.180475259,0.013475735
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,High body-mass index,Rate,2019,61.68972607,133.4591083,19.37484091
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,High body-mass index,Rate,2019,27.49343714,62.46853726,4.492167393
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,All risk factors,Number,2019,15475.26013,18858.73463,12061.86689
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,All risk factors,Number,2019,12849.79575,17041.53697,8942.576756
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,All risk factors,Percent,2019,0.536141161,0.619672198,0.459227977
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,All risk factors,Percent,2019,0.32835722,0.410545431,0.255135892
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,All risk factors,Rate,2019,291.5523513,355.2966721,227.2443644
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,All risk factors,Rate,2019,111.2565306,147.5496044,77.42691666
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Behavioral risks,Number,2019,13767.60536,16666.55319,10701.13921
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Behavioral risks,Number,2019,10213.01263,13182.69888,7122.825407
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Behavioral risks,Percent,2019,0.477009385,0.561700653,0.4038689
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Behavioral risks,Percent,2019,0.260983683,0.319793205,0.210108399
+DALYs (Disability-Adjusted Life Years),Global,Male,90-94 years,Liver cancer,Behavioral risks,Rate,2019,259.3803064,313.9961933,201.6083912
+DALYs (Disability-Adjusted Life Years),Global,Female,90-94 years,Liver cancer,Behavioral risks,Rate,2019,88.42664696,114.1388836,61.67108476
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Behavioral risks,Number,2019,2208.110403,2829.254873,1601.011704
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Behavioral risks,Number,2019,2275.851964,3031.532739,1534.685919
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Behavioral risks,Percent,2019,0.418269914,0.512457008,0.333681233
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Behavioral risks,Percent,2019,0.212779408,0.273554947,0.165685027
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Behavioral risks,Rate,2019,173.0031385,221.6691575,125.437591
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Behavioral risks,Rate,2019,65.08259444,86.69281609,43.88745086
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Tobacco,Number,2019,960.2056291,1594.812694,452.0337961
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Tobacco,Number,2019,597.7090739,1013.250147,290.4950228
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Tobacco,Percent,2019,0.181937437,0.292648316,0.088793269
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Tobacco,Percent,2019,0.055922776,0.091655651,0.028243864
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Tobacco,Rate,2019,75.23110584,124.951905,35.41637471
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Tobacco,Rate,2019,17.09270104,28.97593929,8.307293291
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Smoking,Number,2019,960.2056291,1594.812694,452.0337961
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Smoking,Number,2019,597.7090739,1013.250147,290.4950228
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Smoking,Percent,2019,0.181937437,0.292648316,0.088793269
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Smoking,Percent,2019,0.055922776,0.091655651,0.028243864
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Smoking,Rate,2019,75.23110584,124.951905,35.41637471
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Smoking,Rate,2019,17.09270104,28.97593929,8.307293291
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Alcohol use,Number,2019,857.8190306,1211.292132,538.3070044
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Alcohol use,Number,2019,665.4068875,1040.848725,379.2589031
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Alcohol use,Percent,2019,0.162453107,0.220556904,0.109873669
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Alcohol use,Percent,2019,0.06217728,0.091654583,0.039348209
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Alcohol use,Rate,2019,67.20922303,94.90347047,42.17579026
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Alcohol use,Rate,2019,19.02865708,29.7651765,10.84567615
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Drug use,Number,2019,667.6161718,1020.736709,407.7531467
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Drug use,Number,2019,1140.152474,1791.648809,662.1483797
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Drug use,Percent,2019,0.12646846,0.185562966,0.082468348
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Drug use,Percent,2019,0.10660603,0.157570719,0.067642367
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Drug use,Rate,2019,52.30702816,79.97365258,31.94703218
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Drug use,Rate,2019,32.60496826,51.23582493,18.93547345
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Metabolic risks,Number,2019,650.085334,1368.448724,222.8542414
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Metabolic risks,Number,2019,966.0322841,2072.471475,233.0376275
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Metabolic risks,Percent,2019,0.123033095,0.250711179,0.04201737
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Metabolic risks,Percent,2019,0.090266433,0.190123075,0.02220148
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,Metabolic risks,Rate,2019,50.93350537,107.216525,17.46039652
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,Metabolic risks,Rate,2019,27.62564892,59.2665176,6.664182748
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,High fasting plasma glucose,Number,2019,49.1748898,124.9675612,9.073128045
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,High fasting plasma glucose,Number,2019,118.7334979,328.0096903,20.04287608
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,High fasting plasma glucose,Percent,2019,0.009306696,0.023325246,0.001766262
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,High fasting plasma glucose,Percent,2019,0.011120094,0.02873626,0.001775485
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,High fasting plasma glucose,Rate,2019,3.852801137,9.791077595,0.710870084
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,High fasting plasma glucose,Rate,2019,3.395424752,9.380101159,0.573166619
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,High body-mass index,Number,2019,602.8854597,1303.176606,188.4087425
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,High body-mass index,Number,2019,851.0567827,1945.026414,141.3846695
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,High body-mass index,Percent,2019,0.114100171,0.245327911,0.034537242
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,High body-mass index,Percent,2019,0.07949789,0.178829094,0.013399955
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,High body-mass index,Rate,2019,47.23544463,102.1025228,14.76162774
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,High body-mass index,Rate,2019,24.33769169,55.62196806,4.04318086
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,All risk factors,Number,2019,2559.710998,3249.27635,1868.164176
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,All risk factors,Number,2019,3009.672543,4234.718234,2008.560506
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,All risk factors,Percent,2019,0.484826122,0.579280461,0.393693966
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,All risk factors,Percent,2019,0.281339328,0.369673933,0.212087402
+DALYs (Disability-Adjusted Life Years),Global,Male,95+ years,Liver cancer,All risk factors,Rate,2019,200.550677,254.5774005,146.3687075
+DALYs (Disability-Adjusted Life Years),Global,Female,95+ years,Liver cancer,All risk factors,Rate,2019,86.06767953,121.1003412,57.43885405

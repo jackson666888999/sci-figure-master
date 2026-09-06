@@ -1,0 +1,172 @@
+﻿Species,Sequencing Strategy,Tissue Type,#Filtered Cells
+Mouse,SMARTer,embryonic stem cell,846
+Mouse,SMARTer,Embryo,123
+Mouse,SMARTer,Liver,69
+Mouse,Smart-seq2,Embryo,548
+Mouse,Smart-seq2,Embryo,1190
+Mouse,SMARTer,CD4+ T cell,1211
+Mouse,SMARTer,CD4+ T cell,76
+Mouse,SMARTer,IgE B cell,202
+Mouse,SMARTer,CD4+ T cell,2750
+Mouse,Smart-seq2,embryonic stem cell,52
+Mouse,SMARTer,embryonic stem cell,92
+Mouse,Smart-seq2,embryonic stem cell,62
+Mouse,Smart-seq2,embryonic stem cell,329
+Mouse,SMARTer,Mammary,17
+Mouse,SMARTer,Bone marrow,92
+Mouse,Smart-seq2,embryonic stem cell,416
+Mouse,SMARTer,gamma-delta T cell,46
+Mouse,SMARTer & Smart-seq2,embryonic stem cell,249
+Mouse,Smart-seq2,embryonic stem cell,945
+Mouse,SMARTer,Bone marrow,764
+Mouse,Smart-seq2,Bone marrow,621
+Mouse,Smart-seq2,Embryo,529
+Mouse,Smart-seq2,Brain,457
+Mouse,Smart-seq2,Bone marrow,450
+Mouse,SMARTer,Spleen,177
+Mouse,Smart-seq2,Brain,1333
+Mouse,Smart-seq2,Brain,546
+Mouse,SMARTer,Lung,47
+Mouse,SMARTer,Brain,195
+Mouse,Smart-seq2,20 Tissues,43099
+Mouse,SMARTer,Brain,2211
+Mouse,SMARTer,Mammary,461
+Mouse,SMARTer,Brain,71
+Mouse,SMARTer,Brain,29
+Mouse,Smart-seq2,Brain,400
+Mouse,SMARTer,Brain,21353
+Mouse,Smart-seq2,Brain,864
+Mouse,Smart-seq2,Skeletal Muscle,254
+Mouse,Smart-seq2,Eye,633
+Mouse,SMARTer,Brain,2204
+Mouse,SMARTer,Embryo,630
+Mouse,SMARTer,Brain,195
+Mouse,Smart-seq2,Lung,58
+Mouse,Smart-seq2,Brain,9175
+Mouse,Smart-seq2,Bone marrow,731
+Mouse,Smart-seq2,CD4+ T cell,94
+Mouse,Smart-seq2,Unknown,901
+Mouse,SMARTer,Ear,124
+Mouse,Tang,Embryo,18
+Mouse,SMARTer,Bone Marrow,53
+Mouse,Quartz-Seq &Smart-seq,embryonic stem cell,64
+Mouse,SMARTer,Embryo,306
+Mouse,Tang,embryonic stem cell,85
+Mouse,SMARTer,Bone marrow,3954
+Mouse,Smart-seq2,embryonic fibroblast,18
+Mouse,Tang,Pancreas,139
+Mouse,SMARTer,Lung,156
+Mouse,SMARTer,iPS cell,132
+Mouse,SMARTer,Embryo,55
+Mouse,SMARTer,Kidney,34
+Mouse,SMARTer,Thymus,239
+Mouse,SMARTer,Bone marrow,208
+Mouse,Smart-seq2,Bone marrow,94
+Mouse,SMARTer,Dorsal root ganglion,207
+Mouse,SMARTer,Kidney,30
+Mouse,Tang,Bone marrow,207
+Mouse,SMARTer,Heart,392
+Mouse,Smart-seq2,Brain,448
+Mouse,SMARTer,Bone marrow,529
+Mouse,SMARTer,Bone marrow,90
+Mouse,SMARTer,Bone marrow,130
+Mouse,SMARTer,Brain,151
+Mouse,SMARTer,Brain,578
+Mouse,Tang,Placenta,77
+Mouse,Smart-seq2,Thymus,68
+Mouse,SMARTer,embryonic stem cell,95
+Mouse,SMARTer,Brain,458
+Mouse,Smart-seq2,Heart,3148
+Mouse,SMARTer,Tibia growth plate,211
+Mouse,Smart-seq2,Dorsal root ganglion,168
+Mouse,SMARTer,Lymph Node,128
+Mouse,SMARTer,Pancreas,554
+Mouse,SMARTer,Pancreas,153
+Mouse,SMARTer,germinal center B cell,137
+Mouse,Smart-seq2,Brain,55
+Mouse,Smart-seq2,Pancreas,107
+Mouse,Smart-seq2,Retinal organoid,215
+Mouse,SMARTer,Lymph Node,3
+Mouse,Smart-seq2,Bone marrow ,2802
+Mouse,SMARTer,Brain,3428
+Mouse,Smart-seq2,Brain,327
+Mouse,SMARTer,Lymph Node,206
+Mouse,Smart-seq2,Pancreas,782
+Mouse,Smart-seq2,Bone marrow ,818
+Mouse,SMARTer,Liver,501
+Mouse,SMARTer,Bone marrow ,408
+Mouse,Smart-seq2,Liver,425
+Mouse,Tang,Brain,51
+Mouse,Smart-seq2,Skin,1064
+Mouse,SMARTer,Small Intestinal,307
+Mouse,Smart-seq,Brain,162
+Mouse,RamDA-seq  & Smart-seq,embryonic stem cell,1463
+Mouse,Smart-seq2,Brain,1863
+Mouse,SMARTer,Testis,174
+Mouse,SMARTer & Smart-seq2,"Brain,skeletal muscle,Heart,Liver,Thymus",269
+Mouse,SMARTer,Heart,201
+Mouse,Smart-seq2,olfactory sensory neurons,182
+Human/Mouse,Smart-seq2,Thymus,352
+Human/Mouse,Smart-seq,Unknown,117
+Human/Mouse,Tang,Embryo,44
+Human/Mouse,SUPeR-Seq,Embryo,116
+Human/Mouse,SMARTer,Liver,684
+Human,Smart-seq2,Embryo,1437
+Human/Mouse,Smart-seq2,CD4+ Treg and Tmem cells,2984
+Human,Smart-seq2,myxoid liposarcoma cells,95
+Human,Smart-seq2,PBMC derived B cells,116
+Human,Smart-seq2,embryonic stem cell,2274
+Human,Smart-seq2,Heart,1823
+Human,Smart-seq2,Heart,2132
+Human,Smart-seq2,tonsil,282
+Human,Smart-seq2,CD8+ T cells,775
+Human,Smart-seq2,Ovary,33
+Human,Smart-seq2,Lymph Node,305
+Human,Smart-seq,Lung cancer,113
+Human,SMARTer,Heart,578
+Human,Smart-seq2,Spleen,1583
+Human,SMARTer,Breast cancer,185
+Human,SMARTer,Bone marrow,170
+Human,SMARTer,retinal organoid,92
+Human,Smart-seq2,Bone marrow,295
+Human,Smart-seq2,Bone Marrow,24
+Human,SMARTer,OSCC,679
+Human,Smart-seq2,Breast cancer,283
+Human,SMARTer,Multiple Myeloma,594
+Human,SMARTer,Unknown,260
+Human,Smart-seq2,Breast cancer,1398
+Human,RamDA-seq ,neural stem cell,662
+Human,Smart-seq2,Unknown,639
+Human,Tang,Embryo,123
+Human,SMARTer,GM12878 cells,60
+Human,SMARTer,HEK293T cells,56
+Human,SMARTer,HCT116 cells,100
+Human,SMARTer,Skeletal Muscle,348
+Human,Tang,primordial germ cells,346
+Human,SMARTer,Embryo,457
+Human,SMARTer,Primary foreskin fibroblast cells,66
+Human,SMARTer,Brain,463
+Human,SMARTer,Lung cancer,206
+Human,SMARTer,Brain,225
+Human,SUPeR-Seq,Embryo,47
+Mouse,SMARTer,Ear,301
+Human,SMARTer,renal cell carcinoma.,112
+Human,Smart-seq2,Pancreas,68
+Mouse,SMARTer,CD4+ T cell,660
+Human,SMARTer,Brain,729
+Human,SMARTer,Breast cancer,148
+Human,Quartz-Seq &Smart-seq2,Bone marrow ,2309
+Human,Smart-seq2,Heart,1229
+Human,SMARTer,Breast cancer,550
+Human,SMARTer,embryonic stem cell,1744
+Human,MATQ-seq,HEK293T cells,81
+Human,Smart-seq2,Pancreas,2444
+Human,SMARTer,Pancreas,1157
+Human,Smart-seq2,Brain,3371
+Human,SMARTer,Brain,1727
+Human,SMARTer,Testis,144
+Human,Smart-seq2,embryonic stem cell,1670
+Human/Mouse,Smart-seq2,Heart,531
+Human,SMARTer,lupus nephritis,956
+Human,Smart-seq2,IgE B cell,863
+Human,SMARTer,Brain,474

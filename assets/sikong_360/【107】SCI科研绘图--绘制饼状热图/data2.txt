@@ -1,0 +1,32 @@
+FAPROTAX	BS	RS	RE	VE	SE	LE	P
+Aerobic chemoheterotrophy	11.4431 	12.2940 	12.5460 	12.9625 	11.1438 	12.9019 	13.1180 
+Aliphatic nonmethane hydrocarbon degradation	4.2175 	4.3967 	1.4461 	1.0418 	0.9069 	2.6849 	4.0501 
+Animal parasites/symbionts	4.3714 	7.0085 	8.8594 	7.6093 	7.3071 	5.4868 	7.6181 
+Anoxygenic photoautotrophy	5.2413 	4.8280 	3.3062 	0.0000 	1.3969 	0.1638 	0.2115 
+Anoxygenic photoautotrophy oxidizing	5.2413 	4.8280 	3.3062 	0.0000 	1.3969 	0.1638 	0.2115 
+Aromatic compound degradation	8.0303 	8.1714 	5.7483 	6.7538 	3.1938 	5.6343 	7.1076 
+Aromatic hydrocarbon degradation	4.2175 	4.3967 	1.4461 	1.0418 	0.9069 	2.6849 	4.0501 
+Cellulolysis	8.2618 	7.3881 	5.9821 	0.0594 	1.5236 	0.4906 	1.4902 
+Chemoheterotrophy	11.5284 	12.3489 	12.5624 	12.9827 	11.4086 	12.9102 	13.1520 
+Chitinolysis	6.1263 	6.3954 	4.7787 	0.0359 	2.3646 	0.2508 	0.4245 
+Chlorate reducers	0.6077 	1.5293 	2.3550 	0.0240 	0.0473 	0.0000 	0.2115 
+Dark hydrogen oxidation	0.9296 	1.9048 	1.8573 	0.0359 	3.1029 	1.2887 	1.8684 
+Dark oxidation of sulfur compounds	1.5735 	3.5747 	5.5452 	0.0121 	3.1605 	0.8306 	1.4210 
+Fermentation	6.9451 	7.8019 	8.5801 	12.6172 	10.9792 	7.7738 	8.4103 
+Human pathogens	4.2766 	6.7784 	8.6613 	7.4468 	7.1689 	5.4677 	7.6144 
+Hydrocarbon degradation	4.4873 	4.6393 	2.4111 	1.0418 	0.9260 	2.6863 	4.0519 
+Intracellular parasites	3.9281 	4.3075 	3.3198 	0.0121 	0.7726 	0.1056 	0.2990 
+Iron respiration	4.4542 	3.9897 	3.3783 	0.0240 	0.5607 	0.0361 	0.4732 
+Manganese oxidation	5.8078 	5.5256 	2.0788 	0.0000 	1.3123 	0.5228 	1.4210 
+Methanol oxidation	2.3401 	4.1155 	4.4331 	1.0300 	3.6753 	1.3757 	1.9170 
+Methanotrophy	2.2706 	2.2804 	1.8457 	0.0000 	0.0356 	0.0091 	0.0282 
+Methylotrophy	3.1520 	4.4054 	4.5967 	1.0300 	3.6781 	1.3792 	1.9245 
+Nitrogen cycle	9.4825 	10.2171 	11.4598 	12.6626 	11.0649 	8.1147 	8.9098 
+Photoautotrophy	5.2413 	4.8280 	3.3062 	0.0000 	1.3969 	0.1638 	0.2115 
+Photoheterotrophy	5.5228 	4.9735 	5.2808 	0.0000 	2.6799 	0.8510 	1.5659 
+Phototrophy	5.5228 	4.9735 	5.2808 	0.0000 	2.6799 	0.8510 	1.5659 
+Predatory/exoparasitic	7.2827 	6.8269 	7.3177 	0.1386 	4.1497 	2.1454 	2.7207 
+Respiration of sulfur compounds	3.4657 	1.3918 	0.0310 	0.0000 	0.0000 	0.0000 	0.0095 
+Sulfur respiration	3.4657 	1.3918 	0.0310 	0.0000 	0.0000 	0.0000 	0.0095 
+Ureolysis	7.2585 	8.8000 	9.4058 	6.7622 	6.7560 	6.2650 	6.9528 
+Xylanolysis	1.2515 	0.9265 	0.1394 	0.0000 	0.3785 	0.0000 	0.0189

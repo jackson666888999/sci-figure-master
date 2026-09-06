@@ -1,0 +1,5 @@
+group	Overall transm.	CosteaPl_2017_DEU	BritolL_2016	Guinea-Bissau	PasolliE_2018_MDG	PehrssonE_2016_PER	PehrssonE_2016_SLV	Ghana	Tanzania
+S. parasanguinis (SGB8076)	0.95	0.3	0.5	0.6	0	0.5	0	0	0.2
+Ruminococcaceae SGB15073 (SGB15073)	0.92	0.2	0.2	0	0	0.3	0	0	0
+S.thermophilus-salivarius-vest. (SGB8002)	0.9	0.3	0.3	0	0	0	0.8	0.5	0
+B.angulatum (SGB17231)	0.88	0	0	0.7	0.4	0	0	0	0

@@ -1,0 +1,27 @@
+label	group	X	Y	value	sig	facet
+MAT	A	2	1	-0.143281898		Priming effect
+MAP	A	2	2	0.212851911	**	Priming effect
+DOC	A	2	3	-0.049650598		Priming effect
+SUVA	A	2	4	0.120066239		Priming effect
+S	A	2	5	-0.099345781		Priming effect
+BIX	A	2	6	-0.015512748		Priming effect
+HIX	A	2	7	0.039881071		Priming effect
+%C1	A	2	8	-0.253615729	*	Priming effect
+%C2	A	2	9	0.116852809		Priming effect
+%C3	A	2	10	-0.292717518	***	Priming effect
+%C4	A	2	11	0.232793799	**	Priming effect
+%C5	A	2	12	0.110210321		Priming effect
+C/N	A	2	13	0.200011931	*	Priming effect
+Chao1	B	3.5	1	0.073697289		Priming effect
+Shannon	B	3.5	2	0.149244715		Priming effect
+rrn copy	B	3.5	3	-0.124301543	↓	Priming effect
+NMDS1	B	3.5	4	-0.113069737		Priming effect
+NMDS2	B	3.5	5	-0.016122053		Priming effect
+Hydrolase	B	3.5	6	0.213052836	↑	Priming effect
+NH4+-N	B	3.5	7	0.044551737		Priming effect
+TDN	B	3.5	8	0.12189899	*	Priming effect
+SRP	B	3.5	9	0.131635686	*	Priming effect
+TDP	B	3.5	10	0.291816824	***	Priming effect
+pH	B	3.5	11	-0.229377597	**	Priming effect
+Salinity	B	3.5	12	0.090143529		Priming effect
+ORP	B	3.5	13	-0.176449849		Priming effect
