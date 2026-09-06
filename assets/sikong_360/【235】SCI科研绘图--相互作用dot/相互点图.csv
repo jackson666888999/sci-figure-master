@@ -1,0 +1,71 @@
+﻿ID,A,B,Value
+1,Stenotrophomonas,Perch,0.05
+2,Stenotrophomonas,"Atlantic 
+salmon",0.1
+3,Stenotrophomonas,"Eurpean 
+seabass",0.08
+4,Stenotrophomonas,"Three-spine 
+stickleback",0.02
+5,Stenotrophomonas,Tilapia,0.02
+6,Stenotrophomonas,Trout,0.02
+7,Stenotrophomonas,Zebrafish,0.1
+8,Pseudomonas,Perch,0.2
+9,Pseudomonas,"Atlantic 
+salmon",0.95
+10,Pseudomonas,"Eurpean 
+seabass",0.15
+11,Pseudomonas,"Three-spine 
+stickleback",0.4
+12,Pseudomonas,Tilapia,0.2
+13,Pseudomonas,Trout,0.2
+14,Pseudomonas,Zebrafish,0.1
+15,Morganella,Perch,0.001
+16,Morganella,"Atlantic 
+salmon",0.001
+17,Morganella,"Eurpean 
+seabass",0.1
+18,Morganella,"Three-spine 
+stickleback",0.005
+19,Morganella,Tilapia,0.002
+20,Morganella,Trout,0.003
+21,Morganella,Zebrafish,0.004
+22,Janithinobacterium,Perch,0.001
+23,Janithinobacterium,"Atlantic 
+salmon",0.5
+24,Janithinobacterium,"Eurpean 
+seabass",0.5
+25,Janithinobacterium,"Three-spine 
+stickleback",0.001
+26,Janithinobacterium,Tilapia,0.2
+27,Janithinobacterium,Trout,0.001
+28,Janithinobacterium,Zebrafish,0
+29,Comamonadaceae genus,Perch,0
+30,Comamonadaceae genus,"Atlantic 
+salmon",0
+31,Comamonadaceae genus,"Eurpean 
+seabass",0.2
+32,Comamonadaceae genus,"Three-spine 
+stickleback",0.05
+33,Comamonadaceae genus,Tilapia,0.05
+34,Comamonadaceae genus,Trout,0.02
+35,Comamonadaceae genus,Zebrafish,0.03
+36,Aeromonadace genus,Perch,0.4
+37,Aeromonadace genus,"Atlantic 
+salmon",0.1
+38,Aeromonadace genus,"Eurpean 
+seabass",0.2
+39,Aeromonadace genus,"Three-spine 
+stickleback",0.1
+40,Aeromonadace genus,Tilapia,0.1
+41,Aeromonadace genus,Trout,0.15
+42,Aeromonadace genus,Zebrafish,0.8
+43,Acinetobacter,Perch,0.2
+44,Acinetobacter,"Atlantic 
+salmon",0.1
+45,Acinetobacter,"Eurpean 
+seabass",0.3
+46,Acinetobacter,"Three-spine 
+stickleback",0.2
+47,Acinetobacter,Tilapia,0.2
+48,Acinetobacter,Trout,0.3
+49,Acinetobacter,Zebrafish,0.1

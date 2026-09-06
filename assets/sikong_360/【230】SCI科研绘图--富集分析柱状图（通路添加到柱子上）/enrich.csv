@@ -1,0 +1,13 @@
+﻿GroupID,Category,Term,Description,LogP,Log(q-value),InTerm_InList,Genes,Symbols
+1_Member,GO Biological Processes,GO:0031346,positive regulation of cell projection organization,-4.400872693,-1.466374242,10/353,"989,5587,5789,9863,22871,26053,27185,54828,57118,257194","SEPTIN7,PRKD1,PTPRD,MAGI2,NLGN1,AUTS2,DISC1,BCAS3,CAMK1D,NEGR1"
+1_Member,GO Biological Processes,GO:0010975,regulation of neuron projection development,-4.19004305,-1.349922505,11/452,"5530,5587,5789,8499,9863,22871,23189,27185,57118,57609,257194","PPP3CA,PRKD1,PTPRD,PPFIA2,MAGI2,NLGN1,KANK1,DISC1,CAMK1D,DIP2B,NEGR1"
+1_Member,GO Biological Processes,GO:1901888,regulation of cell junction assembly,-3.609014064,-1.051933954,7/214,"5783,5789,22871,23122,54828,257194,342184","PTPN13,PTPRD,NLGN1,CLASP2,BCAS3,NEGR1,FMN1"
+1_Member,GO Biological Processes,GO:0010976,positive regulation of neuron projection development,-3.522024838,-1.035573484,6/157,"5587,9863,22871,27185,57118,257194","PRKD1,MAGI2,NLGN1,DISC1,CAMK1D,NEGR1"
+2_Member,GO Biological Processes,GO:0034332,adherens junction organization,-2.477767971,-0.422762397,3/52,"1010,2241,144100","CDH12,FER,PLEKHA7"
+2_Member,GO Biological Processes,GO:0098742,cell-cell adhesion via plasma-membrane adhesion molecules,-2.400019391,-0.387443087,6/260,"1010,5789,22871,57453,65217,253559","CDH12,PTPRD,NLGN1,DSCAML1,PCDH15,CADM2"
+2_Member,GO Biological Processes,GO:0120193,tight junction organization,-2.322850325,-0.331313373,3/59,"2131,4301,10207","EXT1,AFDN,PATJ"
+2_Member,Reactome Gene Sets,R-HSA-421270,Cell-cell junction organization,-2.224144811,-0.287972776,3/64,"1010,4301,253559","CDH12,AFDN,CADM2"
+9_Member,GO Biological Processes,GO:0010611,regulation of cardiac muscle hypertrophy,-2.133663407,-0.232897928,3/69,"817,5530,8654","CAMK2D,PPP3CA,PDE5A"
+9_Member,KEGG Pathway,hsa05031,Amphetamine addiction,-2.133663407,-0.232897928,3/69,"817,5530,5533","CAMK2D,PPP3CA,PPP3CC"
+9_Member,GO Biological Processes,GO:0019722,calcium-mediated signaling,-2.112877514,-0.218250575,4/135,"817,1756,5530,5533","CAMK2D,DMD,PPP3CA,PPP3CC"
+9_Member,KEGG Pathway,hsa05417,Lipid and atherosclerosis,-2.090003824,-0.198413922,5/215,"817,5530,5533,5602,10000","CAMK2D,PPP3CA,PPP3CC,MAPK10,AKT3"

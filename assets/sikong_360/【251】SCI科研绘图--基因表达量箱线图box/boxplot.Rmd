@@ -1,0 +1,58 @@
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1.读取数据
+```{r}
+getwd()
+d <- read.csv("easy_input_expr.csv", row.names=1)
+head(d) # 12403个基因的表达矩阵，列为基因名，行为样本名
+dim(d)
+# 差异表达基因列表
+up<-read.table("easy_input_up.txt",header = T, as.is = T, row.names = 1)
+rownames(up)
+down<-read.table("easy_input_down.txt",header = T, as.is = T, row.names = 1)
+```
+
+# 2.开始画图
+
+1. 多组画在同一个绘图区域
+分别绘制上下调的基因，然后用cowplot来拼。
+
+```{r, fig.width=15.5, fig.height=6.6}
+require(tidyr)
+require(ggplot2)
+
+box <- lapply(list(up=row.names(up), down=row.names(down)), function(ii) {
+    dd <- d[ii,]
+    dd$gene = rownames(dd)
+    ## 宽变长，变成tidy data frame，好用于ggplot2画图
+    d2 <- gather(dd, sample, expr, 1:30)
+    ## 通过sample名，衍生出stagge变量
+    d2$stage <- paste('stage', sub(".*_(\\d)$", "\\1", d2$sample))
+    ## 用one way anova计算 p value
+    pvalues <- sapply(d2$gene, function(x) {
+        res <- aov(expr ~ stage, data = subset(d2, gene == x))
+        summary(res)[[1]]$'Pr(>F)'[1] #
+    })
+    pv <- data.frame(gene = d2$gene, pvalue = pvalues)
+    ## 画boxplot，并标识p-value
+    ggplot(d2, aes(gene, expr, fill=stage)) + 
+      geom_boxplot() + 
+      geom_text(aes(gene, y=max(d2$expr) * 1.1, 
+                    label=paste("p = ",round(pvalue, 2))),
+                data=pv, #
+                inherit.aes=F) + #
+      xlab(NULL) + ylab("Relative expression (log2)")
+})
+
+require(cowplot)
+plot_grid(plotlist=box, labels=c("A", "B"), ncol=1)
+```
+
+
+
+
+
