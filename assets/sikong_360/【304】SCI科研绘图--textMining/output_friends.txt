@@ -1,0 +1,123 @@
+Gene_symbol	Genes	Freq
+WAS	Wiskott-Aldrich syndrome	11
+T	T, brachyury homolog (mouse)	1
+GC	group-specific component (vitamin D binding protein)	7
+HR	hair growth associated	3
+EGFR	epidermal growth factor receptor	1
+MCC	mutated in colorectal cancers	3
+KRAS	v-Ki-ras2 Kirsten rat sarcoma viral oncogene homolog	2
+AES	amino-terminal enhancer of split	3
+C3	complement component 3	1
+CD4	CD4 molecule	2
+IMPACT	impact RWD domain protein	8
+BRAF	v-raf murine sarcoma viral oncogene homolog B1	2
+LARGE	like-glycosyltransferase	9
+SFN	stratifin	5
+BCL6	B-cell CLL/lymphoma 6	11
+IDO1	indoleamine 2,3-dioxygenase 1	4
+ALK	anaplastic lymphoma receptor tyrosine kinase	1
+CD274	CD274 molecule	1
+MTOR	mechanistic target of rapamycin (serine/threonine kinase)	10
+DCUN1D1	DCN1, defective in cullin neddylation 1, domain containing 1 (S. cerevisiae)	2
+FOXP3	forkhead box P3	1
+MET	met proto-oncogene (hepatocyte growth factor receptor)	3
+VHL	von Hippel-Lindau tumor suppressor, E3 ubiquitin protein ligase	1
+BRCA1	breast cancer 1, early onset	2
+JAK2	Janus kinase 2	3
+POLE	polymerase (DNA directed), epsilon, catalytic subunit	2
+SET	SET nuclear oncogene	7
+CBS	cystathionine-beta-synthase	1
+PC	pyruvate carboxylase	1
+PDCD1LG2	programmed cell death 1 ligand 2	1
+STAT1	signal transducer and activator of transcription 1, 91kDa	1
+TIGIT	T cell immunoreceptor with Ig and ITIM domains	1
+TNF	tumor necrosis factor	3
+TP53	tumor protein p53	1
+TSLP	thymic stromal lymphopoietin	3
+AR	androgen receptor	1
+ATG13	autophagy related 13	6
+B2M	beta-2-microglobulin	3
+CD68	CD68 molecule	1
+CD80	CD80 molecule	1
+CTLA4	cytotoxic T-lymphocyte-associated protein 4	23
+CXCL10	chemokine (C-X-C motif) ligand 10	1
+DES	desmin	1
+HDAC1	histone deacetylase 1	1
+IFNAR1	interferon (alpha, beta and omega) receptor 1	1
+PML	promyelocytic leukemia	1
+PTEN	phosphatase and tensin homolog	1
+ROS1	c-ros oncogene 1 , receptor tyrosine kinase	1
+STAT3	signal transducer and activator of transcription 3 (acute-phase response factor)	6
+TLR4	toll-like receptor 4	27
+ATM	ataxia telangiectasia mutated	1
+BAX	BCL2-associated X protein	3
+BCR	breakpoint cluster region	2
+CD19	CD19 molecule	1
+CD79A	CD79a molecule, immunoglobulin-associated alpha	1
+CD163	CD163 molecule	1
+HDAC3	histone deacetylase 3	24
+KIT	v-kit Hardy-Zuckerman 4 feline sarcoma viral oncogene homolog	1
+LAG3	lymphocyte-activation gene 3	1
+NRAS	neuroblastoma RAS viral (v-ras) oncogene homolog	8
+PIK3CA	phosphatidylinositol-4,5-bisphosphate 3-kinase, catalytic subunit alpha	3
+TLR1	toll-like receptor 1	1
+AKT1	v-akt murine thymoma viral oncogene homolog 1	1
+ATG5	autophagy related 5	1
+BAD	BCL2-associated agonist of cell death	10
+CCR4	chemokine (C-C motif) receptor 4	1
+CCR5	chemokine (C-C motif) receptor 5 (gene/pseudogene)	1
+CD38	CD38 molecule	1
+CD69	CD69 molecule	5
+CD276	CD276 molecule	1
+CDK12	cyclin-dependent kinase 12	2
+CHEK2	checkpoint kinase 2	13
+CIITA	class II, major histocompatibility complex, transactivator	2
+CLOCK	clock circadian regulator	9
+CXCL9	chemokine (C-X-C motif) ligand 9	15
+CXCL11	chemokine (C-X-C motif) ligand 11	1
+DPYD	dihydropyrimidine dehydrogenase	1
+ECD	ecdysoneless homolog (Drosophila)	6
+EOMES	eomesodermin	1
+ERBB2	v-erb-b2 erythroblastic leukemia viral oncogene homolog 2, neuro/glioblastoma derived oncogene homolog (avian)	7
+ERBB2IP	erbb2 interacting protein	1
+EZH2	enhancer of zeste homolog 2 (Drosophila)	1
+F10	coagulation factor X	1
+FAT1	FAT tumor suppressor homolog 1 (Drosophila)	1
+FBXW7	F-box and WD repeat domain containing 7, E3 ubiquitin protein ligase	2
+GSC	goosecoid homeobox	1
+HDAC5	histone deacetylase 5	4
+HDAC6	histone deacetylase 6	4
+HLTF	helicase-like transcription factor	2
+HRAS	v-Ha-ras Harvey rat sarcoma viral oncogene homolog	3
+IDH2	isocitrate dehydrogenase 2 (NADP+), mitochondrial	5
+IFNG	interferon, gamma	1
+IL2RB	interleukin 2 receptor, beta	1
+IL2RG	interleukin 2 receptor, gamma	3
+IRF1	interferon regulatory factor 1	3
+IRF4	interferon regulatory factor 4	1
+JAK1	Janus kinase 1	5
+KEAP1	kelch-like ECH-associated protein 1	9
+MCL1	myeloid cell leukemia sequence 1 (BCL2-related)	1
+MDC1	mediator of DNA-damage checkpoint 1	1
+MSH2	mutS homolog 2, colon cancer, nonpolyposis type 1 (E. coli)	1
+MX1	myxovirus (influenza virus) resistance 1, interferon-inducible protein p78 (mouse)	1
+MYC	v-myc myelocytomatosis viral oncogene homolog (avian)	4
+MYD88	myeloid differentiation primary response 88	3
+NODAL	nodal growth differentiation factor	255
+PAX5	paired box 5	1
+PPP2R1A	protein phosphatase 2, regulatory subunit A, alpha	1
+PROC	protein C (inactivator of coagulation factors Va and VIIIa)	4
+RPS6	ribosomal protein S6	2
+SI	sucrase-isomaltase (alpha-glucosidase)	3
+SIRT1	sirtuin 1	1
+SIRT4	sirtuin 4	4
+SMO	smoothened, frizzled family receptor	4
+TANK	TRAF family member-associated NFKB activator	1
+TH	tyrosine hydroxylase	1
+TLR8	toll-like receptor 8	4
+TRAIP	TRAF interacting protein	1
+TSC2	tuberous sclerosis 2	1
+UHRF1	ubiquitin-like with PHD and ring finger domains 1	1
+ULBP2	UL16 binding protein 2	6
+ULK1	unc-51-like kinase 1 (C. elegans)	1
+VTCN1	V-set domain containing T cell activation inhibitor 1	342

@@ -1,0 +1,245 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 需求描述
+
+通过API检索NCBI的Pubmed数据库，批量获得文章信息，整理出摘要里基因的词频。
+
+## 应用场景
+
+- 老板交给我的这个基因好陌生，用这套代码跑出表格，一眼望去，发现它的好朋友我都很熟，于是，熟悉的思路、方法都能用上了。
+- 文章做到第三部分卡住了，我的基因到底调控了谁，或者谁调控了它，或者它跟谁是好朋友一同发挥作用？用这套代码跑出表格，一眼望去，发现目的基因跟我熟悉的一类分子一同出现在某篇文章的摘要里，我们实验室有非常完善的研究这类分子的实验体系，接下来就瞄准这个分子了。
+
+只要设置好检索词，就可以批量检索并整理文献和摘要，让你的头脑风暴比别人快10倍。
+
+包含三个模块，相对独立，可分别运行。全部运行完将让你对目的基因有个整体的认识。
+
+【模块一】文章的增长趋势
+
+【模块二】发表了哪些文章
+
+【模块三】**从摘要找好朋友**
+
+## 环境设置
+
+使用国内镜像安装包
+
+```r
+options("repos"= c(CRAN="https://mirrors.tuna.tsinghua.edu.cn/CRAN/"))
+options(BioC_mirror="http://mirrors.ustc.edu.cn/bioc/")
+BiocManager::install("rentrez")
+BiocManager::install("pubmed.mineR")
+install.packages("jiebaR")
+install.packages("bibliometrix")
+```
+
+加载包
+
+```{r}
+library(data.table)
+library(stringr)
+library(ggplot2)
+library(jiebaR)
+library(rentrez) 
+library(pubmed.mineR)
+library(bibliometrix)
+library(ggrepel)
+library(ggthemes)
+library(DT)
+library(htmlwidgets)
+
+Sys.setenv(LANGUAGE = "en") #显示英文报错信息
+options(stringsAsFactors = FALSE) #禁止chr转成factor
+```
+
+## 参数设置
+
+```{r}
+targetGene <- "PD-L1" #检索的基因名
+year <- 2010:2018 #检索的文章的发表年份范围
+```
+
+## 输入文件
+
+### 常用词
+
+common_words_new.txt，常用词，在计算词频时不统计。
+
+```{r}
+common_words_new <- read.table("common_words_new.txt")
+common_words_new <- common_words_new$V1
+```
+
+### 基因名
+
+目标物种所有基因的Symbol、Synonyms，用于【模块三】提取摘要中的基因。
+
+此处以人为例，从HUGO获取，<https://www.genenames.org/>，已经整理成HGNCdata.rda文件，保存在当前文件夹。
+
+每行一个基因。包含基因名、别名、位点，将有的放矢的在文献中统计这些名字。此处以人类为例，可以换成你关心的物种、或其他你关心的词。
+
+小鼠推荐用MGI，<http://www.informatics.jax.org/>
+
+```{r}
+(load("HGNCdata.rda")) #位于当前文件夹
+head(HGNCdata)
+
+#提取出目标基因的基因名、别名，将使用这些名字检索文章
+targetGeneInfo <- HGNCdata[HGNCdata$Synonyms %like% targetGene,]
+
+#构建检索词，跟你在网页版Pubmed中用的检索词是一样的，还可以添加物种的拉丁名
+#医学领域还可以直接检索Medical Subject Headings(MeSH) refer to wiki https://en.wikipedia.org/wiki/Medical_Subject_Headings
+term <- paste(as.character(targetGeneInfo$Approved.Symbol), str_replace_all(targetGeneInfo$Synonyms, ", ", " OR "), sep = " OR ")
+term
+```
+
+## 文章的增长趋势
+
+```{r}
+#查询NCBI里的数据库简称
+#entrez_dbs()
+#pubmed里有哪些可以查询的fields
+#entrez_db_searchable(db = "pubmed")
+
+#先写个函数，获取特定年份范围内发表的带有检索词的文章数量
+search_year <- function(year, term){
+    query <- paste(term, "AND (", year, "[PDAT])")
+    entrez_search(db="pubmed", term=query, retmax=0)$count
+}
+
+#用全部基因名作为检索词检索，文章越多，等的越久
+papers <- sapply(year, search_year, term=term, USE.NAMES=FALSE) 
+#用其中三个基因名作为检索词检索
+papers <- sapply(year, search_year, term="CD274 OR PD-L1 OR PDL1", USE.NAMES=FALSE)
+
+plot(year, papers, type='b', main="The PD-L1 papers")
+```
+
+## 发表了哪些文章
+
+检索并从结果中提取出PMID、发表日期、文章名、期刊，以及在PMC里的被引用次数。
+
+```{r}
+#我们先把retmax设为0，先不让它返回结果，这步只为了查看一共多少条记录
+pre.result <- entrez_search(db="pubmed", term=term, retmode = "xml", retmax = 0)
+pre.result$count #一共有多少条记录
+
+#返回所有检索到的结果
+#result <- entrez_search(db="pubmed", term=term, retmode = "xml", retmax = pre.result$count)
+#此处返回前200条记录
+result <- entrez_search(db="pubmed", term=term, retmode = "xml", retmax = 200)
+
+#download all the paper info
+#记录太多会被拒绝，因此每次提取200篇
+n <- 200 #每次读入的记录数量
+res <- c()
+for (i in seq(1,length(result$ids),n)) {
+  multi_summ <- entrez_summary(db="pubmed",id=result$ids[i:(i+n-1)])
+  date_and_cite <- extract_from_esummary(multi_summ, c("uid","pubdate","pmcrefcount", "title", "fulljournalname"))
+  res1<- data.frame(t(date_and_cite))
+  res1<- data.frame(lapply(res1, as.character), stringsAsFactors=FALSE)
+  res<- rbind(res,res1)
+}
+
+#how many times the article has been cited in PubMed Central papers
+res[is.na(as.numeric(res$pmcrefcount)),"pmcrefcount"]=0
+res$pmcrefcount <- as.numeric(res$pmcrefcount)
+
+#直接查看结果
+datatable(as.data.frame(lapply(res, function(x) if(class(x)=="numeric") round(x,4) else x), check.names=FALSE, row.names=row.names(res)))
+
+#把结果保存到文件
+write.table(res, "output_paper.txt", quote = F, sep = "\t", row.names = F)
+```
+
+## 从摘要找好朋友
+
+### 检索
+
+这段检索跟前面“发表了哪些文章”的开头一样，就不重复运行了。
+
+```r
+pre.result <- entrez_search(db="pubmed", term=term, retmode = "xml", retmax = 0)
+pre.result$count 
+
+#返回所有检索到的结果
+#result <- entrez_search(db="pubmed", term=term, retmode = "xml", retmax = pre.result$count)
+#此处返回前200条记录
+result <- entrez_search(db="pubmed", term=term, retmode = "xml", retmax = 200)
+```
+
+### 把xml文件整理成数据框格式
+
+xml中包含title、authors、year、journal、key_words、doi、pmid、abstract等信息，整理成data.frame格式。
+
+```{r}
+n <- 200 #每次读入的记录数量
+abstract <- c()
+for (i in seq(1, length(result$ids), n)) {
+  rec <- parse_pubmed_xml(entrez_fetch(db = "pubmed", id = result$ids[i : (i + n - 1)], rettype = "xml"))
+  abstract1 <- as.data.frame(do.call('rbind', rec))
+  abstract <- rbind(abstract, abstract1)
+}
+abstract1[1,]
+
+length(abstract1$abstract) # how many abstract
+abstract <- unlist(abstract$abstract)
+
+#查看其中某一篇文章的摘要
+#abstract[70]
+```
+
+### 提取abstract中的基因名，并统计出现频率。
+
+先把摘要分割成单个的单词，然后根据输入文件common_words_new.txt去掉常用词，再根据HGNCdata.rda挑出基因名。
+
+```{r}
+#先用标点符号分割出单词
+tempa = unlist(strsplit(abstract, ",",fixed = T));
+tempb = unlist(strsplit(tempa, ":",fixed = T));
+tempc = unlist(strsplit(tempb, ";",fixed = T));
+tempd = unlist(strsplit(tempc, "'",fixed = T));
+tempe = unlist(strsplit(tempd, " ",fixed = T));
+tempf = unlist(strsplit(tempe, "/",fixed = T));
+tempf = unlist(strsplit(tempe, "\\|",fixed = T));
+tempf = unlist(strsplit(tempf, "(",fixed = T));
+tempf = unlist(strsplit(tempf, ")",fixed = T));
+tempf = unlist(strsplit(tempf, "-",fixed = T));
+tempf = unlist(strsplit(tempf, ".",fixed = T));
+
+#这里都转成大写字母，便于识别基因名，或者根据你自己的需要调整
+tempf = toupper(tempf) 
+
+tempi = as.data.frame(table(tempf));
+
+#判断是不是常用词，如果是常用词，就删掉
+tempj = unlist(lapply(toupper(common_words_new), function(x){tempoo = which(as.character(tempi[,1]) == x   ); if (length(tempoo) != 0) return(tempoo)}));
+tempk = tempi[-tempj,];
+
+#挑出基因名，按照基因名出现频率排序
+templ = as.character(HGNCdata$Approved.Symbol);
+tempm = unlist(lapply(templ,function(x){return(which(x == as.character(tempk$tempf) ))}));
+tempn = tempk[tempm,]
+tempn2= tempn[order(as.numeric(tempn$Freq), decreasing = T),]
+tempo = unlist(lapply(as.character(tempn2$tempf), function(x){return(which(x == templ))}));
+Genes = as.character(HGNCdata$Approved.Name[tempo]);
+data_table= cbind.data.frame(Symbol=as.character(tempn2$tempf), Genes, Freq=as.numeric(tempn$Freq));
+colnames(data_table)=c("Gene_symbol", "Genes", "Freq");
+
+#直接查看结果
+datatable(as.data.frame(lapply(data_table, function(x) if(class(x)=="numeric") round(x,4) else x), check.names=FALSE, row.names=row.names(data_table)))
+
+#把结果保存到文件
+write.table(data_table, "output_friends.txt", sep = "\t", quote = F, row.names = F)
+```
+
+## 参考资料
+
+NCBI里的各种数据库，都可以用rentrez这个R包通过API访问，达到批量检索、处理的目的。
+
+参考资料：<https://bioconnector.github.io/workshops/r-ncbi.html>
+
+```{r}
+sessionInfo()
+```
